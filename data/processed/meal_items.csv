@@ -1,0 +1,183 @@
+meal_item_id,meal_id,food_code,food_name,quantity_g,quantity_basis
+MI0001,BR001,A010,Ragi,50,IFCT food-entry weight
+MI0002,BR001,E012,"Banana, ripe, robusta",100,IFCT food-entry weight
+MI0003,BR001,H001,Almond,10,IFCT food-entry weight
+MI0004,BR001,H008,"Garden cress, seeds",15,IFCT food-entry weight
+MI0005,BR002,A011,Rice flakes,60,IFCT food-entry weight
+MI0006,BR002,D061,"Peas, fresh",50,IFCT food-entry weight
+MI0007,BR002,H012,Ground nut,10,IFCT food-entry weight
+MI0008,BR002,G017,"Onion, big",20,IFCT food-entry weight
+MI0009,BR003,B010,"Green gram, dal ( a)Vigna radiat",60,IFCT food-entry weight
+MI0010,BR003,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0011,BR003,G017,"Onion, big",30,IFCT food-entry weight
+MI0012,BR003,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0013,BR004,A009,Quinoa,50,IFCT food-entry weight
+MI0014,BR004,E012,"Banana, ripe, robusta",80,IFCT food-entry weight
+MI0015,BR004,H021,Walnut,10,IFCT food-entry weight
+MI0016,BR004,H008,"Garden cress, seeds",10,IFCT food-entry weight
+MI0017,BR005,B001,"Bengal gram, dal",60,IFCT food-entry weight
+MI0018,BR005,C033,Spinach,50,IFCT food-entry weight
+MI0019,BR005,G017,"Onion, big",30,IFCT food-entry weight
+MI0020,BR005,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0021,BR006,F013,"Sweet potato, brown skin",180,IFCT food-entry weight
+MI0022,BR006,H012,Ground nut,15,IFCT food-entry weight
+MI0023,BR006,H008,"Garden cress, seeds",20,IFCT food-entry weight
+MI0024,BR006,E033,"Lemon, juice",10,IFCT food-entry weight
+MI0025,BR007,A019,"Wheat flour, atta",60,IFCT food-entry weight
+MI0026,BR007,E012,"Banana, ripe, robusta",70,IFCT food-entry weight
+MI0027,BR007,H012,Ground nut,15,IFCT food-entry weight
+MI0028,BR008,A009,Quinoa,40,IFCT food-entry weight
+MI0029,BR008,B011,"Green gram, whole",35,IFCT food-entry weight
+MI0030,BR008,D061,"Peas, fresh",40,IFCT food-entry weight
+MI0031,BR008,D076,"Tomato, ripe, local",30,IFCT food-entry weight
+MI0032,BR009,A010,Ragi,45,IFCT food-entry weight
+MI0033,BR009,L002,"Milk, whole, Cow",200,IFCT food-entry weight
+MI0034,BR009,E012,"Banana, ripe, robusta",80,IFCT food-entry weight
+MI0035,BR010,A019,"Wheat flour, atta",50,IFCT food-entry weight
+MI0036,BR010,L003,Paneer,60,IFCT food-entry weight
+MI0037,BR010,C033,Spinach,40,IFCT food-entry weight
+MI0038,BR010,D076,"Tomato, ripe, local",30,IFCT food-entry weight
+MI0039,BR011,A011,Rice flakes,50,IFCT food-entry weight
+MI0040,BR011,M004,"Egg, poultry, whole, boiled",100,IFCT food-entry weight
+MI0041,BR011,D061,"Peas, fresh",40,IFCT food-entry weight
+MI0042,BR011,G017,"Onion, big",20,IFCT food-entry weight
+MI0043,BR012,A009,Quinoa,45,IFCT food-entry weight
+MI0044,BR012,M005,"Egg, poultry, white, boiled",100,IFCT food-entry weight
+MI0045,BR012,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0046,BR012,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0047,LU001,B020,"Rajmah, red",50,IFCT food-entry weight
+MI0048,LU001,A013,"Rice, raw, brown",50,IFCT food-entry weight
+MI0049,LU001,D076,"Tomato, ripe, local",50,IFCT food-entry weight
+MI0050,LU001,G017,"Onion, big",30,IFCT food-entry weight
+MI0051,LU002,B002,"Bengal gram, whole",50,IFCT food-entry weight
+MI0052,LU002,A009,Quinoa,45,IFCT food-entry weight
+MI0053,LU002,D043,"Cucumber, green, elongate",60,IFCT food-entry weight
+MI0054,LU002,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0055,LU002,E033,"Lemon, juice",10,IFCT food-entry weight
+MI0056,LU003,B010,"Green gram, dal ( a)Vigna radiat",45,IFCT food-entry weight
+MI0057,LU003,A015,"Rice, raw, milled",50,IFCT food-entry weight
+MI0058,LU003,C033,Spinach,60,IFCT food-entry weight
+MI0059,LU003,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0060,LU004,B013,Lentil dal,45,IFCT food-entry weight
+MI0061,LU004,A003,Bajra,50,IFCT food-entry weight
+MI0062,LU004,D049,"French beans, country",60,IFCT food-entry weight
+MI0063,LU004,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0064,LU005,B025,"Soybean, white",40,IFCT food-entry weight
+MI0065,LU005,A009,Quinoa,45,IFCT food-entry weight
+MI0066,LU005,D049,"French beans, country",60,IFCT food-entry weight
+MI0067,LU005,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0068,LU006,B005,"Cowpea, brown",50,IFCT food-entry weight
+MI0069,LU006,A005,Jowar,50,IFCT food-entry weight
+MI0070,LU006,D036,Cauliflower,80,IFCT food-entry weight
+MI0071,LU006,G017,"Onion, big",30,IFCT food-entry weight
+MI0072,LU007,B021,"Red gram, dal",45,IFCT food-entry weight
+MI0073,LU007,A015,"Rice, raw, milled",50,IFCT food-entry weight
+MI0074,LU007,D046,Drumstick,80,IFCT food-entry weight
+MI0075,LU007,C019,Drumstick leaves,30,IFCT food-entry weight
+MI0076,LU008,B012,"Horse gram, whole",45,IFCT food-entry weight
+MI0077,LU008,A004,Barley,50,IFCT food-entry weight
+MI0078,LU008,D066,"Pumpkin, orange, round",80,IFCT food-entry weight
+MI0079,LU008,C033,Spinach,50,IFCT food-entry weight
+MI0080,LU009,L003,Paneer,80,IFCT food-entry weight
+MI0081,LU009,A013,"Rice, raw, brown",45,IFCT food-entry weight
+MI0082,LU009,C033,Spinach,60,IFCT food-entry weight
+MI0083,LU009,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0084,LU010,L003,Paneer,70,IFCT food-entry weight
+MI0085,LU010,A009,Quinoa,45,IFCT food-entry weight
+MI0086,LU010,D061,"Peas, fresh",60,IFCT food-entry weight
+MI0087,LU010,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0088,LU011,M004,"Egg, poultry, whole, boiled",100,IFCT food-entry weight
+MI0089,LU011,B013,Lentil dal,30,IFCT food-entry weight
+MI0090,LU011,A015,"Rice, raw, milled",40,IFCT food-entry weight
+MI0091,LU011,C033,Spinach,50,IFCT food-entry weight
+MI0092,LU012,N003,"Chicken, poultry, breast, skinless",120,IFCT food-entry weight
+MI0093,LU012,A013,"Rice, raw, brown",50,IFCT food-entry weight
+MI0094,LU012,D049,"French beans, country",60,IFCT food-entry weight
+MI0095,LU012,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0096,LU013,P084,Tuna,120,IFCT food-entry weight
+MI0097,LU013,A009,Quinoa,45,IFCT food-entry weight
+MI0098,LU013,D043,"Cucumber, green, elongate",80,IFCT food-entry weight
+MI0099,LU013,D076,"Tomato, ripe, local",50,IFCT food-entry weight
+MI0100,LU013,E033,"Lemon, juice",10,IFCT food-entry weight
+MI0101,LU014,S006,Rohu,120,IFCT food-entry weight
+MI0102,LU014,A015,"Rice, raw, milled",50,IFCT food-entry weight
+MI0103,LU014,C033,Spinach,60,IFCT food-entry weight
+MI0104,LU014,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0105,SN001,E001,"Apple, big",150,IFCT food-entry weight
+MI0106,SN001,H001,Almond,15,IFCT food-entry weight
+MI0107,SN002,E028,"Guava, white flesh",150,IFCT food-entry weight
+MI0108,SN002,H012,Ground nut,15,IFCT food-entry weight
+MI0109,SN003,E012,"Banana, ripe, robusta",100,IFCT food-entry weight
+MI0110,SN003,H018,Pistachio nuts,15,IFCT food-entry weight
+MI0111,SN004,E055,"Pomegranate, maroon seeds",120,IFCT food-entry weight
+MI0112,SN004,H008,"Garden cress, seeds",15,IFCT food-entry weight
+MI0113,SN005,A008,"Maize, tender, sweet",120,IFCT food-entry weight
+MI0114,SN005,H012,Ground nut,15,IFCT food-entry weight
+MI0115,SN005,E033,"Lemon, juice",10,IFCT food-entry weight
+MI0116,SN006,B002,"Bengal gram, whole",35,IFCT food-entry weight
+MI0117,SN006,E049,"Papaya, ripe",150,IFCT food-entry weight
+MI0118,SN007,K002,Coconut Water,250,IFCT food-entry weight
+MI0119,SN007,H021,Walnut,15,IFCT food-entry weight
+MI0120,SN008,L002,"Milk, whole, Cow",200,IFCT food-entry weight
+MI0121,SN008,E012,"Banana, ripe, robusta",80,IFCT food-entry weight
+MI0122,SN009,L003,Paneer,60,IFCT food-entry weight
+MI0123,SN009,D043,"Cucumber, green, elongate",100,IFCT food-entry weight
+MI0124,SN009,E033,"Lemon, juice",10,IFCT food-entry weight
+MI0125,SN010,M004,"Egg, poultry, whole, boiled",100,IFCT food-entry weight
+MI0126,SN010,E047,"Orange, pulp",120,IFCT food-entry weight
+MI0127,DI001,A009,Quinoa,45,IFCT food-entry weight
+MI0128,DI001,B013,Lentil dal,45,IFCT food-entry weight
+MI0129,DI001,D036,Cauliflower,80,IFCT food-entry weight
+MI0130,DI001,C033,Spinach,50,IFCT food-entry weight
+MI0131,DI002,A013,"Rice, raw, brown",45,IFCT food-entry weight
+MI0132,DI002,B011,"Green gram, whole",45,IFCT food-entry weight
+MI0133,DI002,D049,"French beans, country",60,IFCT food-entry weight
+MI0134,DI002,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0135,DI003,A003,Bajra,45,IFCT food-entry weight
+MI0136,DI003,B001,"Bengal gram, dal",45,IFCT food-entry weight
+MI0137,DI003,C033,Spinach,60,IFCT food-entry weight
+MI0138,DI003,G017,"Onion, big",30,IFCT food-entry weight
+MI0139,DI004,A004,Barley,45,IFCT food-entry weight
+MI0140,DI004,B025,"Soybean, white",35,IFCT food-entry weight
+MI0141,DI004,D036,Cauliflower,80,IFCT food-entry weight
+MI0142,DI004,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0143,DI005,A005,Jowar,45,IFCT food-entry weight
+MI0144,DI005,B005,"Cowpea, brown",45,IFCT food-entry weight
+MI0145,DI005,D066,"Pumpkin, orange, round",80,IFCT food-entry weight
+MI0146,DI005,C020,Fenugreek leaves,50,IFCT food-entry weight
+MI0147,DI006,B020,"Rajmah, red",45,IFCT food-entry weight
+MI0148,DI006,A015,"Rice, raw, milled",45,IFCT food-entry weight
+MI0149,DI006,D049,"French beans, country",60,IFCT food-entry weight
+MI0150,DI006,C033,Spinach,50,IFCT food-entry weight
+MI0151,DI007,F013,"Sweet potato, brown skin",150,IFCT food-entry weight
+MI0152,DI007,B025,"Soybean, white",35,IFCT food-entry weight
+MI0153,DI007,C033,Spinach,70,IFCT food-entry weight
+MI0154,DI007,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0155,DI008,L003,Paneer,70,IFCT food-entry weight
+MI0156,DI008,A009,Quinoa,40,IFCT food-entry weight
+MI0157,DI008,C033,Spinach,80,IFCT food-entry weight
+MI0158,DI008,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0159,DI009,A019,"Wheat flour, atta",50,IFCT food-entry weight
+MI0160,DI009,L003,Paneer,70,IFCT food-entry weight
+MI0161,DI009,D036,Cauliflower,80,IFCT food-entry weight
+MI0162,DI009,D033,"Capsicum, green",50,IFCT food-entry weight
+MI0163,DI010,M004,"Egg, poultry, whole, boiled",100,IFCT food-entry weight
+MI0164,DI010,B010,"Green gram, dal ( a)Vigna radiat",30,IFCT food-entry weight
+MI0165,DI010,A019,"Wheat flour, atta",40,IFCT food-entry weight
+MI0166,DI010,C033,Spinach,50,IFCT food-entry weight
+MI0167,DI011,N003,"Chicken, poultry, breast, skinless",120,IFCT food-entry weight
+MI0168,DI011,A009,Quinoa,45,IFCT food-entry weight
+MI0169,DI011,D049,"French beans, country",60,IFCT food-entry weight
+MI0170,DI011,D033,"Capsicum, green",40,IFCT food-entry weight
+MI0171,DI012,P068,Salmon,120,IFCT food-entry weight
+MI0172,DI012,A013,"Rice, raw, brown",45,IFCT food-entry weight
+MI0173,DI012,C033,Spinach,70,IFCT food-entry weight
+MI0174,DI012,D043,"Cucumber, green, elongate",60,IFCT food-entry weight
+MI0175,DI013,P084,Tuna,120,IFCT food-entry weight
+MI0176,DI013,A019,"Wheat flour, atta",50,IFCT food-entry weight
+MI0177,DI013,C033,Spinach,60,IFCT food-entry weight
+MI0178,DI013,D076,"Tomato, ripe, local",40,IFCT food-entry weight
+MI0179,DI014,O003,"Goat, legs",120,IFCT food-entry weight
+MI0180,DI014,A004,Barley,45,IFCT food-entry weight
+MI0181,DI014,D036,Cauliflower,80,IFCT food-entry weight
+MI0182,DI014,C020,Fenugreek leaves,50,IFCT food-entry weight

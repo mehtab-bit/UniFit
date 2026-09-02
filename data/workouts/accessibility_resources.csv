@@ -1,0 +1,6 @@
+resource_id,display_name,accessibility_id,description
+safe_indoor_space,Clear familiar indoor workout space,blind_low_vision,A familiar obstacle-free area suitable for stationary exercise.
+stable_support,"Stable chair, wall or support",blind_low_vision,A fixed support that can be used as a tactile reference when needed.
+guide,Exercise partner or guide,blind_low_vision,A suitable guide/support person for route-based walking or running.
+stationary_bike,Stationary exercise bike,blind_low_vision,A stable stationary bike with a familiar setup and controls.
+accessible_pool_support,Accessible pool and support arrangement,blind_low_vision,A familiar/accessibly supported pool environment for swimming.
