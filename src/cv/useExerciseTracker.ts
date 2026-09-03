@@ -46,6 +46,15 @@ export function useExerciseTracker(
   const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('idle');
   const [calibration, setCalibration] = useState<AngleCalibration | null>(null);
   const [repState, dispatchRep] = useReducer(repCounterReducer, undefined, createRepCounterState);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  const lastLoggedRef = useRef(0);
+  if (renderCountRef.current - lastLoggedRef.current > 60) {
+    lastLoggedRef.current = renderCountRef.current;
+    console.warn(
+      `[tracker] render burst: ${renderCountRef.current} | ex=${exerciseId} calPhase=${calibrationPhase} angle=${smoothedAngle} reps=${repState.reps}`
+    );
+  }
   const calibrationSamplesRef = useRef<number[]>([]);
   const calibrationPhaseRef = useRef<CalibrationPhase>(calibrationPhase);
 
