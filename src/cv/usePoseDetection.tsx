@@ -76,6 +76,10 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
 
         if (isActiveRef.current) {
           detectorRef.current = detector;
+          lastKeypointsRef.current = [];
+          smoothedKeypointsRef.current = [];
+          setKeypoints([]);
+          setVisibleKeypointNames([]);
           setModelStatus('ready');
           setError(null);
         }
