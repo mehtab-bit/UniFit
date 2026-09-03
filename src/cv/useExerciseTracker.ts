@@ -86,21 +86,15 @@ export function useExerciseTracker(
     calibrationSamplesRef.current = [];
   }, [calibrationPhase, smoothedAngle]);
 
-  // Derived, not effect-driven: updateRepCounter is idempotent per angle frame
-  // and only commits on genuine start<->end transitions. Running it during
-  // render avoids a setState-in-effect feedback loop entirely.
+  useEffect(() => {
+    if (calibration === null || smoothedAngle === null) {
+      return;
+    }
+    dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
+  }, [calibration, smoothedAngle]);
+
   const target = repState.phase === 'start' ? 'up' : 'down';
   const feedbackValue = getFeedbackState(smoothedAngle, calibration, target);
-  const nextRepState = useMemo(
-    () => updateRepCounter(repState, smoothedAngle, calibration),
-    [calibration, repState, smoothedAngle]
-  );
-
-  useEffect(() => {
-    if (nextRepState !== repState) {
-      dispatchRep({ type: 'set', state: nextRepState });
-    }
-  }, [nextRepState, repState]);
 
   const selectedKeypoints = useMemo(
     () => getVisibleKeypoints(keypoints, requiredKeypoints),
@@ -173,14 +167,14 @@ export function useExerciseTracker(
 
 type RepCounterAction =
   | { type: 'reset' }
-  | { type: 'set'; state: ReturnType<typeof createRepCounterState> };
+  | { type: 'tick'; angle: number; calibration: AngleCalibration };
 
 function repCounterReducer(
-  _state: ReturnType<typeof createRepCounterState>,
+  state: ReturnType<typeof createRepCounterState>,
   action: RepCounterAction
 ) {
   if (action.type === 'reset') {
     return createRepCounterState();
   }
-  return action.state;
+  return updateRepCounter(state, action.angle, action.calibration);
 }

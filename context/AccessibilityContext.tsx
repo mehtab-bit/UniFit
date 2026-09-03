@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { AccessibilityInfo } from 'react-native';
 import { speak, stopSpeaking, setGlobalSpeechRate, testSpeechSample } from '../utils/speech';
 import { triggerHaptic, HapticType } from '../utils/haptics';
@@ -45,6 +45,20 @@ export const AccessibilityProvider: React.FC<{ children: ReactNode }> = ({ child
   const [captionsEnabled, setCaptionsEnabledState] = useState<boolean>(false);
   const [vibrationFeedback, setVibrationFeedbackState] = useState<boolean>(true);
   const [speechRate, setSpeechRateState] = useState<number>(1.0);
+  const settingsRef = useRef({
+    audioGuidance,
+    captionsEnabled,
+    isScreenReaderActive,
+    speechRate,
+    vibrationFeedback,
+  });
+  settingsRef.current = {
+    audioGuidance,
+    captionsEnabled,
+    isScreenReaderActive,
+    speechRate,
+    vibrationFeedback,
+  };
   const [activeCaption, setActiveCaption] = useState<string | null>(null);
 
   // Initialize Screen Reader Detection and Storage Preferences
@@ -120,10 +134,10 @@ export const AccessibilityProvider: React.FC<{ children: ReactNode }> = ({ child
     testSpeechSample(speechRate);
   };
 
-  const announce = (message: string) => {
+  const announce = useCallback((message: string) => {
     if (!message) return;
     AccessibilityInfo.announceForAccessibility(message);
-  };
+  }, []);
 
   const clearCaption = () => {
     setActiveCaption(null);
@@ -137,6 +151,13 @@ export const AccessibilityProvider: React.FC<{ children: ReactNode }> = ({ child
   const provideFeedback = useCallback((payload: WorkoutFeedbackPayload) => {
     const { text, correction, haptic, priority } = payload;
     const isHighPriority = priority === 'high';
+    const {
+      audioGuidance,
+      captionsEnabled,
+      isScreenReaderActive,
+      speechRate,
+      vibrationFeedback,
+    } = settingsRef.current;
 
     // 1. Caption display (if captions enabled)
     if (captionsEnabled) {
@@ -160,7 +181,7 @@ export const AccessibilityProvider: React.FC<{ children: ReactNode }> = ({ child
 
     // 4. Native Accessibility announcement for TalkBack / VoiceOver
     announce(text);
-  }, [audioGuidance, captionsEnabled, isScreenReaderActive, speechRate, vibrationFeedback]);
+  }, []);
 
   return (
     <AccessibilityContext.Provider

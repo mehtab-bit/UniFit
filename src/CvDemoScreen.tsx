@@ -346,10 +346,8 @@ export function CvDemoScreen({
               }
 
               const isTracked = selectedKeypointNames.includes(keypoint.name);
-              const xFraction = pose.mirrorX
-                ? 1 - keypoint.x / sourceWidth
-                : keypoint.x / sourceWidth;
-              const yFraction = keypoint.y / sourceHeight;
+              const xFraction = pose.mirrorX ? 1 - keypoint.x : keypoint.x;
+              const yFraction = keypoint.y;
 
               return (
                 <View

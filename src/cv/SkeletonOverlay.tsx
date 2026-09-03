@@ -33,12 +33,12 @@ function toPx(
   mirrorX: boolean,
   size: { width: number; height: number }
 ) {
+  // Keypoints are normalized to 0..1 fractions by normalizeKeypoints.
   const xFraction = mirrorX ? 1 - keypoint.x : keypoint.x;
   const yFraction = keypoint.y;
-  // Keypoints are normalized to the 192x192 inference tensor.
   return {
-    x: (xFraction / 192) * size.width,
-    y: (yFraction / 192) * size.height
+    x: xFraction * size.width,
+    y: yFraction * size.height
   };
 }
 
