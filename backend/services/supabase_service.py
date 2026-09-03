@@ -119,5 +119,56 @@ class SupabaseService:
                 pass
         return None
 
+    def load_workout_sessions(self, user_id: str) -> list[dict[str, Any]]:
+        """Loads a user's logged workout sessions from Supabase."""
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("user_workout_sessions")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .order("created_at", desc=True)
+                    .execute()
+                )
+                return list(resp.data or [])
+            except Exception as e:
+                print(f"[SupabaseService] Failed to load workout sessions: {e}")
+        return []
+
+    def save_workout_session(self, session: dict[str, Any]) -> bool:
+        """Persists a completed workout session to Supabase."""
+        if self.is_connected and self.client:
+            try:
+                self.client.table("user_workout_sessions").insert(session).execute()
+                return True
+            except Exception as e:
+                print(f"[SupabaseService] Failed to save workout session: {e}")
+        return False
+
+    def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
+        """Persists the user's engine progression state to Supabase."""
+        if self.is_connected and self.client:
+            try:
+                from datetime import datetime, timezone
+
+                payload = {
+                    "user_id": user_id,
+                    "calendar_week": state.get("calendar_week", 1),
+                    "overall_completion_pct": state.get("overall_completion_pct"),
+                    "activity_rule_week": state.get("activity_rule_week", {}),
+                    "exercise_rule_week": state.get("exercise_rule_week", {}),
+                    "strength_variation_levels": state.get(
+                        "strength_variation_levels", {}
+                    ),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                self.client.table("user_progress_state").upsert(
+                    payload, on_conflict="user_id"
+                ).execute()
+                return True
+            except Exception as e:
+                print(f"[SupabaseService] Failed to save progress state: {e}")
+        return False
+
 
 supabase_service = SupabaseService()

@@ -3,9 +3,14 @@
  * Provides a single source of truth for current/demo dates across the application.
  */
 
-// Centralized reference date for demo & testing consistency (Sep 26, 2026).
-// In production with live user accounts, this can dynamically return `new Date()`.
-const DEMO_REFERENCE_DATE = new Date(2026, 8, 26); // September 26, 2026
+/**
+ * Returns the active app date (today). The app is now wired to the live
+ * engine and Supabase, so we use the real current date instead of a frozen
+ * demo date — frozen dates silently mislabeled "today" in calendars.
+ */
+export function getAppToday(): Date {
+  return new Date();
+}
 
 export const MONTH_NAMES = [
   'January',
@@ -32,14 +37,6 @@ export const DAYS_OF_WEEK_FULL = [
   'Friday',
   'Saturday',
 ];
-
-/**
- * Returns the active app reference date (today).
- */
-export function getAppToday(): Date {
-  // Can easily toggle to new Date() when live backend API is connected
-  return new Date(DEMO_REFERENCE_DATE);
-}
 
 /**
  * Formats date into ISO string YYYY-MM-DD

@@ -41,10 +41,10 @@ class CombinedWeeklyPlanResponse(BaseModel):
 
 class StreakResponse(BaseModel):
     user_id: str
-    current_streak: int = 5
-    best_streak: int = 12
-    weekly_adherence_pct: float = 83.3
-    active_days_this_week: int = 4
+    current_streak: int = 0
+    best_streak: int = 0
+    weekly_adherence_pct: float = 0.0
+    active_days_this_week: int = 0
     total_active_days_target: int = 4
 
 

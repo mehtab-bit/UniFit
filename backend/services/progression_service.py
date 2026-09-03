@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from engine.weekly_workout_engine import (
     ProgressState,
@@ -20,6 +21,7 @@ from engine.weekly_workout_engine import (
     STRENGTH_FAMILIES,
     PROGRESSION_THRESHOLD,
 )
+from backend.services.supabase_service import supabase_service
 
 
 @dataclass
@@ -36,6 +38,54 @@ class ProgressionService:
     def __init__(self):
         # In-memory user progression store (backed by Supabase when configured)
         self._user_records: dict[str, UserProgressionRecord] = {}
+        self._load_all_records()
+
+    def _load_all_records(self) -> None:
+        """Rebuilds in-memory progression state from Supabase session history."""
+        if not (supabase_service.is_connected and supabase_service.client):
+            return
+        try:
+            resp = (
+                supabase_service.client.table("user_workout_sessions")
+                .select("*")
+                .order("created_at", desc=True)
+                .execute()
+            )
+            sessions = list(resp.data or [])
+            for session in sessions:
+                user_id = session.get("user_id")
+                if not user_id:
+                    continue
+                record = self.get_or_create_record(user_id)
+                record.session_logs.append(
+                    {
+                        "activity_id": session.get("activity_id"),
+                        "requested_activity_id": session.get("requested_activity_id"),
+                        "progression_key": session.get("progression_key")
+                        or session.get("activity_id"),
+                        "session_type": session.get("session_type"),
+                        "completion_pct": float(session.get("completion_pct") or 0),
+                        "exercise_completion_pct": session.get(
+                            "exercise_completion_pct", {}
+                        )
+                        or {},
+                        "created_at": session.get("created_at"),
+                    }
+                )
+            # Recompute aggregate state per user from their session history.
+            for record in self._user_records.values():
+                summary_state = summarize_week_completion(record.session_logs)
+                record.state.overall_completion_pct = (
+                    summary_state.overall_completion_pct
+                )
+                record.state.activity_completion_pct.update(
+                    summary_state.activity_completion_pct
+                )
+                record.state.exercise_completion_pct.update(
+                    summary_state.exercise_completion_pct
+                )
+        except Exception as e:
+            print(f"[ProgressionService] Failed to load session history: {e}")
 
     def get_or_create_record(self, user_id: str) -> UserProgressionRecord:
         if user_id not in self._user_records:
@@ -68,6 +118,21 @@ class ProgressionService:
         }
 
         record.session_logs.append(session_log)
+        session_log["created_at"] = datetime.now(timezone.utc).isoformat()
+
+        # Persist the session so streaks/progress survive restarts.
+        supabase_service.save_workout_session(
+            {
+                "user_id": user_id,
+                "activity_id": session_log["activity_id"],
+                "requested_activity_id": session_log["requested_activity_id"],
+                "progression_key": session_log["progression_key"],
+                "session_type": session_log["session_type"],
+                "completion_pct": session_log["completion_pct"],
+                "exercise_completion_pct": session_log["exercise_completion_pct"],
+                "created_at": session_log["created_at"],
+            }
+        )
 
         # Re-summarize week using the engine function
         summary_state = summarize_week_completion(record.session_logs)
@@ -89,6 +154,18 @@ class ProgressionService:
                     (record.state.overall_completion_pct or 0) >= PROGRESSION_THRESHOLD
                     and ex_pct >= PROGRESSION_THRESHOLD
                 )
+
+        # Persist the recomputed progression state.
+        supabase_service.save_progress_state(
+            user_id,
+            {
+                "calendar_week": record.calendar_week,
+                "overall_completion_pct": record.state.overall_completion_pct,
+                "activity_rule_week": record.state.activity_rule_week,
+                "exercise_rule_week": record.state.exercise_rule_week,
+                "strength_variation_levels": record.state.strength_variation_levels,
+            },
+        )
 
         return {
             "success": True,
@@ -151,6 +228,14 @@ class ProgressionService:
             "strength_variation_levels": record.state.strength_variation_levels,
             "logged_sessions_count": len(record.session_logs),
         }
+
+    def get_session_logs(self, user_id: str) -> list[dict[str, Any]]:
+        """Returns the user's raw session logs (oldest first for streak math)."""
+        record = self.get_or_create_record(user_id)
+        return sorted(
+            record.session_logs,
+            key=lambda s: s.get("created_at") or "",
+        )
 
 
 progression_service = ProgressionService()

@@ -4,15 +4,15 @@ import { ProfileService } from '../../lib/profile';
 import { UserProfile } from '../../types/quiz';
 
 const DEFAULT_NUTRITION_TARGETS: NutritionTargets = {
-  calories: 2400,
-  consumedCalories: 1940,
-  remainingCalories: 460,
-  proteinG: 145,
-  carbsG: 210,
-  carbohydratesG: 210,
-  fatG: 58,
-  fibreG: 28,
-  waterMl: 2800,
+  calories: 0,
+  consumedCalories: 0,
+  remainingCalories: 0,
+  proteinG: 0,
+  carbsG: 0,
+  carbohydratesG: 0,
+  fatG: 0,
+  fibreG: 0,
+  waterMl: 0,
 };
 
 /**

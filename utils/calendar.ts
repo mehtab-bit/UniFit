@@ -99,14 +99,14 @@ export const ENGINE_SCHEDULE_TEMPLATES: Record<number, WorkoutTemplateRecord> = 
 };
 
 const DEFAULT_DAY_NUTRITION: NutritionTargets = {
-  calories: 2400,
-  consumedCalories: 1940,
-  remainingCalories: 460,
-  proteinG: 145,
-  carbsG: 210,
-  carbohydratesG: 210,
-  fatG: 58,
-  fibreG: 28,
+  calories: 0,
+  consumedCalories: 0,
+  remainingCalories: 0,
+  proteinG: 0,
+  carbsG: 0,
+  carbohydratesG: 0,
+  fatG: 0,
+  fibreG: 0,
 };
 
 /**
@@ -132,7 +132,7 @@ export function formatMonthYear(year: number, monthIndex: number): string {
 export function generateMonthlyCalendarGrid(
   year: number,
   monthIndex: number,
-  referenceDate: Date = new Date(2026, 8, 21) // App reference date: Sep 21, 2026
+  referenceDate: Date = new Date()
 ): CalendarDay[] {
   const todayYear = referenceDate.getFullYear();
   const todayMonth = referenceDate.getMonth();
@@ -182,7 +182,9 @@ export function generateMonthlyCalendarGrid(
 
     if (year < todayYear || (year === todayYear && monthIndex < todayMonth)) {
       // Past month
-      status = template.activity === 'rest' ? 'rest' : (dayNum % 7 === 5 ? 'missed' : 'completed');
+      // No completion history is tracked for past months, so never claim
+      // workouts were completed or missed.
+      status = template.activity === 'rest' ? 'rest' : 'planned';
     } else if (year === todayYear && monthIndex === todayMonth) {
       // Current month
       if (dayNum === todayDate) {
@@ -190,10 +192,9 @@ export function generateMonthlyCalendarGrid(
       } else if (dayNum < todayDate) {
         if (template.activity === 'rest') {
           status = 'rest';
-        } else if (dayNum === 5 || dayNum === 12) {
-          status = 'missed';
         } else {
-          status = 'completed';
+          // Actual completion is tracked from logged sessions, not invented here.
+          status = 'planned';
         }
       } else {
         // Future days in current month
@@ -268,9 +269,9 @@ export function calculateMonthStats(days: CalendarDay[]) {
     totalPastWorkouts > 0 ? Math.round((completed / totalPastWorkouts) * 100) : 100;
 
   return {
-    monthlyWorkouts: totalPlannedInMonth || 12,
-    monthlyCompleted: completed || 10,
-    monthlyMissed: missed || 2,
-    consistency: consistency || 83,
+    monthlyWorkouts: totalPlannedInMonth,
+    monthlyCompleted: completed,
+    monthlyMissed: missed,
+    consistency: totalPastWorkouts > 0 ? consistency : 0,
   };
 }

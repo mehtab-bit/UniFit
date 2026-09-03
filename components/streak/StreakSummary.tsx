@@ -14,7 +14,7 @@ interface StreakSummaryProps {
 
 export const StreakSummary: React.FC<StreakSummaryProps> = ({
   currentStreak,
-  bestStreak = 12,
+  bestStreak = 0,
   onPress,
 }) => {
   return (

@@ -44,14 +44,14 @@ function mapBackendMealDay(dayData: any, dateStr: string): MealPlan {
   const target = dayData.target || {};
 
   const targets: NutritionTargets = {
-    calories: Math.round(target.target_kcal || 2400),
-    proteinG: Math.round(target.protein_target_g || 145),
+    calories: Math.round(target.target_kcal || 0),
+    proteinG: Math.round(target.protein_target_g || 0),
     carbsG: target.carbohydrate_target_g ? Math.round(target.carbohydrate_target_g) : null,
     carbohydratesG: target.carbohydrate_target_g ? Math.round(target.carbohydrate_target_g) : null,
-    fatG: Math.round(target.fat_target_g || 58),
+    fatG: Math.round(target.fat_target_g || 0),
     fibreG: target.fiber_target_g ? Math.round(target.fiber_target_g) : null,
-    consumedCalories: 1940,
-    remainingCalories: 460,
+    consumedCalories: 0,
+    remainingCalories: target.target_kcal ? Math.round(target.target_kcal) : 0,
   };
 
   const meals: Meal[] = rawMeals.map((m: any, idx: number) => {

@@ -25,15 +25,22 @@ export function fetchCombinedWeek(
     cache.set(
       key,
       (async () => {
-        const engine = await ProfileService.resolveEngineRequest(userId);
-        const response = await apiClient.post('/api/v1/fitness/weekly-plan', {
-          user_id: userId,
-          week_number: weekNumber,
-          profile: engine.profile,
-          activity_preferences: engine.activities,
-          force_regenerate: !!force,
-        });
-        return response as any;
+        try {
+          const engine = await ProfileService.resolveEngineRequest(userId);
+          const response = await apiClient.post('/api/v1/fitness/weekly-plan', {
+            user_id: userId,
+            week_number: weekNumber,
+            profile: engine.profile,
+            activity_preferences: engine.activities,
+            force_regenerate: !!force,
+          });
+          return response as any;
+        } catch (err) {
+          // Never cache a failure: the next caller should retry instead of
+          // falling back to mocks forever because of one bad request.
+          cache.delete(key);
+          throw err;
+        }
       })()
     );
   }

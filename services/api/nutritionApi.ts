@@ -9,17 +9,18 @@ import { mockNutritionService } from '../mock/nutritionMock';
 import { fetchCombinedWeek, pickDayFromWeek } from './combinedPlan';
 
 function mapBackendNutritionToTargets(nutrition: any): NutritionTargets {
-  const calories = Math.round(nutrition.target_kcal || nutrition.calories || 2400);
-  const protein = Math.round(nutrition.protein_target_g || nutrition.proteinG || 145);
+  const calories = Math.round(nutrition.target_kcal || nutrition.calories || 0);
+  const protein = Math.round(nutrition.protein_target_g || nutrition.proteinG || 0);
   const carbs = nutrition.carbohydrate_target_g !== undefined && nutrition.carbohydrate_target_g !== null
     ? Math.round(nutrition.carbohydrate_target_g)
-    : (nutrition.carbsG !== undefined ? nutrition.carbsG : 210);
-  const fat = Math.round(nutrition.fat_target_g || nutrition.fatG || 58);
+    : (nutrition.carbsG !== undefined ? nutrition.carbsG : 0);
+  const fat = Math.round(nutrition.fat_target_g || nutrition.fatG || 0);
   const fibre = nutrition.fiber_target_g !== undefined && nutrition.fiber_target_g !== null
     ? Math.round(nutrition.fiber_target_g)
-    : (nutrition.fibreG !== undefined ? nutrition.fibreG : 28);
+    : (nutrition.fibreG !== undefined ? nutrition.fibreG : 0);
 
-  const consumed = 1940;
+  // No meal-logging feature exists yet, so nothing is "consumed" by default.
+  const consumed = 0;
   const remaining = Math.max(0, calories - consumed);
 
   return {
@@ -29,7 +30,7 @@ function mapBackendNutritionToTargets(nutrition: any): NutritionTargets {
     carbohydratesG: carbs,
     fatG: fat,
     fibreG: fibre,
-    consumedCalories: consumed,
+    consumedCalories: 0,
     remainingCalories: remaining,
     waterMl: 2500,
   };

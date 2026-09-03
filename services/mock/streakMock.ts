@@ -14,8 +14,8 @@ export class MockStreakService implements IStreakService {
     const stats = calculateMonthStats(days);
 
     return {
-      currentStreak: 5,
-      bestStreak: 12,
+      currentStreak: 0,
+      bestStreak: 0,
       monthlyWorkouts: stats.monthlyWorkouts,
       monthlyCompleted: stats.monthlyCompleted,
       monthlyMissed: stats.monthlyMissed,

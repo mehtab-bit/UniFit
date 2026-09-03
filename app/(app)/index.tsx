@@ -149,8 +149,8 @@ export default function HomeScreen() {
 
               {/* Right Compact Streak Widget */}
               <StreakSummary
-                currentStreak={streakData?.currentStreak || 5}
-                bestStreak={streakData?.bestStreak || 12}
+                currentStreak={streakData?.currentStreak ?? 0}
+                bestStreak={streakData?.bestStreak ?? 0}
                 onPress={handleOpenStreakPlan}
               />
             </View>

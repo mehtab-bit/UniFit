@@ -42,9 +42,9 @@ export default function ProgressScreen() {
     loadProgressData();
   }, [loadProgressData]);
 
-  const monthlyConsistency = summary?.monthlyConsistency ?? 83;
-  const adherenceScore = summary?.adherenceScore ?? 100;
-  const phaseTitle = summary?.phaseTitle ?? 'Week 1 • Phase 1 Calibration';
+  const monthlyConsistency = summary?.monthlyConsistency ?? 0;
+  const adherenceScore = summary?.adherenceScore ?? 0;
+  const phaseTitle = summary?.phaseTitle ?? 'No sessions logged yet';
 
   const getMilestoneStatusBadge = (status: string) => {
     const s = status.toLowerCase().replace(/\s+/g, '_');
@@ -75,7 +75,7 @@ export default function ProgressScreen() {
         showsVerticalScrollIndicator={false}
       >
         <AsyncStateView loading={loading} error={error} onRetry={loadProgressData}>
-          {/* Dominant Visual Hero Metric: 83% Monthly Consistency */}
+          {/* Dominant Visual Hero Metric: Monthly Consistency */}
           <CardSpringEntry index={0}>
             <View
               style={styles.progressHeroCard}
@@ -127,7 +127,7 @@ export default function ProgressScreen() {
                 <View style={styles.supportIconCircle}>
                   <MaterialCommunityIcons name="fire" size={16} color={Colors.primary} />
                 </View>
-                <Text style={styles.supportMetricValue}>{summary?.currentStreak || 5}</Text>
+                <Text style={styles.supportMetricValue}>{summary?.currentStreak ?? 0}</Text>
                 <Text style={styles.supportMetricLabel}>DAY STREAK</Text>
               </View>
 
@@ -138,7 +138,7 @@ export default function ProgressScreen() {
                 <View style={styles.supportIconCircle}>
                   <MaterialCommunityIcons name="dumbbell" size={16} color="#059669" />
                 </View>
-                <Text style={styles.supportMetricValue}>{summary?.workoutsCompleted || 10}</Text>
+                <Text style={styles.supportMetricValue}>{summary?.workoutsCompleted ?? 0}</Text>
                 <Text style={styles.supportMetricLabel}>WORKOUTS</Text>
               </View>
 
@@ -149,7 +149,7 @@ export default function ProgressScreen() {
                 <View style={styles.supportIconCircle}>
                   <Feather name="clock" size={15} color="#7C3AED" />
                 </View>
-                <Text style={styles.supportMetricValue}>{summary?.totalActiveMinutes || 245}</Text>
+                <Text style={styles.supportMetricValue}>{summary?.totalActiveMinutes ?? 0}</Text>
                 <Text style={styles.supportMetricLabel}>ACTIVE MIN</Text>
               </View>
             </View>
