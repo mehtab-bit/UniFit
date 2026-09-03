@@ -13,10 +13,14 @@ def generate_combined_weekly_plan(request: WeeklyPlanRequest):
     try:
         user_id = request.user_id or "user_default"
 
-        # Check cache if exists to prevent redundant generation
-        cached = supabase_service.get_cached_weekly_plan(user_id, request.week_number)
-        if cached:
-            return CombinedWeeklyPlanResponse(**cached)
+        # User just updated their profile and asked for a fresh plan: drop any
+        # cached copy (memory + Supabase) before regenerating.
+        if request.force_regenerate:
+            supabase_service.invalidate_weekly_plan(user_id, request.week_number)
+        else:
+            cached = supabase_service.get_cached_weekly_plan(user_id, request.week_number)
+            if cached:
+                return CombinedWeeklyPlanResponse(**cached)
 
         engine_profile = engine_service.create_user_profile(
             age=request.profile.age,

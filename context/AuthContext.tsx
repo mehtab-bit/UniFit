@@ -4,6 +4,7 @@ import { ProfileService } from '../lib/profile';
 import { AuthUser, AuthSession, AuthState } from '../types/auth';
 import { UserProfile, QuizFormData } from '../types/quiz';
 import { DEMO_ACCOUNT, isDemoModeEnabled } from '../constants/demo';
+import { clearCombinedWeek } from '../services/api/combinedPlan';
 
 const STORAGE_KEYS = {
   INTRO_SEEN: '@unifit_intro_seen',
@@ -14,6 +15,7 @@ const STORAGE_KEYS = {
 
 interface AuthContextType extends AuthState {
   isIntroSeen: boolean;
+  profileRevision: number;
   signIn: (emailOrUsername: string, password: string) => Promise<{ success: boolean; error?: string; requiresQuiz?: boolean }>;
   signInWithDemo: () => Promise<{ success: boolean; error?: string }>;
   signUp: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string; confirmationSent?: boolean; requiresQuiz?: boolean }>;
@@ -32,6 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [profileRevision, setProfileRevision] = useState(0);
   const [isIntroSeen, setIsIntroSeen] = useState<boolean>(false);
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(false);
   const [isConfiguredWithLiveSupabase, setIsConfiguredWithLiveSupabase] = useState<boolean>(false);
@@ -174,7 +177,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const result = await ProfileService.saveQuizProfile(user.id, user.fullName, quizData);
     if (result.success && result.profile) {
+      // New quiz answers make the previously generated plan stale. Clear both
+      // local and backend caches so the next load regenerates with this profile.
+      clearCombinedWeek(user.id);
       setProfile(result.profile);
+      setProfileRevision((r) => r + 1);
       setIsOnboardingCompleted(true);
       return { success: true };
     }
@@ -493,6 +500,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         user,
         profile,
+        profileRevision,
         session,
         isLoading,
         isIntroSeen,

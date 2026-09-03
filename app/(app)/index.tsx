@@ -27,7 +27,7 @@ import { WorkoutPlan, WorkoutDay, StreakData, NutritionTargets } from '../../typ
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, profileRevision } = useAuth();
 
   // Screen announcement for screen readers
   useScreenAnnouncement("Home screen. Good morning! Here's your weekly fitness plan and daily targets.");
@@ -52,7 +52,7 @@ export default function HomeScreen() {
       setLoading(true);
       setError(null);
       const [planResult, todayResult, streakResult, nutritionResult] = await Promise.all([
-        workoutService.getWeeklyPlan(user?.id),
+        workoutService.getWeeklyPlan(user?.id, profileRevision > 0),
         workoutService.getTodayWorkout(user?.id),
         streakService.getStreakData(user?.id),
         nutritionService.getDailyTargets(user?.id),
@@ -66,7 +66,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, profileRevision]);
 
   useEffect(() => {
     loadHomeData();

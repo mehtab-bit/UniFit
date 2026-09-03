@@ -69,6 +69,21 @@ class SupabaseService:
             except Exception as e:
                 print(f"[SupabaseService] Failed to persist plan to Supabase: {e}")
 
+    def invalidate_weekly_plan(self, user_id: str, week_number: int) -> None:
+        """Drops a cached plan from memory and Supabase so it regenerates next request."""
+        self._cached_weekly_plans.pop(f"{user_id}:week:{week_number}", None)
+        if self.is_connected and self.client:
+            try:
+                (
+                    self.client.table("user_weekly_plans")
+                    .delete()
+                    .eq("user_id", user_id)
+                    .eq("week_number", week_number)
+                    .execute()
+                )
+            except Exception as e:
+                print(f"[SupabaseService] Failed to invalidate plan in Supabase: {e}")
+
     def save_profile(self, user_id: str, profile_data: dict[str, Any]) -> None:
         self._cached_profiles[user_id] = profile_data
 

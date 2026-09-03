@@ -165,11 +165,8 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
 
 export class WorkoutApiService implements IWorkoutService {
   async getWeeklyPlan(userId: string = 'user_default', forceRefresh: boolean = false): Promise<WorkoutPlan> {
-    if (forceRefresh) {
-      clearCombinedWeek(userId);
-    }
     try {
-      const response: any = await fetchCombinedWeek(userId);
+      const response: any = await fetchCombinedWeek(userId, 1, forceRefresh);
 
       const rawDays = response.workouts || [];
       const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0

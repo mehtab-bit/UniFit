@@ -12,8 +12,15 @@ import { ProfileService } from '../../lib/profile';
 
 const cache = new Map<string, Promise<any>>();
 
-export function fetchCombinedWeek(userId: string = 'user_default', weekNumber: number = 1): Promise<any> {
+export function fetchCombinedWeek(
+  userId: string = 'user_default',
+  weekNumber: number = 1,
+  force: boolean = false
+): Promise<any> {
   const key = `${userId}:${weekNumber}`;
+  if (force) {
+    clearCombinedWeek(userId, weekNumber);
+  }
   if (!cache.has(key)) {
     cache.set(
       key,
@@ -24,6 +31,7 @@ export function fetchCombinedWeek(userId: string = 'user_default', weekNumber: n
           week_number: weekNumber,
           profile: engine.profile,
           activity_preferences: engine.activities,
+          force_regenerate: !!force,
         });
         return response as any;
       })()

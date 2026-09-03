@@ -16,6 +16,7 @@ class WeeklyPlanRequest(BaseModel):
     profile: EngineProfilePayload
     activity_preferences: list[str] = Field(default_factory=lambda: ["running", "cycling"])
     week_number: int = Field(default=1, ge=1, le=8)
+    force_regenerate: bool = False
     previous_progress: Optional[dict[str, Any]] = None
     initial_strength_levels: Optional[dict[str, int]] = None
     accessibility_resources: list[str] = Field(default_factory=list)
