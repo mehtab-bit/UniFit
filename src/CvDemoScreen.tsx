@@ -135,6 +135,22 @@ export function CvDemoScreen({
     [exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle]
   );
 
+  // The skeleton is the form indicator: green only while the tracked joint is
+  // inside the calibrated movement range AND the geometric form checks pass.
+  // Between reps (or with a stale pose) it stays amber, so green means "you
+  // are doing the correct movement right now."
+  const angle = tracker.smoothedAngle;
+  const calibration = tracker.calibration;
+  let inMovementRange = false;
+  if (calibration && angle !== null) {
+    const range = calibration.endAngle - calibration.startAngle;
+    if (Math.abs(range) >= 1) {
+      const progress = (angle - calibration.startAngle) / range;
+      inMovementRange = progress >= 0.05 && progress <= 0.95;
+    }
+  }
+  const isGoodForm = quality.score >= 80 && inMovementRange;
+
   useEffect(() => {
     setCalibrationStage('idle');
     setCountdown(0);
@@ -335,7 +351,7 @@ export function CvDemoScreen({
               mirrorX={pose.mirrorX}
               size={cameraSize}
               activeSide={tracker.side}
-              isGoodForm={quality.score >= 80}
+              isGoodForm={isGoodForm}
             />
             {pose.keypoints.map((keypoint) => {
               const hasEnoughConfidence =
