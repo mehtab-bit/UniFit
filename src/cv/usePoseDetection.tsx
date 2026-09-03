@@ -120,7 +120,6 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
               const pose = poses?.[0];
 
               if (isActiveRef.current) {
-                setFramesProcessed((currentCount) => currentCount + 1);
                 if (pose && pose.keypoints.length > 0) {
                   const detectedKeypoints = normalizeKeypoints(pose.keypoints);
                   const smoothed = smoothKeypoints(

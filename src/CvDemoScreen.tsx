@@ -110,16 +110,13 @@ export function CvDemoScreen({
   const pose = usePoseDetection(cameraFacing);
   const tracker = useExerciseTracker(exerciseId, pose.keypoints, sideOverride);
   const trackerRef = useRef(tracker);
+  trackerRef.current = tracker;
   const previousRepsRef = useRef(0);
   const lastRepAtRef = useRef(0);
   const sessionEndedRef = useRef(false);
   const accessibilityRef = useRef(provideFeedback);
   const onCompleteRef = useRef(onSessionComplete);
   const targetRepsRef = useRef(targetReps);
-
-  useEffect(() => {
-    trackerRef.current = tracker;
-  }, [tracker]);
 
   useEffect(() => {
     accessibilityRef.current = provideFeedback;
@@ -157,7 +154,6 @@ export function CvDemoScreen({
     setShowDebug(false);
     previousRepsRef.current = 0;
     lastRepAtRef.current = 0;
-    sessionEndedRef.current = false;
   }, [exerciseId, sideOverride]);
 
   useEffect(() => {
@@ -167,6 +163,10 @@ export function CvDemoScreen({
   }, [facing]);
 
   useEffect(() => {
+    // Calibration drives its own announcements; never rep-announce mid-calibration.
+    if (calibrationStage !== 'complete') {
+      return;
+    }
     if (tracker.reps > previousRepsRef.current) {
       const now = Date.now();
       const hadPrevious = previousRepsRef.current > 0;
@@ -199,7 +199,7 @@ export function CvDemoScreen({
         });
       }
     }
-  }, [tracker.reps]);
+  }, [calibrationStage, tracker.reps]);
 
   useEffect(() => {
     if (calibrationStage === 'start_hold') {

@@ -46,15 +46,8 @@ export function useExerciseTracker(
   const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('idle');
   const [calibration, setCalibration] = useState<AngleCalibration | null>(null);
   const [repState, dispatchRep] = useReducer(repCounterReducer, undefined, createRepCounterState);
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  const lastLoggedRef = useRef(0);
-  if (renderCountRef.current - lastLoggedRef.current > 60) {
-    lastLoggedRef.current = renderCountRef.current;
-    console.warn(
-      `[tracker] render burst: ${renderCountRef.current} | ex=${exerciseId} calPhase=${calibrationPhase} angle=${smoothedAngle} reps=${repState.reps}`
-    );
-  }
+  const repStateRef = useRef(repState);
+  repStateRef.current = repState;
   const calibrationSamplesRef = useRef<number[]>([]);
   const calibrationPhaseRef = useRef<CalibrationPhase>(calibrationPhase);
 
@@ -68,8 +61,9 @@ export function useExerciseTracker(
     setCalibrationPhase('idle');
     setCalibration(null);
     dispatchRep({ type: 'reset' });
+    repStateRef.current = createRepCounterState();
     calibrationSamplesRef.current = [];
-  }, [exerciseId]);
+  }, [exerciseId, sideOverride]);
 
   useEffect(() => {
     const nextAngle = definition.getAngle(keypoints, activeSide);
@@ -95,10 +89,10 @@ export function useExerciseTracker(
     calibrationSamplesRef.current = [];
   }, [calibrationPhase, smoothedAngle]);
 
+  // Update the rep counter on every angle change but ONLY dispatch when the
+  // counter genuinely transitions. The reducer is idempotent for identical
+  // state, but the dispatch call itself is avoided unless reps/phase change.
   useEffect(() => {
-    // Never count reps while calibration is incomplete — during the end-move
-    // transition calibration is partially set and the angle sweep would
-    // register phantom reps.
     if (
       calibration === null ||
       smoothedAngle === null ||
@@ -106,7 +100,15 @@ export function useExerciseTracker(
     ) {
       return;
     }
-    dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
+    const current = repStateRef.current;
+    const next = updateRepCounter(current, smoothedAngle, calibration);
+    if (
+      next !== current &&
+      (next.reps !== current.reps || next.phase !== current.phase)
+    ) {
+      repStateRef.current = next;
+      dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
+    }
   }, [calibration, calibrationPhase, smoothedAngle]);
 
   // Calibration is canonicalized so START = the straight/standing pose
@@ -167,6 +169,7 @@ export function useExerciseTracker(
     setCalibrationPhase('idle');
     setCalibration(null);
     dispatchRep({ type: 'reset' });
+    repStateRef.current = createRepCounterState();
     calibrationSamplesRef.current = [];
   }, []);
 
