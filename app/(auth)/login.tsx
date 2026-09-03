@@ -15,7 +15,7 @@ import { Layout } from '../../constants/layout';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, signInWithDemo } = useAuth();
 
   useScreenAnnouncement('Login screen. Enter your credentials to access UniFit.');
 
@@ -71,6 +71,23 @@ export default function LoginScreen() {
       const netErr = 'Unable to log in. Please check your connection and try again.';
       setErrorMessage(netErr);
       AccessibilityInfo.announceForAccessibility(netErr);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const result = await signInWithDemo();
+      if (result.success) {
+        router.replace('/(app)');
+      } else {
+        setErrorMessage(result.error || 'Demo login failed.');
+      }
+    } catch (err) {
+      setErrorMessage('Unable to log in with the demo account.');
     } finally {
       setIsLoading(false);
     }
@@ -158,6 +175,20 @@ export default function LoginScreen() {
           accessibilityHint="Submits credentials and logs in"
           style={styles.loginButton}
         />
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleDemoLogin}
+          disabled={isLoading}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with demo account"
+          accessibilityHint="Signs in with the UniFit presentation demo account"
+          style={styles.demoButton}
+        >
+          <Feather name="zap" size={17} color={Colors.primary} style={styles.demoIcon} />
+          <Text style={styles.demoButtonText}>Continue with Demo Account</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Bottom Sign Up Link */}
@@ -220,7 +251,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginButton: {
+    marginBottom: Layout.spacing.md,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
     marginBottom: Layout.spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: Layout.borderRadius.md,
+    backgroundColor: Colors.surfaceSecondary,
+  },
+  demoIcon: {
+    marginRight: Layout.spacing.sm,
+  },
+  demoButtonText: {
+    ...Typography.bodyMedium,
+    color: Colors.primary,
+    fontWeight: '700',
   },
   footerSection: {
     flexDirection: 'row',

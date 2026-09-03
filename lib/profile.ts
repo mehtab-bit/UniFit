@@ -1,5 +1,6 @@
 import { supabase, isLiveSupabaseConfigured, SafeStorage } from './supabase';
 import { UserProfile, QuizFormData, EngineProfilePayload } from '../types/quiz';
+import { getDemoUserProfile } from '../constants/demo';
 
 const PROFILE_STORAGE_KEY_PREFIX = '@unifit_user_profile_';
 const QUIZ_DRAFT_KEY_PREFIX = '@unifit_quiz_draft_';
@@ -184,6 +185,64 @@ export const ProfileService = {
    */
   toEngineProfile: (profile: UserProfile): EngineProfilePayload => {
     return toEngineProfile(profile);
+  },
+
+  /**
+   * Creates/refreshes the one-tap demo profile and marks onboarding complete.
+   */
+  saveDemoProfile: async (userId: string, fullName: string): Promise<UserProfile> => {
+    const profileRecord = getDemoUserProfile(userId, fullName);
+
+    if (isLiveSupabaseConfigured()) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: userId,
+            full_name: profileRecord.full_name,
+            age: profileRecord.age,
+            sex: profileRecord.sex,
+            height_cm: profileRecord.height_cm,
+            weight_kg: profileRecord.weight_kg,
+            fitness_goal: profileRecord.fitness_goal,
+            lifestyle_activity: profileRecord.lifestyle_activity,
+            diet: profileRecord.diet,
+            accessibility_needs: profileRecord.accessibility_needs,
+            has_exercise_restriction: profileRecord.has_exercise_restriction,
+            strength_equipment: profileRecord.strength_equipment,
+            strength_experience: profileRecord.strength_experience,
+            onboarding_completed: true,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'user_id' }
+        )
+        .select()
+        .single();
+
+      if (data) {
+        profileRecord.id = data.id;
+      } else {
+        console.warn('Demo profile upsert error:', error);
+      }
+
+      await supabase
+        .from('user_activity_preferences')
+        .delete()
+        .eq('user_id', userId);
+      await supabase.from('user_activity_preferences').insert(
+        profileRecord.preferred_activities.map((activity) => ({
+          user_id: userId,
+          activity
+        }))
+      );
+    }
+
+    await SafeStorage.setItem(
+      `${PROFILE_STORAGE_KEY_PREFIX}${userId}`,
+      JSON.stringify(profileRecord)
+    );
+
+    return profileRecord;
   },
 
   /**

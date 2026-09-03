@@ -15,9 +15,15 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.unifit.app"
+      "bundleIdentifier": "com.unifit.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "UniFit uses the camera to detect exercise posture and count repetitions."
+      }
     },
     "android": {
+      "permissions": [
+        "CAMERA"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/unifit-logo.png",
         "backgroundColor": "#0F172A"

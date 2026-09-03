@@ -103,6 +103,13 @@ export default function AppTabsLayout() {
       />
 
       <Tabs.Screen
+        name="cv-session"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
         name="performance-test"
         options={{
           href: null,

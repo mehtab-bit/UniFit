@@ -1,0 +1,58 @@
+"""Pydantic schemas for Progress, Streak, and the Combined Fitness Plan."""
+
+from __future__ import annotations
+
+from typing import Any, Optional
+from pydantic import BaseModel, Field
+
+from backend.schemas.profile import EngineProfilePayload
+from backend.schemas.workout import WorkoutDaySchema
+from backend.schemas.nutrition import WeeklyNutritionDaySchema
+from backend.schemas.meal import MealPlanDaySchema
+
+
+class WeeklyPlanRequest(BaseModel):
+    user_id: Optional[str] = "user_default"
+    profile: EngineProfilePayload
+    activity_preferences: list[str] = Field(default_factory=lambda: ["running", "cycling"])
+    week_number: int = Field(default=1, ge=1, le=8)
+    previous_progress: Optional[dict[str, Any]] = None
+    initial_strength_levels: Optional[dict[str, int]] = None
+    accessibility_resources: list[str] = Field(default_factory=list)
+
+
+class CombinedWeeklyPlanResponse(BaseModel):
+    """
+    Preferred combined endpoint response containing the entire generated fitness week:
+    workouts, daily nutrition targets, and portion-scaled meal plans.
+    """
+
+    week_number: int
+    user_id: Optional[str] = "user_default"
+    user: dict[str, Any]
+    workouts: list[WorkoutDaySchema]
+    nutrition: list[WeeklyNutritionDaySchema]
+    meals: list[MealPlanDaySchema]
+    progression_decisions: dict[str, Any] = Field(default_factory=dict)
+    strength_exercise_decisions: dict[str, Any] = Field(default_factory=dict)
+    accessibility_unavailable_slots: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class StreakResponse(BaseModel):
+    user_id: str
+    current_streak: int = 5
+    best_streak: int = 12
+    weekly_adherence_pct: float = 83.3
+    active_days_this_week: int = 4
+    total_active_days_target: int = 4
+
+
+class ProgressSummaryResponse(BaseModel):
+    user_id: str
+    current_week: int
+    monthly_consistency_pct: float
+    activity_rule_week: dict[str, int]
+    exercise_rule_week: dict[str, int]
+    strength_variation_levels: dict[str, int]
+    logged_sessions_count: int
+    recent_activity_completions: dict[str, float]

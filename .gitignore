@@ -7,6 +7,9 @@
 
 # Dependencies
 node_modules/
+.venv/
+__pycache__/
+*.pyc
 
 # Expo / Builds
 .expo/
@@ -16,6 +19,9 @@ web-build/
 # IDE / System
 .DS_Store
 Thumbs.db
+graphify-out/
+supabase/.temp/
+supabase/.branches/
 
 # @generated expo-cli sync-2b81b286409207a5da26e14c78851eb30d8ccbdb
 expo-env.d.ts

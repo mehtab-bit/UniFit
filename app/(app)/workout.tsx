@@ -36,7 +36,15 @@ import { AccessibilityGuidance } from '../../components/workout/AccessibilityGui
 
 // Services & Domain Models
 import { workoutService, cvService } from '../../services';
-import { WorkoutDay, Exercise, WorkoutCompletionPayload } from '../../types/domain';
+import {
+  WorkoutDay,
+  Exercise,
+  WorkoutCompletionPayload,
+  StrengthFamily,
+} from '../../types/domain';
+import { subscribeToCvSession } from '../../src/cv/sessionEvents';
+
+const LIVE_FAMILIES: StrengthFamily[] = ['squat', 'lunge', 'pushup', 'bicep_curl', 'supported_row'];
 
 export default function WorkoutScreen() {
   const router = useRouter();
@@ -79,12 +87,43 @@ export default function WorkoutScreen() {
     loadWorkoutData();
   }, [loadWorkoutData]);
 
+  useEffect(
+    () =>
+      subscribeToCvSession((result) => {
+        setCompletedExerciseIds((prev) => Array.from(new Set([...prev, result.exerciseId])));
+        setRepCount((current) => Math.max(current, result.reps));
+        setFormScore(result.score);
+        setShowCompleteModal(true);
+      }),
+    []
+  );
+
   const handleStartSession = useCallback((ex: Exercise) => {
     setActiveExercise(ex);
-    setIsSessionActive(true);
     setRepCount(0);
     setFormScore(96);
     setBannerType('info');
+
+    if (ex.family && LIVE_FAMILIES.includes(ex.family)) {
+      setIsSessionActive(false);
+      router.push({
+        pathname: '/(app)/cv-session',
+        params: {
+          exerciseId: ex.id,
+          family: ex.family,
+          name: ex.name,
+          sets: String(ex.sets || 2),
+          reps: String(ex.reps || 8),
+          target: String(Number(ex.sets || 2) * Number(ex.reps || 8)),
+          activityId: workout?.activity_id || workout?.activity || 'strength',
+          progressionKey: workout?.progression_key || workout?.activity || 'strength',
+          sessionType: workout?.session_type
+        }
+      });
+      return;
+    }
+
+    setIsSessionActive(true);
     const startMsg = `${ex.name} session started. Target: ${ex.target}. Sets: ${ex.sets || 2} of ${ex.reps || 8} reps. Follow audio guidance.`;
     setLastFeedback(startMsg);
     provideFeedback({
@@ -92,7 +131,7 @@ export default function WorkoutScreen() {
       priority: 'high',
       haptic: 'success',
     });
-  }, [provideFeedback]);
+  }, [provideFeedback, router, workout?.activity, workout?.activity_id, workout?.progression_key, workout?.session_type]);
 
   const handleSimulateRep = useCallback(async () => {
     if (!activeExercise) return;

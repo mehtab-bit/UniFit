@@ -3,6 +3,7 @@ import { supabase, isLiveSupabaseConfigured, SafeStorage } from '../lib/supabase
 import { ProfileService } from '../lib/profile';
 import { AuthUser, AuthSession, AuthState } from '../types/auth';
 import { UserProfile, QuizFormData } from '../types/quiz';
+import { DEMO_ACCOUNT, isDemoModeEnabled } from '../constants/demo';
 
 const STORAGE_KEYS = {
   INTRO_SEEN: '@unifit_intro_seen',
@@ -14,6 +15,7 @@ const STORAGE_KEYS = {
 interface AuthContextType extends AuthState {
   isIntroSeen: boolean;
   signIn: (emailOrUsername: string, password: string) => Promise<{ success: boolean; error?: string; requiresQuiz?: boolean }>;
+  signInWithDemo: () => Promise<{ success: boolean; error?: string }>;
   signUp: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string; confirmationSent?: boolean; requiresQuiz?: boolean }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
@@ -280,6 +282,78 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const signInWithDemo = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!isDemoModeEnabled()) {
+        return { success: false, error: 'Demo mode is not enabled in this environment.' };
+      }
+
+      if (isConfiguredWithLiveSupabase) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: DEMO_ACCOUNT.email,
+          password: DEMO_ACCOUNT.password,
+        });
+
+        if (error || !data.session || !data.user) {
+          return {
+            success: false,
+            error:
+              'Demo account is not ready in Supabase. Ask the team to create demo@unifit.app and enable email confirmation.',
+          };
+        }
+
+        const authUser: AuthUser = {
+          id: data.user.id,
+          email: data.user.email || DEMO_ACCOUNT.email,
+          fullName: data.user.user_metadata?.full_name || DEMO_ACCOUNT.fullName,
+          createdAt: data.user.created_at,
+        };
+
+        setUser(authUser);
+        setSession({
+          user: authUser,
+          accessToken: data.session.access_token,
+          expiresAt: data.session.expires_at || Date.now() + 3600 * 1000,
+        });
+
+        const demoProfile = await ProfileService.saveDemoProfile(
+          authUser.id,
+          DEMO_ACCOUNT.fullName
+        );
+        setProfile(demoProfile);
+        setIsOnboardingCompleted(true);
+        return { success: true };
+      }
+
+      const demoUser: AuthUser = {
+        id: 'usr_demo_unifit',
+        email: DEMO_ACCOUNT.email,
+        fullName: DEMO_ACCOUNT.fullName,
+        createdAt: new Date().toISOString(),
+      };
+      const demoSession: AuthSession = {
+        user: demoUser,
+        accessToken: 'demo_token_' + Date.now(),
+        expiresAt: Date.now() + 7 * 24 * 3600 * 1000,
+      };
+
+      await SafeStorage.setItem(STORAGE_KEYS.AUTH_SESSION, JSON.stringify(demoSession));
+      setUser(demoUser);
+      setSession(demoSession);
+
+      const demoProfile = await ProfileService.saveDemoProfile(demoUser.id, demoUser.fullName);
+      setProfile(demoProfile);
+      setIsOnboardingCompleted(true);
+      return { success: true };
+    } catch (err) {
+      console.warn('Demo login error:', err);
+      return {
+        success: false,
+        error: 'Unable to connect to the demo account. Please check your connection.',
+      };
+    }
+  };
+
   const signUp = async (
     fullName: string,
     email: string,
@@ -425,6 +499,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isOnboardingCompleted,
         isConfiguredWithLiveSupabase,
         signIn,
+        signInWithDemo,
         signUp,
         resetPassword,
         signOut,

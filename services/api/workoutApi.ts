@@ -1,0 +1,296 @@
+/**
+ * API-backed implementation of IWorkoutService.
+ * Calls the FastAPI backend connected to the authoritative Python fitness engine.
+ */
+
+import { IWorkoutService } from '../types';
+import {
+  WorkoutPlan,
+  WorkoutDay,
+  Exercise,
+  WorkoutCompletionPayload,
+  WorkoutActivityType,
+  WorkoutDayStatus,
+} from '../../types/domain';
+import { apiClient } from './apiClient';
+import { mockWorkoutService } from '../mock/workoutMock';
+import { Colors } from '../../constants/colors';
+import { DEMO_ENGINE_PROFILE, DEMO_ENGINE_ACTIVITIES } from '../../constants/demo';
+
+function mapIconForActivity(activity: string): {
+  iconName: string;
+  iconFamily: 'feather' | 'mci';
+  iconColor: string;
+  iconBg: string;
+} {
+  switch (activity.toLowerCase()) {
+    case 'strength':
+      return {
+        iconName: 'dumbbell',
+        iconFamily: 'mci',
+        iconColor: Colors.primary,
+        iconBg: '#EFF6FF',
+      };
+    case 'running':
+      return {
+        iconName: 'run',
+        iconFamily: 'mci',
+        iconColor: '#7C3AED',
+        iconBg: '#F5F3FF',
+      };
+    case 'cycling':
+      return {
+        iconName: 'bike',
+        iconFamily: 'mci',
+        iconColor: '#0891B2',
+        iconBg: '#ECFEFF',
+      };
+    case 'walking':
+      return {
+        iconName: 'walk',
+        iconFamily: 'mci',
+        iconColor: '#059669',
+        iconBg: '#F0FDF4',
+      };
+    case 'rest':
+    default:
+      return {
+        iconName: 'heart',
+        iconFamily: 'feather',
+        iconColor: '#DC2626',
+        iconBg: '#FFE4E6',
+      };
+  }
+}
+
+function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayIndex: number): WorkoutDay {
+  const isRest = backendDay.is_rest_day;
+  const workout = backendDay.workout || {};
+  const activity = (isRest ? 'rest' : workout.activity_id || workout.activity || 'strength') as WorkoutActivityType;
+  const icons = mapIconForActivity(activity);
+
+  const dayAbbrevs = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  const dayOfWeek = dayAbbrevs[index % 7];
+
+  // Derive date matching current week
+  const today = new Date();
+  const dayOffset = index - currentDayIndex;
+  const dayDate = new Date(today);
+  dayDate.setDate(today.getDate() + dayOffset);
+  const dateStr = dayDate.toISOString().split('T')[0];
+  const dayNumber = String(dayDate.getDate()).padStart(2, '0');
+
+  let status: WorkoutDayStatus = 'planned';
+  if (isRest) {
+    status = 'rest';
+  } else if (index === currentDayIndex) {
+    status = 'today';
+  } else if (index < currentDayIndex) {
+    status = 'completed';
+  }
+
+  const mappedExercises: Exercise[] = (workout.exercises || []).map((ex: any, exIdx: number) => ({
+    id: ex.id || `ex-${exIdx}`,
+    name: ex.name || ex.exercise_name || 'Exercise',
+    target: ex.target || 'General Movement',
+    family: ex.family || ex.exercise_family,
+    variationLevel: ex.variation_level || ex.difficulty_level,
+    sets: ex.sets || 2,
+    reps: ex.reps || 8,
+    durationSeconds: ex.duration_seconds,
+    restSeconds: ex.rest_seconds || 70,
+    unit: 'reps',
+    icon: 'activity',
+    equipment: ex.equipment,
+    formCues: ex.form_cues || [],
+    instructions: ex.instructions || ex.description,
+    accessibilityGuidance:
+      ex.accessibility_guidance?.audio_instruction ||
+      ex.audio_instruction ||
+      ex.safety_note,
+  }));
+
+  const duration =
+    workout.duration_min ||
+    (activity === 'strength' ? 25 : isRest ? 0 : 30);
+
+  let meta = 'Rest and recovery';
+  if (!isRest) {
+    if (activity === 'strength' && mappedExercises.length > 0) {
+      meta = `${mappedExercises.length} exercises • ${duration} min`;
+    } else if (workout.distance_km) {
+      meta = `${duration} min • ${workout.distance_km} km`;
+    } else {
+      meta = `${duration} min`;
+    }
+  }
+
+  return {
+    id: `day_${index + 1}`,
+    date: dateStr,
+    dayOfWeek,
+    dayNumber,
+    status,
+    title: isRest ? 'Rest' : workout.title || 'Workout Session',
+    activity,
+    activity_id: workout.activity_id || (isRest ? 'rest' : 'strength'),
+    requested_activity_id: workout.requested_activity_id,
+    progression_key: workout.progression_key || (isRest ? 'rest' : 'strength'),
+    session_type: workout.session_type,
+    focus: isRest ? 'Active Recovery' : workout.title,
+    meta,
+    category: isRest ? 'Rest' : activity === 'strength' ? 'Strength' : activity === 'cycling' ? 'Endurance' : 'Cardio',
+    durationMinutes: duration,
+    distanceKm: workout.distance_km,
+    sets: activity === 'strength' ? (workout.sets || (mappedExercises.length ? mappedExercises.length * 2 : 10)) : undefined,
+    reps: activity === 'strength' ? (workout.reps || 80) : undefined,
+    intervalCount: workout.interval_count || (activity === 'running' ? 6 : undefined),
+    workInterval: workout.work_interval_sec ? `${workout.work_interval_sec} sec work` : (activity === 'running' ? '60 sec run / brisk march' : undefined),
+    recoveryInterval: workout.recovery_interval_sec ? `${workout.recovery_interval_sec} sec recovery` : (activity === 'running' ? '90 sec easy walking recovery' : undefined),
+    intensity: workout.intensity || 'moderate',
+    equipment: workout.equipment,
+    warmUp: workout.warmup ? [workout.warmup] : [],
+    workoutInstructions: workout.workout_instructions || workout.main_description,
+    formCues: workout.form_cues || [],
+    cooldown: workout.cooldown ? [workout.cooldown] : [],
+    accessibilityGuidance: workout.safety_note || workout.cooldown_audio,
+    isToday: index === currentDayIndex,
+    iconName: icons.iconName,
+    iconFamily: icons.iconFamily,
+    iconColor: icons.iconColor,
+    iconBg: icons.iconBg,
+    exercises: mappedExercises.length > 0 ? mappedExercises : undefined,
+  };
+}
+
+export class WorkoutApiService implements IWorkoutService {
+  private cachedPlan: WorkoutPlan | null = null;
+  private inFlightPromise: Promise<WorkoutPlan> | null = null;
+
+  async getWeeklyPlan(userId: string = 'user_default', forceRefresh: boolean = false): Promise<WorkoutPlan> {
+    if (!forceRefresh && this.cachedPlan) {
+      return this.cachedPlan;
+    }
+    if (this.inFlightPromise) {
+      return this.inFlightPromise;
+    }
+
+    this.inFlightPromise = (async () => {
+      try {
+        const response: any = await apiClient.post('/api/v1/fitness/weekly-plan', {
+          user_id: userId,
+          week_number: 1,
+          profile: DEMO_ENGINE_PROFILE,
+          activity_preferences: DEMO_ENGINE_ACTIVITIES,
+        });
+
+        const rawDays = response.workouts || [];
+        const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
+
+        const mappedDays: WorkoutDay[] = rawDays.map((d: any, idx: number) =>
+          mapBackendDayToWorkoutDay(d, idx, currentDayIndex)
+        );
+
+        this.cachedPlan = {
+          id: `plan_week_${response.week_number || 1}`,
+          weekNumber: response.week_number || 1,
+          title: 'Week 1 Foundation',
+          subtitle: "Here's your plan for this week.",
+          badgeText: 'Week 1',
+          description: 'Progressive adaptive fitness week powered by the engine.',
+          days: mappedDays,
+        };
+
+        return this.cachedPlan;
+      } catch (err) {
+        console.warn('[WorkoutApiService] Falling back to mock data due to API error:', err);
+        return mockWorkoutService.getWeeklyPlan(userId);
+      } finally {
+        this.inFlightPromise = null;
+      }
+    })();
+
+    return this.inFlightPromise;
+  }
+
+  async getWeeklyWorkoutPlan(userId?: string): Promise<WorkoutPlan> {
+    return this.getWeeklyPlan(userId);
+  }
+
+  async getTodayWorkout(userId?: string): Promise<WorkoutDay> {
+    const plan = await this.getWeeklyPlan(userId);
+    const today = plan.days.find((d) => d.status === 'today') || plan.days[0];
+    return today;
+  }
+
+  async getTomorrowWorkout(userId?: string): Promise<WorkoutDay> {
+    const plan = await this.getWeeklyPlan(userId);
+    const todayIdx = plan.days.findIndex((d) => d.status === 'today');
+    const tomorrowIdx = (todayIdx + 1) % plan.days.length;
+    return plan.days[tomorrowIdx];
+  }
+
+  async getUpcomingWorkouts(userId?: string): Promise<WorkoutDay[]> {
+    const plan = await this.getWeeklyPlan(userId);
+    return plan.days.filter((d) => d.status !== 'today' && d.status !== 'completed');
+  }
+
+  async getWorkoutByDate(dateOrId: string, userId?: string): Promise<WorkoutDay | null> {
+    try {
+      const plan = await this.getWeeklyPlan(userId);
+      const normalized = (dateOrId || '').toLowerCase().trim();
+      const matched = plan.days.find(
+        (d) =>
+          d.date === dateOrId ||
+          d.id.toLowerCase() === normalized ||
+          d.dayOfWeek.toLowerCase() === normalized ||
+          d.activity.toLowerCase() === normalized
+      );
+      if (matched) return matched;
+
+      const response: any = await apiClient.get(`/api/v1/workout/${dateOrId}?user_id=${userId || 'user_default'}`);
+      const currentDayIndex = (new Date().getDay() + 6) % 7;
+      return mapBackendDayToWorkoutDay(response, 0, currentDayIndex);
+    } catch {
+      return mockWorkoutService.getWorkoutByDate(dateOrId, userId);
+    }
+  }
+
+  async logWorkoutCompletion(
+    payloadOrId: string | WorkoutCompletionPayload,
+    durationMinutes: number = 25,
+    repsCompleted: number = 80
+  ): Promise<{ success: boolean; completedAt: string }> {
+    try {
+      let body: WorkoutCompletionPayload;
+      if (typeof payloadOrId === 'string') {
+        body = {
+          activity_id: payloadOrId,
+          progression_key: payloadOrId,
+          completion_pct: 100,
+          exercise_completion_pct: {
+            squat: 100,
+            lunge: 100,
+            pushup: 100,
+            bicep_curl: 100,
+            supported_row: 100,
+          },
+        };
+      } else {
+        body = payloadOrId;
+      }
+
+      await apiClient.post('/api/v1/workout/complete', body);
+      this.cachedPlan = null;
+      return {
+        success: true,
+        completedAt: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.warn('[WorkoutApiService] Logging to mock fallback:', err);
+      return mockWorkoutService.logWorkoutCompletion(payloadOrId, durationMinutes, repsCompleted);
+    }
+  }
+}
+
+export const workoutApiService = new WorkoutApiService();
