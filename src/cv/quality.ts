@@ -1,5 +1,6 @@
 import { findKeypoint } from './math';
-import { CvKeypoint, ExerciseId, Side } from './types';
+import { AngleCalibration, CvKeypoint, ExerciseId, Side } from './types';
+import { getExerciseProgress } from './feedback';
 
 export type QualityIssue = {
   code: string;
@@ -45,7 +46,8 @@ export function assessQuality(
   exerciseId: ExerciseId,
   keypoints: CvKeypoint[],
   side: Side,
-  angle: number | null
+  angle: number | null,
+  calibration: AngleCalibration | null
 ): QualityAssessment {
   const issues: QualityIssue[] = [];
 
@@ -57,55 +59,30 @@ export function assessQuality(
     });
   }
 
-  if (exerciseId === 'squat' || exerciseId === 'lunge') {
-    const hip = pair(keypoints, side, 'hip');
-    const knee = pair(keypoints, side, 'knee');
-    const ankle = pair(keypoints, side, 'ankle');
-    const shoulder = pair(keypoints, side, 'shoulder');
-
-    if (hip && knee && ankle && shoulder) {
-      const scale = Math.max(1, distance(hip, ankle));
-      const kneeAheadRatio = (knee.x - ankle.x) / scale;
-      if (kneeAheadRatio > KNEE_AHEAD_RATIO) {
-        flag(issues, 'knee_tracking', 'Keep your knee tracking above your ankle, not forward of your toes.', 12);
-      }
-
-      const torsoDegrees = Math.abs(angleAt(shoulder, hip, ankle));
-      if (torsoDegrees < TRUNK_STRAIGHT_MIN_DEG) {
-        flag(issues, 'torso', 'Keep your chest upright and spine neutral.', 8);
-      }
-    }
-  }
-
-  if (exerciseId === 'bicep_curl' || exerciseId === 'supported_row') {
-    const shoulder = pair(keypoints, side, 'shoulder');
-    const elbow = pair(keypoints, side, 'elbow');
-    const wrist = pair(keypoints, side, 'wrist');
-
-    if (shoulder && elbow && wrist) {
-      const scale = Math.max(1, distance(shoulder, wrist));
-      const elbowDrift = Math.abs(elbow.x - shoulder.x) / scale;
-      if (elbowDrift > ELBOW_DRIFT_RATIO) {
+  // The calibrated joint angle is the reliable, camera-view-independent form
+  // signal. Pixel-space heuristics (elbow drift, knee-ahead ratios) are
+  // unusable from the side/front views real phones capture, so base the
+  // quality score on movement depth relative to the calibration instead.
+  if (angle !== null && calibration !== null) {
+    const range = Math.abs(calibration.endAngle - calibration.startAngle);
+    if (range < 5) {
+      flag(issues, 'calibration', 'Calibration range is too small. Re-calibrate with a fuller range of motion.', 20);
+    } else {
+      const depth = getExerciseProgress(angle, calibration);
+      // `depth` measures progress from the calibrated START toward the END.
+      // For every one of the five families the END pose is the "working" end
+      // (curl peak, squat bottom), so good form requires getting most of the
+      // way there — not hovering near the start.
+      const isShallow = depth < 0.55;
+      if (isShallow) {
         flag(
           issues,
-          'elbow_drift',
-          exerciseId === 'bicep_curl'
-            ? 'Keep your elbows pinned close to your ribs.'
-            : 'Keep your elbow path close to your torso without twisting.',
+          'depth',
+          exerciseId === 'bicep_curl' || exerciseId === 'supported_row'
+            ? 'Lift through a fuller range — take the joint all the way through the movement.'
+            : 'Move through the full calibrated range of the exercise.',
           10
         );
-      }
-    }
-  }
-
-  if (exerciseId === 'pushup') {
-    const shoulder = pair(keypoints, side, 'shoulder');
-    const hip = pair(keypoints, side, 'hip');
-    const ankle = pair(keypoints, side, 'ankle');
-    if (shoulder && hip && ankle) {
-      const bodyDegrees = Math.abs(angleAt(shoulder, hip, ankle));
-      if (bodyDegrees < TRUNK_STRAIGHT_MIN_DEG) {
-        flag(issues, 'hip_sag', 'Keep your body in a straight line; do not let your hips sag.', 12);
       }
     }
   }
@@ -119,11 +96,4 @@ export function assessQuality(
     issues,
     correction: worst?.correction
   };
-}
-
-function angleAt(a: CvKeypoint, center: CvKeypoint, c: CvKeypoint) {
-  const firstAngle = Math.atan2(a.y - center.y, a.x - center.x);
-  const secondAngle = Math.atan2(c.y - center.y, c.x - center.x);
-  let degrees = Math.abs((secondAngle - firstAngle) * 180) / Math.PI;
-  return degrees > 180 ? 360 - degrees : degrees;
 }

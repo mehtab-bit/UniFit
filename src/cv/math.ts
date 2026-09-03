@@ -1,9 +1,10 @@
 import { CvKeypoint, KeypointName } from './types';
+import { KEYPOINT_MIN_SCORE } from './confidence';
 
 export function findKeypoint(
   keypoints: CvKeypoint[],
   name: KeypointName,
-  minimumScore = 0.35
+  minimumScore = KEYPOINT_MIN_SCORE
 ) {
   const keypoint = keypoints.find((item) => item.name === name);
 

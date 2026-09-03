@@ -1,4 +1,5 @@
 import { CvKeypoint, KeypointName } from './types';
+import { KEYPOINT_MIN_SCORE } from './confidence';
 
 const moveNetKeypointNames: KeypointName[] = [
   'nose',
@@ -54,7 +55,7 @@ export function normalizeKeypoints(keypoints: PoseDetectionKeypoint[]): CvKeypoi
 export function getVisibleKeypoints(
   keypoints: CvKeypoint[],
   names: KeypointName[],
-  minimumScore = 0.35
+  minimumScore = KEYPOINT_MIN_SCORE
 ) {
   return keypoints.filter((keypoint) => {
     const hasEnoughConfidence =

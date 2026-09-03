@@ -183,6 +183,7 @@ export function useExerciseTracker(
     calibrationPhase,
     feedback: feedbackValue,
     reps: repState.reps,
+    phase: repState.phase,
     beginStartCalibration,
     beginEndCalibration,
     captureCalibrationPhase,

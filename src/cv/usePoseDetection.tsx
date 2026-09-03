@@ -9,6 +9,7 @@ import { PoseDetector } from '@tensorflow-models/pose-detection/dist/pose_detect
 import { normalizeKeypoints } from './keypoints';
 import { shouldMirrorPreview } from './TensorCamera';
 import { CvKeypoint, KeypointName } from './types';
+import { KEYPOINT_MIN_SCORE } from './confidence';
 import { createBundledModelIO } from './modelAssets';
 
 // Bundled model keeps CV usable offline and avoids a long first-load fetch.
@@ -129,7 +130,7 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
                   );
                   smoothedKeypointsRef.current = smoothed;
                   const visible = detectedKeypoints
-                    .filter((keypoint) => typeof keypoint.score !== 'number' || keypoint.score >= 0.35)
+                    .filter((keypoint) => typeof keypoint.score !== 'number' || keypoint.score >= KEYPOINT_MIN_SCORE)
                     .map((keypoint) => keypoint.name);
                   if (keypointsChanged(lastKeypointsRef.current, smoothed, 0.015)) {
                     lastKeypointsRef.current = smoothed;

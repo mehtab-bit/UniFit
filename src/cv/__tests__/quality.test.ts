@@ -38,7 +38,7 @@ describe('five-family exercise definitions', () => {
 });
 
 describe('form quality', () => {
-  it('flags elbow drift for a curl with the elbow far from the shoulder line', () => {
+  it('flags a shallow curl that stays near the start of the calibrated range', () => {
     const result = assessQuality(
       'bicep_curl',
       [
@@ -47,13 +47,14 @@ describe('form quality', () => {
         point('right_wrist', 1, 0)
       ],
       'right',
-      90
+      150,
+      { startAngle: 170, endAngle: 50 }
     );
     expect(result.score).toBeLessThan(100);
-    expect(result.correction).toContain('elbows pinned');
+    expect(result.correction).toContain('fuller range');
   });
 
-  it('keeps full score when only the primary angle is available', () => {
+  it('keeps a high score when the joint reaches the calibrated end', () => {
     const result = assessQuality(
       'bicep_curl',
       [
@@ -62,7 +63,8 @@ describe('form quality', () => {
         point('right_wrist', 1, 0)
       ],
       'right',
-      90
+      60,
+      { startAngle: 170, endAngle: 50 }
     );
     expect(result.score).toBe(100);
   });

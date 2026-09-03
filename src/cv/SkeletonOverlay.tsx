@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { CvKeypoint, KeypointName, Side } from './types';
+import { KEYPOINT_MIN_SCORE } from './confidence';
 
 const BONES: Array<[KeypointName, KeypointName]> = [
   ['left_shoulder', 'right_shoulder'],
@@ -63,8 +64,8 @@ export function SkeletonOverlay({
     if (
       !startKeypoint ||
       !endKeypoint ||
-      (typeof startKeypoint.score === 'number' && startKeypoint.score < 0.35) ||
-      (typeof endKeypoint.score === 'number' && endKeypoint.score < 0.35)
+      (typeof startKeypoint.score === 'number' && startKeypoint.score < KEYPOINT_MIN_SCORE) ||
+      (typeof endKeypoint.score === 'number' && endKeypoint.score < KEYPOINT_MIN_SCORE)
     ) {
       return null;
     }

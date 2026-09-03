@@ -8,6 +8,7 @@ import { ExerciseId, Side } from './cv/types';
 import { assessQuality } from './cv/quality';
 import { isRepTooFast } from './cv/tempo';
 import { SkeletonOverlay } from './cv/SkeletonOverlay';
+import { KEYPOINT_MIN_SCORE } from './cv/confidence';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 type CalibrationStage = 'idle' | 'start_hold' | 'end_move' | 'end_hold' | 'complete' | 'failed';
@@ -128,8 +129,15 @@ export function CvDemoScreen({
   }, [onSessionComplete, targetReps]);
 
   const quality = useMemo(
-    () => assessQuality(exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle),
-    [exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle]
+    () =>
+      assessQuality(
+        exerciseId,
+        pose.keypoints,
+        tracker.side,
+        tracker.smoothedAngle,
+        tracker.calibration
+      ),
+    [exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle, tracker.calibration]
   );
 
   // The skeleton is the form indicator: green only while the tracked joint is
@@ -138,15 +146,16 @@ export function CvDemoScreen({
   // keypoint jitter crossing the form thresholds mid-movement.
   const angle = tracker.smoothedAngle;
   const calibration = tracker.calibration;
-  let inMovementRange = false;
-  if (calibration && angle !== null) {
-    const range = calibration.endAngle - calibration.startAngle;
-    if (Math.abs(range) >= 1) {
-      const progress = (angle - calibration.startAngle) / range;
-      inMovementRange = progress >= 0.05 && progress <= 0.95;
-    }
-  }
-  const rawGood = quality.score >= 80 && inMovementRange;
+  // "Good form" = the rep counter believes we are mid-movement toward the end
+  // pose (phase 'start' before a rep registers) OR just completed it (phase
+  // 'end'), AND the geometric checks do not report anything severe. Using the
+  // calibrated movement rather than raw pixel geometry makes the skeleton
+  // agree with rep counting instead of arguing with it.
+  const midMovement =
+    calibration !== null &&
+    angle !== null &&
+    (tracker.phase === 'start' || tracker.phase === 'end');
+  const rawGood = quality.score >= 75 && midMovement;
 
   const colorVotesRef = useRef(0);
   const [isGoodForm, setIsGoodForm] = useState(false);
@@ -377,7 +386,7 @@ export function CvDemoScreen({
             />
             {pose.keypoints.map((keypoint) => {
               const hasEnoughConfidence =
-                typeof keypoint.score !== 'number' || keypoint.score >= 0.35;
+                typeof keypoint.score !== 'number' || keypoint.score >= KEYPOINT_MIN_SCORE;
 
               if (!hasEnoughConfidence) {
                 return null;
