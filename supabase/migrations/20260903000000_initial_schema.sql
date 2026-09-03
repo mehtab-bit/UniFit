@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   diet TEXT CHECK (diet IN ('vegan', 'vegetarian', 'eggetarian', 'non_vegetarian')),
   accessibility_needs TEXT[] DEFAULT '{}'::TEXT[],
   accessibility_other_details TEXT,
+  blind_low_vision_resources TEXT[] DEFAULT '{}'::TEXT[],
   has_exercise_restriction BOOLEAN DEFAULT FALSE,
   exercise_restriction_description TEXT,
   strength_equipment TEXT[] DEFAULT '{}'::TEXT[],
