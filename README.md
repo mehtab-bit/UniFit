@@ -6,6 +6,19 @@
 
 A production-quality mobile application built with **Expo**, **React Native**, **TypeScript**, **Expo Router**, and **Supabase Authentication**.
 
+## Documentation
+
+This repo is a **full-stack app**: the Expo frontend, a FastAPI backend wrapping the `vijul` Python fitness engine, Supabase persistence, and an on-device computer-vision coach. Start here:
+
+- [docs/architecture.md](docs/architecture.md) — how all the pieces connect
+- [docs/engine.md](docs/engine.md) — the Python fitness engine (plans, nutrition, progression)
+- [docs/cv-coach.md](docs/cv-coach.md) — camera pose tracking, calibration, rep counting, form feedback
+- [docs/setup.md](docs/setup.md) — running it on your laptop and phone
+- [docs/performance.md](docs/performance.md) — measured timings and what to profile next
+- [docs/audit.md](docs/audit.md) — over-engineering audit findings
+
+`graphify-out/` also contains an auto-built code map (`graph.html`, `GRAPH_REPORT.md`) generated from this repo.
+
 ---
 
 ## Key Features

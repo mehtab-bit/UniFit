@@ -2,6 +2,8 @@
 
 This backend bridges the UniFit React Native / Expo mobile frontend with the authoritative Python Inclusive Adaptive Fitness Engine (`vijul-engine`).
 
+> **Companion docs:** `docs/engine.md` explains the engine modules and progression rules; `docs/setup.md` covers running the backend + app together; `docs/architecture.md` maps the full system. The endpoint list below is the current API surface.
+
 ---
 
 ## 1. Architecture
