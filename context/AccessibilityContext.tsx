@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { AccessibilityInfo } from 'react-native';
 import { speak, stopSpeaking, setGlobalSpeechRate, testSpeechSample } from '../utils/speech';
 import { triggerHaptic, HapticType } from '../utils/haptics';
@@ -134,7 +134,7 @@ export const AccessibilityProvider: React.FC<{ children: ReactNode }> = ({ child
    * Respects TalkBack & VoiceOver guidelines by coordinating screen-reader announcements
    * with custom in-app audio guidance and visual captions.
    */
-  const provideFeedback = (payload: WorkoutFeedbackPayload) => {
+  const provideFeedback = useCallback((payload: WorkoutFeedbackPayload) => {
     const { text, correction, haptic, priority } = payload;
     const isHighPriority = priority === 'high';
 
@@ -160,7 +160,7 @@ export const AccessibilityProvider: React.FC<{ children: ReactNode }> = ({ child
 
     // 4. Native Accessibility announcement for TalkBack / VoiceOver
     announce(text);
-  };
+  }, [audioGuidance, captionsEnabled, isScreenReaderActive, speechRate, vibrationFeedback]);
 
   return (
     <AccessibilityContext.Provider

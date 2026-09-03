@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { captureCalibrationAngle, createCalibration } from './calibration';
-import { exerciseDefinitions } from './exercises';
+import { chooseVisibleSide, exerciseDefinitions } from './exercises';
 import { getFeedbackState } from './feedback';
 import { getVisibleKeypoints } from './keypoints';
 import { smoothAngle } from './math';
@@ -13,15 +13,32 @@ export function useExerciseTracker(
   sideOverride?: Side
 ) {
   const definition = exerciseDefinitions[exerciseId];
-  const activeSide = sideOverride ?? chooseVisibleSide(definition, keypoints);
-  const requiredKeypoints = definition.getRequiredKeypoints(activeSide);
+
+  // activeSide must be stable across frames or every keypoint update would
+  // reset the tracker (and flip the visible side back and forth while the
+  // user is moving, since a limb can be occluded for a frame).
+  const sideRef = useRef<Side>(sideOverride ?? definition.defaultSide);
+
+  const activeSide = sideOverride ?? chooseVisibleSide(exerciseId, keypoints, sideRef.current);
+
+  if (!sideOverride) {
+    sideRef.current = activeSide;
+  }
+
+  const requiredKeypoints = useMemo(
+    () => definition.getRequiredKeypoints(activeSide),
+    [activeSide, definition]
+  );
   const recentAnglesRef = useRef<Array<number | null>>([]);
+  const lastSmoothedRef = useRef<number | null>(null);
   const [smoothedAngle, setSmoothedAngle] = useState<number | null>(null);
   const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('idle');
   const [calibration, setCalibration] = useState<AngleCalibration | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>('needs_calibration');
   const [repState, setRepState] = useState(createRepCounterState());
   const calibrationSamplesRef = useRef<number[]>([]);
+  const calibrationPhaseRef = useRef<CalibrationPhase>(calibrationPhase);
+  calibrationPhaseRef.current = calibrationPhase;
 
   useEffect(() => {
     recentAnglesRef.current = [];
@@ -31,12 +48,18 @@ export function useExerciseTracker(
     setFeedback('needs_calibration');
     setRepState(createRepCounterState());
     calibrationSamplesRef.current = [];
-  }, [exerciseId, activeSide]);
+  }, [exerciseId]);
 
   useEffect(() => {
     const nextAngle = definition.getAngle(keypoints, activeSide);
     recentAnglesRef.current = [...recentAnglesRef.current, nextAngle].slice(-5);
-    setSmoothedAngle(smoothAngle(recentAnglesRef.current));
+    const smoothed = smoothAngle(recentAnglesRef.current);
+    // Don't re-render the whole tracker tree when the smoothed angle is
+    // unchanged (detection frames arrive continuously even when still).
+    if (smoothed !== lastSmoothedRef.current) {
+      lastSmoothedRef.current = smoothed;
+      setSmoothedAngle(smoothed);
+    }
   }, [activeSide, definition, keypoints]);
 
   useEffect(() => {
@@ -62,24 +85,26 @@ export function useExerciseTracker(
     [keypoints, requiredKeypoints]
   );
 
-  function beginStartCalibration() {
+  const beginStartCalibration = useCallback(() => {
     calibrationSamplesRef.current = [];
     setCalibrationPhase('start');
-  }
+  }, []);
 
-  function beginEndCalibration() {
+  const beginEndCalibration = useCallback(() => {
     calibrationSamplesRef.current = [];
     setCalibrationPhase('end');
-  }
+  }, []);
 
-  function captureCalibrationPhase() {
+  const captureCalibrationPhase = useCallback(() => {
     const capturedAngle = captureCalibrationAngle(calibrationSamplesRef.current);
 
     if (capturedAngle === null) {
       return false;
     }
 
-    if (calibrationPhase === 'start') {
+    const phase = calibrationPhaseRef.current;
+
+    if (phase === 'start') {
       setCalibration((currentCalibration) =>
         createCalibration(capturedAngle, currentCalibration?.endAngle ?? capturedAngle)
       );
@@ -87,7 +112,7 @@ export function useExerciseTracker(
       return true;
     }
 
-    if (calibrationPhase === 'end') {
+    if (phase === 'end') {
       setCalibration((currentCalibration) =>
         createCalibration(currentCalibration?.startAngle ?? capturedAngle, capturedAngle)
       );
@@ -96,9 +121,9 @@ export function useExerciseTracker(
     }
 
     return false;
-  }
+  }, []);
 
-  function resetTracker() {
+  const resetTracker = useCallback(() => {
     recentAnglesRef.current = [];
     setSmoothedAngle(null);
     setCalibrationPhase('idle');
@@ -106,7 +131,7 @@ export function useExerciseTracker(
     setFeedback('needs_calibration');
     setRepState(createRepCounterState());
     calibrationSamplesRef.current = [];
-  }
+  }, []);
 
   return {
     definition,
@@ -123,18 +148,4 @@ export function useExerciseTracker(
     captureCalibrationPhase,
     resetTracker
   };
-}
-
-function chooseVisibleSide(
-  definition: (typeof exerciseDefinitions)[ExerciseId],
-  keypoints: CvKeypoint[]
-): Side {
-  const leftVisible = getVisibleKeypoints(keypoints, definition.getRequiredKeypoints('left')).length;
-  const rightVisible = getVisibleKeypoints(keypoints, definition.getRequiredKeypoints('right')).length;
-
-  if (leftVisible > rightVisible) {
-    return 'left';
-  }
-
-  return definition.defaultSide;
 }

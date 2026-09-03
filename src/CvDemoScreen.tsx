@@ -7,6 +7,7 @@ import { useExerciseTracker } from './cv/useExerciseTracker';
 import { ExerciseId, Side } from './cv/types';
 import { assessQuality } from './cv/quality';
 import { isRepTooFast } from './cv/tempo';
+import { SkeletonOverlay } from './cv/SkeletonOverlay';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 type CalibrationStage = 'idle' | 'start_hold' | 'end_move' | 'end_hold' | 'complete' | 'failed';
@@ -113,19 +114,22 @@ export function CvDemoScreen({
   const lastRepAtRef = useRef(0);
   const sessionEndedRef = useRef(false);
   const accessibilityRef = useRef(provideFeedback);
+  const onCompleteRef = useRef(onSessionComplete);
+  const targetRepsRef = useRef(targetReps);
 
   useEffect(() => {
     accessibilityRef.current = provideFeedback;
   }, [provideFeedback]);
 
+  useEffect(() => {
+    onCompleteRef.current = onSessionComplete;
+    targetRepsRef.current = targetReps;
+  }, [onSessionComplete, targetReps]);
+
   const quality = useMemo(
     () => assessQuality(exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle),
     [exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle]
   );
-
-  useEffect(() => {
-    trackerRef.current = tracker;
-  }, [tracker]);
 
   useEffect(() => {
     setCalibrationStage('idle');
@@ -145,8 +149,10 @@ export function CvDemoScreen({
   useEffect(() => {
     if (tracker.reps > previousRepsRef.current) {
       const now = Date.now();
-      const elapsed = previousRepsRef.current === 0 ? now : now - lastRepAtRef.current;
+      const hadPrevious = previousRepsRef.current > 0;
+      const elapsed = hadPrevious ? now - lastRepAtRef.current : now;
       lastRepAtRef.current = now;
+      previousRepsRef.current = tracker.reps;
 
       const correction = isRepTooFast(elapsed)
         ? 'Slow down and control each repetition.'
@@ -160,18 +166,20 @@ export function CvDemoScreen({
         haptic: correction ? 'warning' : 'light'
       });
 
-      if (targetReps && tracker.reps >= targetReps && !sessionEndedRef.current) {
+      if (
+        targetRepsRef.current &&
+        tracker.reps >= targetRepsRef.current &&
+        !sessionEndedRef.current
+      ) {
         sessionEndedRef.current = true;
-        onSessionComplete?.({
+        onCompleteRef.current?.({
           reps: tracker.reps,
           score: quality.score,
           correction: quality.correction
         });
       }
-
-      previousRepsRef.current = tracker.reps;
     }
-  }, [tracker.reps, targetReps, quality.correction, quality.score, onSessionComplete]);
+  }, [tracker.reps, quality.score, quality.correction]);
 
   useEffect(() => {
     if (calibrationStage === 'start_hold') {
@@ -297,6 +305,13 @@ export function CvDemoScreen({
           />
 
           <View pointerEvents="none" style={styles.overlay}>
+            <SkeletonOverlay
+              keypoints={pose.keypoints}
+              mirrorX={pose.mirrorX}
+              size={cameraSize}
+              activeSide={tracker.side}
+              isGoodForm={quality.score >= 80}
+            />
             {pose.keypoints.map((keypoint) => {
               const hasEnoughConfidence =
                 typeof keypoint.score !== 'number' || keypoint.score >= 0.35;

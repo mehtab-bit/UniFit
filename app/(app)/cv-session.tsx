@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { CvDemoScreen } from '../../src/CvDemoScreen';
@@ -35,9 +35,13 @@ export default function CvSessionScreen() {
   const [activeSide, setActiveSide] = useState<Side>('right');
   const [finishedSides, setFinishedSides] = useState<Side[]>([]);
   const [completed, setCompleted] = useState(false);
+  const completedRef = useRef(false);
+  const stateRef = useRef({ activeSide, finishedSides });
+  stateRef.current = { activeSide, finishedSides };
 
   async function finalizeSession(result: { reps: number; score: number }) {
-    if (completed) return;
+    if (completedRef.current) return;
+    completedRef.current = true;
     setCompleted(true);
 
     emitCvSessionResult({
@@ -63,28 +67,36 @@ export default function CvSessionScreen() {
     router.back();
   }
 
-  function handleSessionComplete(result: { reps: number; score: number }) {
-    if (bilateral && !finishedSides.includes(activeSide)) {
-      const nextSide: Side = activeSide === 'right' ? 'left' : 'right';
-      const newFinished = [...finishedSides, activeSide];
-      setFinishedSides(newFinished);
+  const handleSessionComplete = useCallback(
+    (result: { reps: number; score: number }) => {
+      if (completedRef.current) return;
 
-      if (newFinished.length === 2) {
-        finalizeSession(result);
+      const { activeSide: currentSide, finishedSides: done } = stateRef.current;
+
+      if (bilateral && !done.includes(currentSide)) {
+        const nextSide: Side = currentSide === 'right' ? 'left' : 'right';
+        const newFinished = [...done, currentSide];
+        setFinishedSides(newFinished);
+
+        if (newFinished.length === 2) {
+          finalizeSession(result);
+          return;
+        }
+
+        setActiveSide(nextSide);
+        provideFeedback({
+          text: `Switch to your ${nextSide} side. Calibrate and complete ${perSideReps} repetitions.`,
+          priority: 'high',
+          haptic: 'success'
+        });
         return;
       }
 
-      setActiveSide(nextSide);
-      provideFeedback({
-        text: `Switch to your ${nextSide} side. Calibrate and complete ${perSideReps} repetitions.`,
-        priority: 'high',
-        haptic: 'success'
-      });
-      return;
-    }
-
-    finalizeSession(result);
-  }
+      finalizeSession(result);
+    },
+    // Stays stable across renders; reads the latest side/finished via ref.
+    [bilateral, perSideReps, provideFeedback]
+  );
 
   return (
     <View style={styles.screen}>

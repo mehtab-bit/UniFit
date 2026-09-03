@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { captureCalibrationAngle, createCalibration } from '../calibration';
-import { exerciseDefinitions } from '../exercises';
+import { chooseVisibleSide, exerciseDefinitions } from '../exercises';
 import { getFeedbackState } from '../feedback';
 import { angleAtPoint, smoothAngle } from '../math';
 import { createRepCounterState, updateRepCounter } from '../repCounter';
@@ -112,5 +112,41 @@ describe('rep counter', () => {
     state = updateRepCounter(state, 105, calibration);
 
     expect(state.reps).toBe(0);
+  });
+});
+
+describe('side selection', () => {
+  it('prefers the side with more visible required joints', () => {
+    const rightSide = [
+      point('right_hip', 1, 1),
+      point('right_knee', 2, 2),
+      point('right_ankle', 3, 3)
+    ];
+    const leftHipOnly = [point('left_hip', 0, 0)];
+
+    expect(chooseVisibleSide('squat', [...rightSide, ...leftHipOnly], 'right')).toBe('right');
+  });
+
+  it('does not flip sides on a single-frame occlusion', () => {
+    // Previously tracking left; a frame where the left knee is briefly missing
+    // must not flip us to right (which would reset calibration + rep state).
+    const leftMissingKnee = [
+      point('left_hip', 0, 0),
+      point('left_ankle', 0, 2),
+      point('right_hip', 5, 5),
+      point('right_knee', 6, 6),
+      point('right_ankle', 7, 7)
+    ];
+
+    expect(chooseVisibleSide('squat', leftMissingKnee, 'left')).toBe('left');
+  });
+
+  it('keeps the previous side when neither side is visible enough', () => {
+    const partial = [
+      point('right_hip', 1, 1),
+      point('left_hip', 1, 1)
+    ];
+
+    expect(chooseVisibleSide('squat', partial, 'right')).toBe('right');
   });
 });

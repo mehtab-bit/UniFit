@@ -1,5 +1,6 @@
 import { angleAtPoint, findKeypoint } from './math';
-import { CvKeypoint, ExerciseDefinition, Side } from './types';
+import { getVisibleKeypoints } from './keypoints';
+import { CvKeypoint, ExerciseDefinition, KeypointName, Side } from './types';
 
 function sideName(side: Side, joint: 'shoulder' | 'elbow' | 'wrist' | 'hip' | 'knee' | 'ankle') {
   return `${side}_${joint}` as const;
@@ -101,3 +102,41 @@ export const exerciseDefinitions: Record<string, ExerciseDefinition> = {
     getAngle: getArmBendAngle
   }
 };
+
+export function requiredKeypointsFor(
+  exerciseId: string,
+  side: Side
+): KeypointName[] {
+  return exerciseDefinitions[exerciseId].getRequiredKeypoints(side);
+}
+
+/**
+ * Picks which side to track, with hysteresis: a brief occlusion on one side
+ * must not flip the tracker (which would reset calibration/rep state).
+ */
+export function chooseVisibleSide(
+  exerciseId: string,
+  keypoints: CvKeypoint[],
+  previous: Side
+): Side {
+  const definition = exerciseDefinitions[exerciseId];
+  const leftVisible = getVisibleKeypoints(
+    keypoints,
+    definition.getRequiredKeypoints('left')
+  ).length;
+  const rightVisible = getVisibleKeypoints(
+    keypoints,
+    definition.getRequiredKeypoints('right')
+  ).length;
+
+  if (leftVisible >= rightVisible + 2) {
+    return 'left';
+  }
+
+  if (rightVisible >= leftVisible + 2) {
+    return 'right';
+  }
+
+  // Not enough signal to switch: keep the previous (or default) side.
+  return previous || definition.defaultSide;
+}
