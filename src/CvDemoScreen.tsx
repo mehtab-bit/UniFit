@@ -134,8 +134,8 @@ export function CvDemoScreen({
 
   // The skeleton is the form indicator: green only while the tracked joint is
   // inside the calibrated movement range AND the geometric form checks pass.
-  // Between reps (or with a stale pose) it stays amber, so green means "you
-  // are doing the correct movement right now."
+  // The debounce below prevents the green/amber flicker caused by per-frame
+  // keypoint jitter crossing the form thresholds mid-movement.
   const angle = tracker.smoothedAngle;
   const calibration = tracker.calibration;
   let inMovementRange = false;
@@ -146,7 +146,29 @@ export function CvDemoScreen({
       inMovementRange = progress >= 0.05 && progress <= 0.95;
     }
   }
-  const isGoodForm = quality.score >= 80 && inMovementRange;
+  const rawGood = quality.score >= 80 && inMovementRange;
+
+  const colorVotesRef = useRef(0);
+  const [isGoodForm, setIsGoodForm] = useState(false);
+  useEffect(() => {
+    if (rawGood) {
+      // Require several consecutive good frames before showing green, so
+      // keypoint jitter can't make the skeleton flicker.
+      colorVotesRef.current = Math.min(8, colorVotesRef.current + 1);
+    } else if (isGoodForm) {
+      // Once green, a single weak frame keeps it green (hysteresis); it
+      // snaps amber only after a sustained form break.
+      colorVotesRef.current = Math.max(0, colorVotesRef.current - 1);
+    } else {
+      colorVotesRef.current = 0;
+    }
+
+    if (rawGood && colorVotesRef.current >= 3) {
+      setIsGoodForm(true);
+    } else if (!rawGood && colorVotesRef.current === 0) {
+      setIsGoodForm(false);
+    }
+  }, [rawGood, isGoodForm]);
 
   useEffect(() => {
     setCalibrationStage('idle');
