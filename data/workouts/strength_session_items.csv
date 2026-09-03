@@ -1,0 +1,6 @@
+session_template_id,exercise_order,exercise_family,rep_mode
+STRENGTH_FULL_BODY,1,squat,total_reps
+STRENGTH_FULL_BODY,2,lunge,reps_each_side
+STRENGTH_FULL_BODY,3,pushup,total_reps
+STRENGTH_FULL_BODY,4,bicep_curl,reps_each_arm
+STRENGTH_FULL_BODY,5,supported_row,reps_each_arm

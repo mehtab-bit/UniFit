@@ -1,0 +1,33 @@
+rule_id,accessibility_id,lifestyle,week_number,template_id,duration_min,interval_count,work_interval_sec,recovery_interval_sec,intensity,is_consolidation_week,advance_if_completion_pct,progression_note
+APR001,blind_low_vision,sedentary,1,BLV_HOME_MARCH,10,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR002,blind_low_vision,sedentary,2,BLV_HOME_MARCH,11,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR003,blind_low_vision,sedentary,3,BLV_HOME_STEP_TOUCH,12,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR004,blind_low_vision,sedentary,4,BLV_HOME_MARCH,10,,,,easy,True,80,Consolidation week: easier controlled indoor movement and recovery.
+APR005,blind_low_vision,sedentary,5,BLV_HOME_STEP_TOUCH,12,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR006,blind_low_vision,sedentary,6,BLV_HOME_STEP_TOUCH,13,5,75,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR007,blind_low_vision,sedentary,7,BLV_HOME_STEP_TOUCH,14,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR008,blind_low_vision,sedentary,8,BLV_HOME_STEP_TOUCH,15,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR009,blind_low_vision,light,1,BLV_HOME_MARCH,15,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR010,blind_low_vision,light,2,BLV_HOME_MARCH,16,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR011,blind_low_vision,light,3,BLV_HOME_STEP_TOUCH,18,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR012,blind_low_vision,light,4,BLV_HOME_MARCH,14,,,,easy,True,80,Consolidation week: easier controlled indoor movement and recovery.
+APR013,blind_low_vision,light,5,BLV_HOME_STEP_TOUCH,18,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR014,blind_low_vision,light,6,BLV_HOME_STEP_TOUCH,20,5,75,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR015,blind_low_vision,light,7,BLV_HOME_STEP_TOUCH,21,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR016,blind_low_vision,light,8,BLV_HOME_STEP_TOUCH,22,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR017,blind_low_vision,moderate,1,BLV_HOME_MARCH,20,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR018,blind_low_vision,moderate,2,BLV_HOME_MARCH,22,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR019,blind_low_vision,moderate,3,BLV_HOME_STEP_TOUCH,24,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR020,blind_low_vision,moderate,4,BLV_HOME_MARCH,19,,,,easy,True,80,Consolidation week: easier controlled indoor movement and recovery.
+APR021,blind_low_vision,moderate,5,BLV_HOME_STEP_TOUCH,24,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR022,blind_low_vision,moderate,6,BLV_HOME_STEP_TOUCH,26,5,75,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR023,blind_low_vision,moderate,7,BLV_HOME_STEP_TOUCH,28,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR024,blind_low_vision,moderate,8,BLV_HOME_STEP_TOUCH,30,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR025,blind_low_vision,very_active,1,BLV_HOME_MARCH,25,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR026,blind_low_vision,very_active,2,BLV_HOME_MARCH,28,,,,easy,False,80,Controlled continuous indoor movement in a familiar clear area.
+APR027,blind_low_vision,very_active,3,BLV_HOME_STEP_TOUCH,30,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR028,blind_low_vision,very_active,4,BLV_HOME_MARCH,24,,,,easy,True,80,Consolidation week: easier controlled indoor movement and recovery.
+APR029,blind_low_vision,very_active,5,BLV_HOME_STEP_TOUCH,30,4,60,60,moderate,False,80,Controlled step-touch work periods with easy marching recovery.
+APR030,blind_low_vision,very_active,6,BLV_HOME_STEP_TOUCH,32,5,75,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR031,blind_low_vision,very_active,7,BLV_HOME_STEP_TOUCH,35,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.
+APR032,blind_low_vision,very_active,8,BLV_HOME_STEP_TOUCH,38,6,90,60,moderate,False,80,Controlled home-cardio intervals. Advance only when the previous rule week meets the completion threshold.

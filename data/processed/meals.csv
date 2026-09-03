@@ -1,0 +1,51 @@
+meal_id,meal_name,meal_type,diet_class,vegan_ok,vegetarian_ok,eggetarian_ok,nonveg_ok,servings,total_kcal,total_protein_g,known_carbohydrate_g,total_fat_g,known_fiber_g,carbohydrate_complete,fiber_complete,protein_level,prep_note,is_active
+BR001,Ragi Banana Almond Cress Porridge,breakfast,vegan,True,True,True,True,1,393.3,10.2,62.4,10.7,10.1,True,True,moderate,"Cook ragi with water; top with banana, almonds and garden cress seeds.",True
+BR002,Peas Peanut Poha,breakfast,vegan,True,True,True,True,1,314.5,10.8,55.6,4.8,6.8,True,True,moderate,Cook poha with peas and onion. Added cooking oil is not included in nutrition.,True
+BR003,Moong Dal Veg Chilla,breakfast,vegan,True,True,True,True,1,224.2,15.6,36.2,1.2,7.9,True,True,moderate,"Soak and blend moong dal; cook with capsicum, onion and tomato.",True
+BR004,Quinoa Banana Walnut Cress Bowl,breakfast,vegan,True,True,True,True,1,360.0,11.4,50.1,11.8,10.2,True,True,moderate,"Cook quinoa in water; serve with banana, walnuts and garden cress seeds.",True
+BR005,Chana Dal Spinach Chilla,breakfast,vegan,True,True,True,True,1,231.9,14.8,33.0,3.8,11.7,True,True,moderate,"Soak and blend chana dal with spinach, onion and tomato.",True
+BR006,Sweet Potato Peanut Cress Bowl,breakfast,vegan,True,True,True,True,1,366.9,10.7,53.7,11.2,10.4,True,False,moderate,"Steam sweet potato; top with peanuts, garden cress seeds and lemon juice.",True
+BR007,Banana Peanut Atta Pancake,breakfast,vegan,True,True,True,True,1,343.8,10.8,57.6,7.1,9.7,True,True,moderate,"Mix atta, mashed banana and water; cook on a non-stick pan and top with peanuts.",True
+BR008,Quinoa Moong Breakfast Bowl,breakfast,vegan,True,True,True,True,1,272.6,16.3,43.2,2.8,14.9,True,True,moderate,Cook quinoa and soaked moong; combine with peas and tomato.,True
+BR009,Ragi Milk Banana Porridge,breakfast,vegetarian,False,True,True,True,1,374.3,10.7,58.9,10.1,6.6,True,False,moderate,Cook ragi with cow milk and top with banana.,True
+BR010,Paneer Spinach Atta Roll,breakfast,vegetarian,False,True,True,True,1,359.0,17.7,35.2,16.0,7.2,True,False,moderate,"Prepare an atta flatbread and fill with paneer, spinach and tomato.",True
+BR011,Egg Poha Bowl,breakfast,eggetarian,False,False,True,True,1,366.7,20.3,45.0,11.2,4.7,False,False,high,Serve cooked poha with peas and onion alongside chopped boiled egg.,True
+BR012,Egg White Quinoa Bowl,breakfast,eggetarian,False,False,True,True,1,214.7,19.1,26.0,3.1,8.1,False,False,moderate,"Combine cooked quinoa with boiled egg white, capsicum and tomato.",True
+LU001,Rajma Brown Rice Bowl,lunch,vegan,True,True,True,True,1,350.6,15.4,65.9,1.8,12.1,True,True,moderate,Cook soaked rajma and brown rice; serve with tomato and onion.,True
+LU002,Chana Quinoa Salad Bowl,lunch,vegan,True,True,True,True,1,314.5,16.1,47.8,5.4,21.2,True,False,moderate,"Combine cooked chana and quinoa with cucumber, tomato and lemon.",True
+LU003,Moong Dal Rice Spinach Bowl,lunch,vegan,True,True,True,True,1,347.3,16.4,65.1,1.4,7.8,True,True,moderate,Cook moong dal and rice; add spinach and tomato.,True
+LU004,Lentil Bajra Vegetable Bowl,lunch,vegan,True,True,True,True,1,341.6,18.3,57.2,3.4,13.8,True,True,moderate,Cook lentils and bajra; serve with beans and tomato.,True
+LU005,Soy Quinoa Protein Bowl,lunch,vegan,True,True,True,True,1,319.9,23.0,30.6,10.5,19.1,True,True,high,Cook soybean and quinoa thoroughly; combine with beans and capsicum.,True
+LU006,Cowpea Jowar Cauliflower Bowl,lunch,vegan,True,True,True,True,1,359.9,17.3,65.6,1.9,14.6,True,True,moderate,Cook cowpea and jowar; serve with cauliflower and onion.,True
+LU007,Toor Dal Rice Drumstick Bowl,lunch,vegan,True,True,True,True,1,370.8,17.8,68.7,1.6,13.4,True,True,moderate,Cook toor dal and rice with drumstick; finish with drumstick leaves.,True
+LU008,Horse Gram Barley Pumpkin Bowl,lunch,vegan,True,True,True,True,1,336.9,17.0,60.6,1.4,14.6,True,True,moderate,Cook horse gram and barley; serve with pumpkin and spinach.,True
+LU009,Paneer Brown Rice Spinach Bowl,lunch,vegetarian,False,True,True,True,1,426.0,20.9,37.9,21.0,4.1,True,False,high,"Serve paneer with cooked brown rice, spinach and tomato.",True
+LU010,Paneer Quinoa Peas Bowl,lunch,vegetarian,False,True,True,True,1,416.9,23.9,33.7,20.0,11.2,True,False,high,Serve paneer and cooked quinoa with peas and capsicum.,True
+LU011,Egg Lentil Rice Bowl,lunch,eggetarian,False,False,True,True,1,399.2,25.0,48.1,11.3,5.4,False,False,high,Serve boiled egg with lentil-rice and spinach.,True
+LU012,Chicken Brown Rice Veg Bowl,lunch,non_vegetarian,False,False,False,True,1,400.0,32.7,39.7,11.7,5.7,False,False,high,"Cook chicken breast thoroughly; serve with brown rice, beans and capsicum.",True
+LU013,Tuna Quinoa Salad Bowl,lunch,non_vegetarian,False,False,False,True,1,311.7,36.4,29.0,4.6,9.2,False,False,high,"Cook tuna and quinoa; serve with cucumber, tomato and lemon.",True
+LU014,Rohu Rice Spinach Bowl,lunch,non_vegetarian,False,False,False,True,1,323.4,29.3,41.4,3.7,3.5,False,False,high,"Cook rohu thoroughly; serve with rice, spinach and tomato.",True
+SN001,Apple Almond Snack,evening_snack,vegan,True,True,True,True,1,185.0,3.2,20.1,9.7,5.8,True,True,low,Serve sliced apple with almonds.,True
+SN002,Guava Groundnut Snack,evening_snack,vegan,True,True,True,True,1,126.5,5.7,10.3,6.4,14.4,True,True,low,Serve guava with groundnuts.,True
+SN003,Banana Pistachio Snack,evening_snack,vegan,True,True,True,True,1,186.1,4.7,26.0,6.7,3.5,True,True,low,Serve banana with pistachios.,True
+SN004,Pomegranate Cress Seed Bowl,evening_snack,vegan,True,True,True,True,1,132.4,5.1,18.9,3.7,4.6,True,True,low,Top pomegranate with garden cress seeds.,True
+SN005,Sweet Corn Peanut Cup,evening_snack,vegan,True,True,True,True,1,197.8,8.6,23.0,7.6,5.5,True,False,low,Steam sweet corn; add peanuts and lemon.,True
+SN006,Chana Papaya Snack Bowl,evening_snack,vegan,True,True,True,True,1,136.3,7.2,20.8,2.0,13.1,True,True,low,Use chana and serve with papaya.,True
+SN007,Coconut Water Walnut Snack,evening_snack,vegan,True,True,True,True,1,139.0,2.9,9.4,10.0,0.8,True,False,low,Serve coconut water with walnuts.,True
+SN008,Milk Banana Snack,evening_snack,vegetarian,False,True,True,True,1,230.0,7.5,28.8,9.2,1.6,True,False,low,Serve cow milk with banana.,True
+SN009,Paneer Cucumber Lemon Snack,evening_snack,vegetarian,False,True,True,True,1,206.5,12.1,5.6,15.1,2.1,True,False,moderate,Serve paneer cubes with cucumber and lemon.,True
+SN010,Boiled Egg Orange Snack,evening_snack,eggetarian,False,False,True,True,1,192.5,14.3,9.5,10.7,1.5,False,False,moderate,Serve boiled egg with orange.,True
+DI001,Quinoa Lentil Vegetable Bowl,dinner,vegan,True,True,True,True,1,323.4,19.6,50.4,3.5,15.4,True,True,moderate,Cook quinoa and lentils; serve with cauliflower and spinach.,True
+DI002,Brown Rice Moong Bean Bowl,dinner,vegan,True,True,True,True,1,313.8,16.1,57.1,1.4,13.0,True,True,moderate,Cook brown rice and moong; serve with beans and tomato.,True
+DI003,Bajra Chana Spinach Bowl,dinner,vegan,True,True,True,True,1,333.7,16.4,52.9,5.3,14.2,True,True,moderate,Cook bajra and chana dal; serve with spinach and onion.,True
+DI004,Barley Soy Vegetable Bowl,dinner,vegan,True,True,True,True,1,299.0,20.3,33.5,7.9,18.8,True,True,high,Cook barley and soybean thoroughly; serve with cauliflower and capsicum.,True
+DI005,Jowar Cowpea Pumpkin Bowl,dinner,vegan,True,True,True,True,1,330.2,16.2,59.3,1.8,14.3,True,True,moderate,Cook jowar and cowpea; serve with pumpkin and fenugreek leaves.,True
+DI006,Rajma Rice Vegetable Dinner Bowl,dinner,vegan,True,True,True,True,1,321.9,15.1,59.7,1.5,12.5,True,True,moderate,Cook rajma and rice; serve with beans and spinach.,True
+DI007,Sweet Potato Soy Spinach Bowl,dinner,vegan,True,True,True,True,1,320.5,17.1,42.5,7.8,16.3,True,True,moderate,Steam sweet potato and cook soybean thoroughly; serve with spinach and tomato.,True
+DI008,Paneer Quinoa Spinach Bowl,dinner,vegetarian,False,True,True,True,1,372.5,20.5,25.9,20.2,8.5,True,False,high,"Serve paneer with cooked quinoa, spinach and tomato.",True
+DI009,Paneer Atta Vegetable Plate,dinner,vegetarian,False,True,True,True,1,400.4,20.8,36.3,18.6,9.7,True,False,high,Serve paneer and vegetables with an atta flatbread.,True
+DI010,Egg Moong Atta Bowl,dinner,eggetarian,False,False,True,True,1,385.8,25.9,42.5,11.9,8.5,False,False,high,"Serve boiled egg with moong, atta flatbread and spinach.",True
+DI011,Chicken Quinoa Veg Bowl,dinner,non_vegetarian,False,False,False,True,1,370.9,34.0,26.5,13.6,10.0,False,False,high,"Cook chicken thoroughly; serve with quinoa, beans and capsicum.",True
+DI012,Salmon Brown Rice Greens,dinner,non_vegetarian,False,False,False,True,1,394.8,31.2,37.2,12.9,4.9,False,False,high,"Cook salmon thoroughly; serve with brown rice, spinach and cucumber.",True
+DI013,Tuna Atta Spinach Wrap,dinner,non_vegetarian,False,False,False,True,1,317.4,36.3,34.4,3.1,7.8,False,False,high,Cook tuna; serve in an atta flatbread with spinach and tomato.,True
+DI014,Goat Barley Vegetable Bowl,dinner,non_vegetarian,False,False,False,True,1,369.5,35.0,30.3,10.9,12.5,False,False,high,"Cook goat thoroughly; serve with barley, cauliflower and fenugreek leaves.",True
