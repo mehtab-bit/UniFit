@@ -27,7 +27,7 @@ type SourceSize = {
 
 type FrameImages = IterableIterator<tf.Tensor3D>;
 
-const DETECTION_INTERVAL_MS = 120;
+const DETECTION_INTERVAL_MS = 180;
 const DEFAULT_FACING: CameraType = 'front';
 
 /**
@@ -47,6 +47,9 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
   const [sourceSize, setSourceSize] = useState<SourceSize | null>(null);
 
   const detectorRef = useRef<PoseDetector | null>(null);
+  const lastKeypointsRef = useRef<CvKeypoint[]>([]);
+  const lastVisibleRef = useRef<KeypointName[]>([]);
+  const lastSourceRef = useRef<SourceSize | null>(null);
   const isActiveRef = useRef(true);
   const isDetectingRef = useRef(false);
   const lastDetectionAtRef = useRef(0);
@@ -106,7 +109,6 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
 
         if (shouldDetect) {
           isDetectingRef.current = true;
-          setIsDetecting(true);
           lastDetectionAtRef.current = now;
 
           const imageTensor = images.next().value;
@@ -117,25 +119,43 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
               const pose = poses?.[0];
 
               if (isActiveRef.current) {
+                setFramesProcessed((currentCount) => currentCount + 1);
                 if (pose && pose.keypoints.length > 0) {
                   const detectedKeypoints = normalizeKeypoints(pose.keypoints);
-                  setKeypoints(detectedKeypoints);
-                  setVisibleKeypointNames(
-                    detectedKeypoints
-                      .filter((keypoint) => typeof keypoint.score !== 'number' || keypoint.score >= 0.35)
-                      .map((keypoint) => keypoint.name)
-                  );
+                  const visible = detectedKeypoints
+                    .filter((keypoint) => typeof keypoint.score !== 'number' || keypoint.score >= 0.35)
+                    .map((keypoint) => keypoint.name);
+                  if (keypointsChanged(lastKeypointsRef.current, detectedKeypoints)) {
+                    lastKeypointsRef.current = detectedKeypoints;
+                    setKeypoints(detectedKeypoints);
+                  }
+                  if (lastVisibleRef.current.join() !== visible.join()) {
+                    lastVisibleRef.current = visible;
+                    setVisibleKeypointNames(visible);
+                  }
                 } else {
-                  setKeypoints([]);
-                  setVisibleKeypointNames([]);
+                  if (lastKeypointsRef.current.length > 0) {
+                    lastKeypointsRef.current = [];
+                    setKeypoints([]);
+                  }
+                  if (lastVisibleRef.current.length > 0) {
+                    lastVisibleRef.current = [];
+                    setVisibleKeypointNames([]);
+                  }
                 }
 
-                setSourceSize({
+                const nextSource = {
                   width: imageTensor.shape[1],
                   height: imageTensor.shape[0]
-                });
-                setFramesProcessed((currentCount) => currentCount + 1);
-                setLastDetectionAt(Date.now());
+                };
+                if (
+                  !lastSourceRef.current ||
+                  lastSourceRef.current.width !== nextSource.width ||
+                  lastSourceRef.current.height !== nextSource.height
+                ) {
+                  lastSourceRef.current = nextSource;
+                  setSourceSize(nextSource);
+                }
                 setError(null);
               }
             } catch (detectError) {
@@ -150,9 +170,6 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
               tf.dispose(imageTensor);
               isDetectingRef.current = false;
 
-              if (isActiveRef.current) {
-                setIsDetecting(false);
-              }
             }
           }
         }
@@ -187,4 +204,21 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
     handleCameraStream,
     handleCameraError
   };
+}
+
+function keypointsChanged(a: CvKeypoint[], b: CvKeypoint[]) {
+  if (a.length !== b.length) return true;
+  for (let i = 0; i < a.length; i++) {
+    const ka = a[i];
+    const kb = b[i];
+    if (
+      ka.name !== kb.name ||
+      Math.abs(ka.x - kb.x) > 0.001 ||
+      Math.abs(ka.y - kb.y) > 0.001 ||
+      (ka.score ?? 0) !== (kb.score ?? 0)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }

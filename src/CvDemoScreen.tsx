@@ -31,16 +31,16 @@ const stageDetails: Record<
     hint: () => 'Tap Calibrate, then follow the prompts. No more taps needed.'
   },
   start_hold: {
-    label: 'Hold start position',
-    hint: (tracker) => tracker.definition.startCalibrationLabel
+    label: 'Hold the start position',
+    hint: (tracker) => `${tracker.definition.startCalibrationLabel} Hold still to auto-capture.`
   },
   end_move: {
     label: 'Move to the end position',
-    hint: (tracker) => tracker.definition.endCalibrationLabel
+    hint: (tracker) => `${tracker.definition.endCalibrationLabel} Pause there to auto-capture.`
   },
   end_hold: {
-    label: 'Hold still',
-    hint: () => 'Keep the end position steady for the countdown.'
+    label: 'Hold the end position',
+    hint: () => 'Keep it steady — auto-capturing.'
   },
   complete: {
     label: 'Calibrated',
@@ -48,7 +48,7 @@ const stageDetails: Record<
   },
   failed: {
     label: 'Not steady',
-    hint: () => 'The pose moved too much. Tap Recalibrate and hold still.'
+    hint: () => 'Not enough stable frames. Tap Recalibrate and hold still.'
   }
 };
 
@@ -201,47 +201,68 @@ export function CvDemoScreen({
     }
   }, [calibrationStage, tracker.definition]);
 
+  // Auto-calibration state machine. There are no fixed timers for "get into
+  // position" — the flow is:
+  //   start_hold: watch the live angle. Once the user stops moving (stable
+  //               within tolerance for ~2.5s), capture the START angle.
+  //   end_move:   watch for movement; once they settle (angle stable ~1.2s),
+  //               switch to end_hold automatically.
+  //   end_hold:   once stable again for ~2.5s, capture the END angle.
+  // The user moves at their own pace; we never demand they beat a timer.
   useEffect(() => {
-    const isActiveStage =
-      calibrationStage === 'start_hold' ||
-      calibrationStage === 'end_move' ||
-      calibrationStage === 'end_hold';
-
-    if (!isActiveStage) {
+    if (
+      calibrationStage !== 'start_hold' &&
+      calibrationStage !== 'end_move' &&
+      calibrationStage !== 'end_hold'
+    ) {
       return;
     }
 
-    const seconds = calibrationStage === 'end_move' ? 4 : 3;
-    const finishesAt = Date.now() + seconds * 1000;
-    setCountdown(seconds);
+    const WATCH_WINDOW_MS = 200;
+    const TOLERANCE_DEG = 4;
+    const STABLE_FOR_CAPTURE_MS = calibrationStage === 'end_move' ? 1200 : 2500;
+    let stableSince: number | null = null;
+    let lastAngle: number | null = null;
 
-    const tick = setInterval(() => {
-      setCountdown(Math.max(0, Math.ceil((finishesAt - Date.now()) / 1000)));
-    }, 200);
-
-    const finish = setTimeout(() => {
-      clearInterval(tick);
-
-      if (calibrationStage === 'start_hold') {
-        const didSave = trackerRef.current.captureCalibrationPhase();
-        setCalibrationStage(didSave ? 'end_move' : 'failed');
+    const watch = setInterval(() => {
+      const angle = trackerRef.current.smoothedAngle;
+      if (angle === null) {
+        stableSince = null;
+        lastAngle = null;
+        setCountdown(0);
         return;
       }
 
-      if (calibrationStage === 'end_move') {
-        trackerRef.current.beginEndCalibration();
-        setCalibrationStage('end_hold');
-        return;
+      if (lastAngle === null || Math.abs(angle - lastAngle) <= TOLERANCE_DEG) {
+        stableSince = stableSince ?? Date.now();
+        if (Date.now() - stableSince >= STABLE_FOR_CAPTURE_MS) {
+          if (calibrationStage === 'end_move') {
+            // User has settled in the end pose — begin the end hold capture.
+            trackerRef.current.beginEndCalibration();
+            clearInterval(watch);
+            setCalibrationStage('end_hold');
+            return;
+          }
+          const didSave = trackerRef.current.captureCalibrationPhase();
+          clearInterval(watch);
+          setCalibrationStage(
+            didSave ? (calibrationStage === 'start_hold' ? 'end_move' : 'complete') : 'failed'
+          );
+          return;
+        }
+      } else {
+        // User is still moving — the end position has not been reached yet.
+        stableSince = null;
       }
+      lastAngle = angle;
+      const remaining = Math.max(
+        0,
+        Math.ceil((STABLE_FOR_CAPTURE_MS - (stableSince ? Date.now() - stableSince : 0)) / 1000)
+      );
+      setCountdown(remaining);
+    }, WATCH_WINDOW_MS);
 
-      const didSave = trackerRef.current.captureCalibrationPhase();
-      setCalibrationStage(didSave ? 'complete' : 'failed');
-    }, seconds * 1000);
-
-    return () => {
-      clearInterval(tick);
-      clearTimeout(finish);
-    };
+    return () => clearInterval(watch);
   }, [calibrationStage]);
 
   function beginCalibration() {

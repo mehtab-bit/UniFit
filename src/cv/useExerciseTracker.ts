@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { captureCalibrationAngle, createCalibration } from './calibration';
 import { chooseVisibleSide, exerciseDefinitions } from './exercises';
 import { getFeedbackState } from './feedback';
@@ -45,8 +45,7 @@ export function useExerciseTracker(
   const [smoothedAngle, setSmoothedAngle] = useState<number | null>(null);
   const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('idle');
   const [calibration, setCalibration] = useState<AngleCalibration | null>(null);
-  const [feedback, setFeedback] = useState<FeedbackState>('needs_calibration');
-  const [repState, setRepState] = useState(createRepCounterState());
+  const [repState, dispatchRep] = useReducer(repCounterReducer, undefined, createRepCounterState);
   const calibrationSamplesRef = useRef<number[]>([]);
   const calibrationPhaseRef = useRef<CalibrationPhase>(calibrationPhase);
 
@@ -59,8 +58,7 @@ export function useExerciseTracker(
     setSmoothedAngle(null);
     setCalibrationPhase('idle');
     setCalibration(null);
-    setFeedback('needs_calibration');
-    setRepState(createRepCounterState());
+    dispatchRep({ type: 'reset' });
     calibrationSamplesRef.current = [];
   }, [exerciseId]);
 
@@ -88,11 +86,21 @@ export function useExerciseTracker(
     calibrationSamplesRef.current = [];
   }, [calibrationPhase, smoothedAngle]);
 
+  // Derived, not effect-driven: updateRepCounter is idempotent per angle frame
+  // and only commits on genuine start<->end transitions. Running it during
+  // render avoids a setState-in-effect feedback loop entirely.
+  const target = repState.phase === 'start' ? 'up' : 'down';
+  const feedbackValue = getFeedbackState(smoothedAngle, calibration, target);
+  const nextRepState = useMemo(
+    () => updateRepCounter(repState, smoothedAngle, calibration),
+    [calibration, repState, smoothedAngle]
+  );
+
   useEffect(() => {
-    const target = repState.phase === 'start' ? 'up' : 'down';
-    setFeedback(getFeedbackState(smoothedAngle, calibration, target));
-    setRepState((currentState) => updateRepCounter(currentState, smoothedAngle, calibration));
-  }, [calibration, repState.phase, smoothedAngle]);
+    if (nextRepState !== repState) {
+      dispatchRep({ type: 'set', state: nextRepState });
+    }
+  }, [nextRepState, repState]);
 
   const selectedKeypoints = useMemo(
     () => getVisibleKeypoints(keypoints, requiredKeypoints),
@@ -142,8 +150,7 @@ export function useExerciseTracker(
     setSmoothedAngle(null);
     setCalibrationPhase('idle');
     setCalibration(null);
-    setFeedback('needs_calibration');
-    setRepState(createRepCounterState());
+    dispatchRep({ type: 'reset' });
     calibrationSamplesRef.current = [];
   }, []);
 
@@ -155,11 +162,25 @@ export function useExerciseTracker(
     smoothedAngle,
     calibration,
     calibrationPhase,
-    feedback,
+    feedback: feedbackValue,
     reps: repState.reps,
     beginStartCalibration,
     beginEndCalibration,
     captureCalibrationPhase,
     resetTracker
   };
+}
+
+type RepCounterAction =
+  | { type: 'reset' }
+  | { type: 'set'; state: ReturnType<typeof createRepCounterState> };
+
+function repCounterReducer(
+  _state: ReturnType<typeof createRepCounterState>,
+  action: RepCounterAction
+) {
+  if (action.type === 'reset') {
+    return createRepCounterState();
+  }
+  return action.state;
 }
