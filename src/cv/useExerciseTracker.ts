@@ -14,16 +14,24 @@ export function useExerciseTracker(
 ) {
   const definition = exerciseDefinitions[exerciseId];
 
-  // activeSide must be stable across frames or every keypoint update would
-  // reset the tracker (and flip the visible side back and forth while the
-  // user is moving, since a limb can be occluded for a frame).
-  const sideRef = useRef<Side>(sideOverride ?? definition.defaultSide);
+  // activeSide is state so it stays stable across frames: every keypoint
+  // update must not reset the tracker or flip sides mid-movement.
+  const [activeSide, setActiveSide] = useState<Side>(
+    sideOverride ?? definition.defaultSide
+  );
+  useEffect(() => {
+    setActiveSide(sideOverride ?? definition.defaultSide);
+  }, [definition, sideOverride]);
 
-  const activeSide = sideOverride ?? chooseVisibleSide(exerciseId, keypoints, sideRef.current);
-
-  if (!sideOverride) {
-    sideRef.current = activeSide;
-  }
+  useEffect(() => {
+    if (sideOverride) {
+      return;
+    }
+    const detected = chooseVisibleSide(exerciseId, keypoints, activeSide);
+    if (detected !== activeSide) {
+      setActiveSide(detected);
+    }
+  }, [activeSide, exerciseId, keypoints, sideOverride]);
 
   const requiredKeypoints = useMemo(
     () => definition.getRequiredKeypoints(activeSide),
@@ -38,7 +46,10 @@ export function useExerciseTracker(
   const [repState, setRepState] = useState(createRepCounterState());
   const calibrationSamplesRef = useRef<number[]>([]);
   const calibrationPhaseRef = useRef<CalibrationPhase>(calibrationPhase);
-  calibrationPhaseRef.current = calibrationPhase;
+
+  useEffect(() => {
+    calibrationPhaseRef.current = calibrationPhase;
+  }, [calibrationPhase]);
 
   useEffect(() => {
     recentAnglesRef.current = [];

@@ -118,6 +118,10 @@ export function CvDemoScreen({
   const targetRepsRef = useRef(targetReps);
 
   useEffect(() => {
+    trackerRef.current = tracker;
+  }, [tracker]);
+
+  useEffect(() => {
     accessibilityRef.current = provideFeedback;
   }, [provideFeedback]);
 
