@@ -23,7 +23,8 @@ export interface IWorkoutService {
   logWorkoutCompletion(
     payloadOrId: string | WorkoutCompletionPayload,
     durationMinutes?: number,
-    repsCompleted?: number
+    repsCompleted?: number,
+    userId?: string
   ): Promise<{ success: boolean; completedAt: string }>;
 }
 

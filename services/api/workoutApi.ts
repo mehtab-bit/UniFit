@@ -15,7 +15,7 @@ import {
 import { apiClient } from './apiClient';
 import { mockWorkoutService } from '../mock/workoutMock';
 import { Colors } from '../../constants/colors';
-import { DEMO_ENGINE_PROFILE, DEMO_ENGINE_ACTIVITIES } from '../../constants/demo';
+import { fetchCombinedWeek, clearCombinedWeek } from './combinedPlan';
 
 function mapIconForActivity(activity: string): {
   iconName: string;
@@ -164,53 +164,33 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
 }
 
 export class WorkoutApiService implements IWorkoutService {
-  private cachedPlan: WorkoutPlan | null = null;
-  private inFlightPromise: Promise<WorkoutPlan> | null = null;
-
   async getWeeklyPlan(userId: string = 'user_default', forceRefresh: boolean = false): Promise<WorkoutPlan> {
-    if (!forceRefresh && this.cachedPlan) {
-      return this.cachedPlan;
+    if (forceRefresh) {
+      clearCombinedWeek(userId);
     }
-    if (this.inFlightPromise) {
-      return this.inFlightPromise;
+    try {
+      const response: any = await fetchCombinedWeek(userId);
+
+      const rawDays = response.workouts || [];
+      const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
+
+      const mappedDays: WorkoutDay[] = rawDays.map((d: any, idx: number) =>
+        mapBackendDayToWorkoutDay(d, idx, currentDayIndex)
+      );
+
+      return {
+        id: `plan_week_${response.week_number || 1}`,
+        weekNumber: response.week_number || 1,
+        title: 'Week 1 Foundation',
+        subtitle: "Here's your plan for this week.",
+        badgeText: 'Week 1',
+        description: 'Progressive adaptive fitness week powered by the engine.',
+        days: mappedDays,
+      };
+    } catch (err) {
+      console.warn('[WorkoutApiService] Falling back to mock data due to API error:', err);
+      return mockWorkoutService.getWeeklyPlan(userId);
     }
-
-    this.inFlightPromise = (async () => {
-      try {
-        const response: any = await apiClient.post('/api/v1/fitness/weekly-plan', {
-          user_id: userId,
-          week_number: 1,
-          profile: DEMO_ENGINE_PROFILE,
-          activity_preferences: DEMO_ENGINE_ACTIVITIES,
-        });
-
-        const rawDays = response.workouts || [];
-        const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
-
-        const mappedDays: WorkoutDay[] = rawDays.map((d: any, idx: number) =>
-          mapBackendDayToWorkoutDay(d, idx, currentDayIndex)
-        );
-
-        this.cachedPlan = {
-          id: `plan_week_${response.week_number || 1}`,
-          weekNumber: response.week_number || 1,
-          title: 'Week 1 Foundation',
-          subtitle: "Here's your plan for this week.",
-          badgeText: 'Week 1',
-          description: 'Progressive adaptive fitness week powered by the engine.',
-          days: mappedDays,
-        };
-
-        return this.cachedPlan;
-      } catch (err) {
-        console.warn('[WorkoutApiService] Falling back to mock data due to API error:', err);
-        return mockWorkoutService.getWeeklyPlan(userId);
-      } finally {
-        this.inFlightPromise = null;
-      }
-    })();
-
-    return this.inFlightPromise;
   }
 
   async getWeeklyWorkoutPlan(userId?: string): Promise<WorkoutPlan> {
@@ -259,12 +239,14 @@ export class WorkoutApiService implements IWorkoutService {
   async logWorkoutCompletion(
     payloadOrId: string | WorkoutCompletionPayload,
     durationMinutes: number = 25,
-    repsCompleted: number = 80
+    repsCompleted: number = 80,
+    userId?: string
   ): Promise<{ success: boolean; completedAt: string }> {
     try {
       let body: WorkoutCompletionPayload;
       if (typeof payloadOrId === 'string') {
         body = {
+          user_id: userId || 'user_default',
           activity_id: payloadOrId,
           progression_key: payloadOrId,
           completion_pct: 100,
@@ -278,17 +260,20 @@ export class WorkoutApiService implements IWorkoutService {
         };
       } else {
         body = payloadOrId;
+        if (!body.user_id) {
+          body = { ...body, user_id: userId || 'user_default' };
+        }
       }
 
       await apiClient.post('/api/v1/workout/complete', body);
-      this.cachedPlan = null;
+      clearCombinedWeek(userId || body.user_id);
       return {
         success: true,
         completedAt: new Date().toISOString(),
       };
     } catch (err) {
       console.warn('[WorkoutApiService] Logging to mock fallback:', err);
-      return mockWorkoutService.logWorkoutCompletion(payloadOrId, durationMinutes, repsCompleted);
+      return mockWorkoutService.logWorkoutCompletion(payloadOrId, durationMinutes, repsCompleted, userId);
     }
   }
 }

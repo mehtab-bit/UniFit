@@ -5,9 +5,8 @@
 
 import { INutritionService } from '../types';
 import { NutritionTargets } from '../../types/domain';
-import { apiClient } from './apiClient';
 import { mockNutritionService } from '../mock/nutritionMock';
-import { DEMO_ENGINE_PROFILE, DEMO_ENGINE_ACTIVITIES } from '../../constants/demo';
+import { fetchCombinedWeek, pickDayFromWeek } from './combinedPlan';
 
 function mapBackendNutritionToTargets(nutrition: any): NutritionTargets {
   const calories = Math.round(nutrition.target_kcal || nutrition.calories || 2400);
@@ -39,9 +38,9 @@ function mapBackendNutritionToTargets(nutrition: any): NutritionTargets {
 export class NutritionApiService implements INutritionService {
   async getDailyTargets(userId: string = 'user_default', date?: string): Promise<NutritionTargets> {
     try {
-      const todayStr = date || new Date().toISOString().split('T')[0];
-      const response: any = await apiClient.get(`/api/v1/nutrition/${todayStr}?user_id=${userId}`);
-      return mapBackendNutritionToTargets(response);
+      const response: any = await fetchCombinedWeek(userId);
+      const day = pickDayFromWeek(response.nutrition, date);
+      return mapBackendNutritionToTargets(day?.nutrition || day || {});
     } catch (err) {
       console.warn('[NutritionApiService] Falling back to mock nutrition:', err);
       return mockNutritionService.getDailyTargets(userId, date);
@@ -54,14 +53,10 @@ export class NutritionApiService implements INutritionService {
 
   async getWeeklyNutritionTargets(userId: string = 'user_default'): Promise<NutritionTargets[]> {
     try {
-      const response: any = await apiClient.post('/api/v1/nutrition/weekly', {
-        user_id: userId,
-        week_number: 1,
-        profile: DEMO_ENGINE_PROFILE,
-        activity_preferences: DEMO_ENGINE_ACTIVITIES,
-      });
-
-      return (response.days || []).map((d: any) => mapBackendNutritionToTargets(d.nutrition));
+      const response: any = await fetchCombinedWeek(userId);
+      return (response.nutrition || []).map((d: any) =>
+        mapBackendNutritionToTargets(d.nutrition || d)
+      );
     } catch {
       return mockNutritionService.getWeeklyNutritionTargets(userId);
     }

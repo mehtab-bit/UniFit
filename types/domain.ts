@@ -183,6 +183,7 @@ export interface PlanWorkoutItem {
  * The backend decides whether the activity progresses or holds.
  */
 export interface WorkoutCompletionPayload {
+  user_id?: string;
   activity_id: string;
   requested_activity_id?: string;
   progression_key: string;

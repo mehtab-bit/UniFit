@@ -5,9 +5,8 @@
 
 import { IMealService } from '../types';
 import { MealPlan, Meal, MealType, ScaledIngredient, NutritionTargets } from '../../types/domain';
-import { apiClient } from './apiClient';
 import { mockMealService } from '../mock/mealMock';
-import { DEMO_ENGINE_PROFILE, DEMO_ENGINE_ACTIVITIES } from '../../constants/demo';
+import { fetchCombinedWeek, pickDayFromWeek } from './combinedPlan';
 
 function mapMealTimeToType(type: string): string {
   switch (type.toLowerCase()) {
@@ -114,8 +113,9 @@ export class MealApiService implements IMealService {
   async getDailyMealPlan(userId: string = 'user_default', date?: string): Promise<MealPlan> {
     try {
       const todayStr = date || new Date().toISOString().split('T')[0];
-      const response: any = await apiClient.get(`/api/v1/meals/${todayStr}?user_id=${userId}`);
-      return mapBackendMealDay(response, todayStr);
+      const response: any = await fetchCombinedWeek(userId);
+      const day = pickDayFromWeek(response.meals, date);
+      return mapBackendMealDay(day || {}, todayStr);
     } catch (err) {
       console.warn('[MealApiService] Falling back to mock meals:', err);
       return mockMealService.getDailyMealPlan(userId, date);
@@ -124,15 +124,10 @@ export class MealApiService implements IMealService {
 
   async getWeeklyMealPlan(userId: string = 'user_default'): Promise<MealPlan[]> {
     try {
-      const response: any = await apiClient.post('/api/v1/meals/weekly', {
-        user_id: userId,
-        week_number: 1,
-        profile: DEMO_ENGINE_PROFILE,
-        activity_preferences: DEMO_ENGINE_ACTIVITIES,
-      });
+      const response: any = await fetchCombinedWeek(userId);
 
       const today = new Date();
-      return (response.days || []).map((day: any, idx: number) => {
+      return (response.meals || []).map((day: any, idx: number) => {
         const d = new Date(today);
         d.setDate(today.getDate() + idx);
         return mapBackendMealDay(day, d.toISOString().split('T')[0]);

@@ -277,6 +277,59 @@ export const ProfileService = {
   },
 
   /**
+   * Resolves the engine request (profile + activity preferences) for a logged-in user.
+   * Loads the user's real onboarding profile when available; falls back to the
+   * demo defaults for not-yet-onboarded users and unknown ids so screens still render.
+   */
+  resolveEngineRequest: async (userId?: string) => {
+    const demoProfile = getDemoUserProfile(userId || 'demo');
+
+    if (userId && userId !== 'user_default') {
+      try {
+        const profile = await ProfileService.getProfile(userId);
+        if (profile?.onboarding_completed) {
+          const payload = ProfileService.toEngineRequestPayload(profile);
+          return {
+            profile: {
+              age: payload.age,
+              sex: payload.sex,
+              height_cm: payload.height_cm,
+              weight_kg: payload.weight_kg,
+              goal: payload.fitness_goal,
+              lifestyle_activity: payload.lifestyle_activity,
+              diet: payload.diet,
+              accessibility_id:
+                profile.accessibility_needs && profile.accessibility_needs.length > 0
+                  ? profile.accessibility_needs[0]
+                  : 'none',
+            },
+            activities:
+              profile.preferred_activities && profile.preferred_activities.length > 0
+                ? profile.preferred_activities
+                : demoProfile.preferred_activities,
+          };
+        }
+      } catch (err) {
+        console.warn('[ProfileService] Engine request resolve failed, using demo defaults:', err);
+      }
+    }
+
+    return {
+      profile: {
+        age: demoProfile.age ?? 28,
+        sex: demoProfile.sex ?? 'male',
+        height_cm: demoProfile.height_cm ?? 175,
+        weight_kg: demoProfile.weight_kg ?? 70,
+        goal: demoProfile.fitness_goal ?? 'lose_fat',
+        lifestyle_activity: demoProfile.lifestyle_activity ?? 'sedentary',
+        diet: demoProfile.diet ?? 'non_vegetarian',
+        accessibility_id: 'none',
+      },
+      activities: demoProfile.preferred_activities,
+    };
+  },
+
+  /**
    * Saves temporary quiz draft so user progress is never lost on interruption
    */
   saveQuizDraft: async (userId: string, step: number, data: QuizFormData): Promise<void> => {

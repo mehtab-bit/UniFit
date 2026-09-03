@@ -414,7 +414,8 @@ export class MockWorkoutService implements IWorkoutService {
   async logWorkoutCompletion(
     payloadOrId: string | WorkoutCompletionPayload,
     _durationMinutes?: number,
-    _repsCompleted?: number
+    _repsCompleted?: number,
+    _userId?: string
   ): Promise<{ success: boolean; completedAt: string }> {
     return {
       success: true,

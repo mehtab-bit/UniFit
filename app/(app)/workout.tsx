@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Feather } from '@expo/vector-icons';
 import { useScreenAnnouncement } from '../../hooks/useScreenAnnouncement';
+import { useAuth } from '../../context/AuthContext';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { PrimaryButton } from '../../components/common/PrimaryButton';
 import { Colors } from '../../constants/colors';
@@ -51,6 +52,7 @@ export default function WorkoutScreen() {
   useScreenAnnouncement('Exercise Coach screen. Choose an exercise or start today’s full plan.');
 
   const { provideFeedback } = useAccessibility();
+  const { user } = useAuth();
 
   // Data state
   const [workout, setWorkout] = useState<WorkoutDay | null>(null);
@@ -71,7 +73,7 @@ export default function WorkoutScreen() {
     try {
       setLoading(true);
       setError(null);
-      const today = await workoutService.getTodayWorkout();
+      const today = await workoutService.getTodayWorkout(user?.id);
       setWorkout(today);
       if (today.exercises && today.exercises.length > 0) {
         setActiveExercise(today.exercises[0]);
@@ -81,7 +83,7 @@ export default function WorkoutScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     loadWorkoutData();
@@ -174,7 +176,7 @@ export default function WorkoutScreen() {
             }
           : undefined,
       };
-      await workoutService.logWorkoutCompletion(completionPayload);
+      await workoutService.logWorkoutCompletion(completionPayload, 25, 0, user?.id);
     }
     const endMsg = `${activeExercise?.name || 'Workout'} session complete. Great adherence!`;
     setLastFeedback(endMsg);
@@ -183,7 +185,7 @@ export default function WorkoutScreen() {
       priority: 'high',
       haptic: 'success',
     });
-  }, [activeExercise, workout, repCount, formScore, provideFeedback]);
+  }, [activeExercise, workout, repCount, formScore, provideFeedback, user?.id]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>

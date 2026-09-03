@@ -7,6 +7,7 @@ import { emitCvSessionResult } from '../../src/cv/sessionEvents';
 import { workoutService } from '../../services';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { WorkoutCompletionPayload } from '../../types/domain';
+import { useAuth } from '../../context/AuthContext';
 
 const BILATERAL_FAMILIES: ExerciseId[] = ['lunge', 'bicep_curl', 'supported_row'];
 
@@ -24,6 +25,7 @@ export default function CvSessionScreen() {
     sessionType?: string;
   }>();
   const { provideFeedback } = useAccessibility();
+  const { user } = useAuth();
 
   const family = (params.family ?? 'squat') as ExerciseId;
   const exerciseId = params.exerciseId ?? `ex-${family}`;
@@ -46,6 +48,7 @@ export default function CvSessionScreen() {
     });
 
     const payload: WorkoutCompletionPayload = {
+      user_id: user?.id || 'user_default',
       activity_id: params.activityId || 'strength',
       requested_activity_id: params.activityId || 'strength',
       progression_key: params.progressionKey || params.activityId || 'strength',
@@ -56,7 +59,7 @@ export default function CvSessionScreen() {
       }
     };
 
-    await workoutService.logWorkoutCompletion(payload);
+    await workoutService.logWorkoutCompletion(payload, 25, result.reps, user?.id);
     router.back();
   }
 
