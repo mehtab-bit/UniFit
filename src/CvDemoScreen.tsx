@@ -179,7 +179,7 @@ export function CvDemoScreen({
         });
       }
     }
-  }, [tracker.reps, quality.score, quality.correction]);
+  }, [tracker.reps]);
 
   useEffect(() => {
     if (calibrationStage === 'start_hold') {
