@@ -1,0 +1,39 @@
+﻿{
+  "expo": {
+    "name": "UniFit",
+    "slug": "unifit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/unifit-logo.png",
+    "scheme": "unifit",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/unifit-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.unifit.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/unifit-logo.png",
+        "backgroundColor": "#0F172A"
+      },
+      "package": "com.unifit.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/unifit-logo.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

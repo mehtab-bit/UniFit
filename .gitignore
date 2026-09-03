@@ -1,0 +1,21 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+
+# Expo / Builds
+.expo/
+dist/
+web-build/
+
+# IDE / System
+.DS_Store
+Thumbs.db
+
+# @generated expo-cli sync-2b81b286409207a5da26e14c78851eb30d8ccbdb
+expo-env.d.ts
