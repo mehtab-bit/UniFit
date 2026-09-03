@@ -97,7 +97,7 @@ export default function ProgressScreen() {
                   <Text style={styles.heroNumberLabel}>MONTHLY CONSISTENCY</Text>
                   <Text style={styles.heroPhaseText}>{phaseTitle}</Text>
 
-                  {summary?.activity_rule_week ? (
+                  {typeof summary?.activity_rule_week === 'number' ? (
                     <View style={styles.progWeekPill}>
                       <Text style={styles.progWeekText}>
                         Progression Week {summary.activity_rule_week} Active
