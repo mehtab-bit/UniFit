@@ -56,7 +56,9 @@ export async function apiRequest<T>(
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  // Plan generation is CPU-heavy and can take ~20s on a cold cache, so the
+  // timeout must comfortably exceed the engine's worst case.
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
 
   try {
     const response = await fetch(url, {
