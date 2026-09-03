@@ -177,20 +177,62 @@ export const ENGINE_MEALS: Meal[] = [
   },
 ];
 
+/** Base calories per meal type used to scale portions to the user's target. */
+const BASE_CALORIES = {
+  breakfast: 480,
+  lunch: 650,
+  evening_snack: 220,
+  dinner: 590,
+};
+
+function scaledMeal(meal: Meal, scale: number): Meal {
+  const calories = Math.max(80, Math.round(meal.calories * scale));
+  return {
+    ...meal,
+    calories,
+    caloriesFormatted: `${calories} kcal`,
+    proteinG: Math.round(meal.proteinG * scale),
+    carbsG: meal.carbsG != null ? Math.round(meal.carbsG * scale) : null,
+    carbohydratesG: meal.carbohydratesG != null ? Math.round(meal.carbohydratesG * scale) : null,
+    fatG: Math.round(meal.fatG * scale),
+    fibreG: meal.fibreG != null ? Math.round(meal.fibreG * scale) : null,
+    nutrition: {
+      ...meal.nutrition,
+      calories,
+      proteinG: Math.round(meal.nutrition.proteinG * scale),
+      carbohydratesG:
+        meal.nutrition.carbohydratesG != null
+          ? Math.round(meal.nutrition.carbohydratesG * scale)
+          : null,
+      fatG: Math.round(meal.nutrition.fatG * scale),
+      fibreG:
+        meal.nutrition.fibreG != null ? Math.round(meal.nutrition.fibreG * scale) : null,
+    },
+  };
+}
+
 export class MockMealService implements IMealService {
-  async getDailyMealPlan(_userId?: string, date?: string): Promise<MealPlan> {
-    const targets = await mockNutritionService.getDailyTargets(_userId, date);
+  async getDailyMealPlan(userId?: string, date?: string): Promise<MealPlan> {
+    const targets = await mockNutritionService.getDailyTargets(userId, date);
+    const baseTotal = Object.values(BASE_CALORIES).reduce((a, b) => a + b, 0);
+    const scale = (targets.calories || baseTotal) / baseTotal;
     return {
       id: 'daily-plan-1',
-      date: date || '2026-09-21',
+      date: date || new Date().toISOString().split('T')[0],
       targets,
-      meals: ENGINE_MEALS,
+      meals: ENGINE_MEALS.map((m) => scaledMeal(m, scale)),
     };
   }
 
-  async getWeeklyMealPlan(_userId?: string): Promise<MealPlan[]> {
-    const daily = await this.getDailyMealPlan(_userId);
-    return [daily, daily, daily, daily, daily, daily, daily];
+  async getWeeklyMealPlan(userId?: string): Promise<MealPlan[]> {
+    const today = new Date();
+    const days: MealPlan[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      days.push(await this.getDailyMealPlan(userId, d.toISOString().split('T')[0]));
+    }
+    return days;
   }
 
   async getMealByDate(date: string, userId?: string): Promise<MealPlan | null> {

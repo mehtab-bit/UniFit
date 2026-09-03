@@ -1,6 +1,14 @@
 import { IWorkoutService } from '../types';
-import { WorkoutPlan, WorkoutDay, Exercise, WorkoutCompletionPayload } from '../../types/domain';
+import {
+  WorkoutPlan,
+  WorkoutDay,
+  Exercise,
+  WorkoutCompletionPayload,
+  WorkoutActivityType,
+} from '../../types/domain';
 import { Colors } from '../../constants/colors';
+import { ProfileService } from '../../lib/profile';
+import { UserProfile } from '../../types/quiz';
 
 /**
  * Standard 5 Strength Families per Fitness Engine Week 1 Specification:
@@ -370,42 +378,249 @@ export const MOCK_WEEKLY_DAYS: WorkoutDay[] = [
   },
 ];
 
-export class MockWorkoutService implements IWorkoutService {
-  async getWeeklyPlan(_userId?: string): Promise<WorkoutPlan> {
-    return this.getWeeklyWorkoutPlan(_userId);
-  }
+/** Intermediate variants used when the user reports some training experience. */
+const INTERMEDIATE_EXERCISES: Exercise[] = [
+  {
+    id: 'ex-bodyweight-squat',
+    name: 'Bodyweight Squat',
+    target: 'Quadriceps, Glutes & Core',
+    family: 'squat',
+    variationLevel: 'bodyweight',
+    sets: 3,
+    reps: 10,
+    restSeconds: 60,
+    unit: 'reps',
+    icon: 'activity',
+    equipment: 'Bodyweight',
+    instructions:
+      'Stand with feet shoulder-width apart. Sit hips back and down until thighs reach parallel or comfortable depth, then drive through the whole foot to return upright.',
+    formCues: ['Knees track over toes', 'Chest stays proud', 'Hips and knees extend together'],
+  },
+  {
+    id: 'ex-bodyweight-lunge',
+    name: 'Reverse Lunge',
+    target: 'Legs, Glutes & Balance',
+    family: 'lunge',
+    variationLevel: 'bodyweight',
+    sets: 3,
+    reps: 8,
+    restSeconds: 60,
+    unit: 'reps',
+    icon: 'repeat',
+    equipment: 'Bodyweight',
+    instructions:
+      'Step one foot back and lower the rear knee toward the floor. Push through the front heel to return and alternate sides.',
+    formCues: ['Front knee stacked over ankle', 'Torso tall', 'Controlled tempo'],
+  },
+  {
+    id: 'ex-knee-pushup',
+    name: 'Knee Push-Up',
+    target: 'Chest, Shoulders & Triceps',
+    family: 'pushup',
+    variationLevel: 'knee',
+    sets: 3,
+    reps: 8,
+    restSeconds: 60,
+    unit: 'reps',
+    icon: 'shield',
+    equipment: 'Bodyweight',
+    instructions:
+      'From knees with hands under shoulders, lower the chest toward the floor keeping a straight torso line, then press back up.',
+    formCues: ['Straight line from knees to head', 'Elbows about 45 degrees', 'Full range with control'],
+  },
+  {
+    id: 'ex-dumbbell-curl',
+    name: 'Dumbbell Bicep Curl',
+    target: 'Biceps',
+    family: 'bicep_curl',
+    variationLevel: 'light_dumbbell',
+    sets: 3,
+    reps: 10,
+    restSeconds: 60,
+    unit: 'reps',
+    icon: 'dumbbell',
+    equipment: 'Dumbbells or Filled Bottles',
+    instructions:
+      'Stand tall holding dumbbells at your sides. Curl the weights to shoulder height keeping elbows pinned, squeeze, and lower with control.',
+    formCues: ['Elbows pinned to ribs', 'No torso swing', 'Lower for a 2-count'],
+  },
+  {
+    id: 'ex-band-row',
+    name: 'Resistance Band Row',
+    target: 'Upper Back & Rear Delts',
+    family: 'supported_row',
+    variationLevel: 'band',
+    sets: 3,
+    reps: 10,
+    restSeconds: 60,
+    unit: 'reps',
+    icon: 'compass',
+    equipment: 'Resistance Band',
+    instructions:
+      'Anchor the band at chest height. Pull both ends toward your ribs, squeezing the shoulder blades together, then return with control.',
+    formCues: ['Spine neutral', 'Squeeze shoulder blades', 'Elbows travel near torso'],
+  },
+];
 
-  async getWeeklyWorkoutPlan(_userId?: string): Promise<WorkoutPlan> {
-    return {
+/** Advanced variants for users who train regularly and have equipment. */
+const ADVANCED_EXERCISES: Exercise[] = INTERMEDIATE_EXERCISES.map((ex) => ({
+  ...ex,
+  sets: (ex.sets ?? 3) + 1,
+  reps: (ex.reps ?? 8) + 2,
+  variationLevel: `loaded_${ex.variationLevel}`,
+}));
+
+function exercisesForProfile(profile: UserProfile | null): Exercise[] {
+  const experience = profile?.strength_experience ?? 'new';
+  const equipment = profile?.strength_equipment ?? [];
+  const hasGear =
+    equipment.includes('dumbbells') ||
+    equipment.includes('resistance_bands') ||
+    equipment.includes('household_weights');
+  if (experience === 'regularly_train' && hasGear) return ADVANCED_EXERCISES;
+  if (experience === 'some_experience' || experience === 'regularly_train') {
+    return hasGear ? INTERMEDIATE_EXERCISES : ENGINE_EXERCISES;
+  }
+  return ENGINE_EXERCISES;
+}
+
+function pickCardio(profile: UserProfile | null): WorkoutActivityType[] {
+  const prefs = (profile?.preferred_activities?.length
+    ? profile.preferred_activities
+    : ['running', 'cycling']
+  ).filter((a) => a !== 'strength');
+  const pool = ['running', 'cycling', 'walking', 'swimming'] as WorkoutActivityType[];
+  const chosen = (['running', 'cycling', 'walking', 'swimming'] as WorkoutActivityType[]).filter(
+    (a) => prefs.includes(a as any)
+  );
+  return chosen.length >= 2 ? chosen : pool.slice(0, 2);
+}
+
+function todayStatus(dateStr: string): WorkoutDay['status'] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const date = new Date(dateStr + 'T00:00:00');
+  if (+date === +today) return 'today';
+  if (date < today) return 'completed';
+  return 'planned';
+}
+
+/**
+ * Builds a 7-day plan anchored to the current week (Monday start) so "today"
+ * is always correct, personalized to the user's profile.
+ */
+async function buildPersonalizedWeek(userId?: string): Promise<{ plan: WorkoutPlan; days: WorkoutDay[] }> {
+  const profile = await (async () => {
+    if (!userId || userId === 'user_default') return null;
+    try {
+      return await ProfileService.getProfile(userId);
+    } catch {
+      return null;
+    }
+  })();
+
+  const exercises = exercisesForProfile(profile);
+  const cardio = pickCardio(profile);
+
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+
+  const days: WorkoutDay[] = MOCK_WEEKLY_DAYS.map((day, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+    const dayNumber = String(date.getDate()).padStart(2, '0');
+
+    const updated: WorkoutDay = {
+      ...day,
+      date: dateStr,
+      dayNumber,
+      status: todayStatus(dateStr),
+      isToday: dateStr === new Date().toISOString().split('T')[0],
+    };
+
+    if (day.activity === 'strength' && updated.exercises) {
+      updated.exercises = exercises;
+    }
+
+    // Personalize cardio days from the user's chosen activities.
+    const cardioIndex = ['tue', 'sat'].indexOf(day.id);
+    if (cardioIndex >= 0) {
+      const activity = cardio[cardioIndex % cardio.length];
+      const cardioTitles: Record<string, string> = {
+        running: 'Run-Walk Session',
+        cycling: 'Easy Cycling',
+        walking: 'Brisk Walking Session',
+        swimming: 'Easy Swim Session',
+      };
+      updated.activity = activity;
+      updated.activity_id = activity === 'running' ? 'walking' : activity;
+      updated.requested_activity_id = activity;
+      updated.title = cardioTitles[activity] || updated.title;
+      updated.focus =
+        activity === 'cycling'
+          ? 'Steady-state Zone 2 endurance'
+          : activity === 'walking'
+          ? 'Aerobic base conditioning at brisk pace'
+          : 'Low-impact aerobic conditioning';
+      updated.category = activity === 'cycling' ? 'Endurance' : 'Cardio';
+      updated.iconName =
+        activity === 'running' ? 'run' : activity === 'walking' ? 'walk' : activity === 'swimming' ? 'waves' : 'bike';
+      updated.equipment =
+        activity === 'swimming' ? 'Pool & Towel' : activity === 'walking' ? 'Walking Shoes' : updated.equipment;
+    }
+
+    return updated;
+  });
+
+  return {
+    plan: {
       id: 'plan-week-1',
       weekNumber: 1,
       title: 'Phase 1: Functional Base Calibration',
       subtitle: "Here's your plan for this week.",
       badgeText: "THIS WEEK'S PLAN",
       description: 'Follow your plan, stay consistent, see results.',
-      days: MOCK_WEEKLY_DAYS,
-    };
+      days,
+    },
+    days,
+  };
+}
+
+export class MockWorkoutService implements IWorkoutService {
+  async getWeeklyPlan(userId?: string): Promise<WorkoutPlan> {
+    return this.getWeeklyWorkoutPlan(userId);
   }
 
-  async getTodayWorkout(_userId?: string): Promise<WorkoutDay> {
-    const today = MOCK_WEEKLY_DAYS.find((d) => d.status === 'today') || MOCK_WEEKLY_DAYS[0];
+  async getWeeklyWorkoutPlan(userId?: string): Promise<WorkoutPlan> {
+    const { plan } = await buildPersonalizedWeek(userId);
+    return plan;
+  }
+
+  async getTodayWorkout(userId?: string): Promise<WorkoutDay> {
+    const { days } = await buildPersonalizedWeek(userId);
+    const today = days.find((d) => d.status === 'today') || days[0];
     return today;
   }
 
-  async getTomorrowWorkout(_userId?: string): Promise<WorkoutDay> {
-    const todayIndex = MOCK_WEEKLY_DAYS.findIndex((d) => d.status === 'today');
-    const tomorrowIndex = (todayIndex + 1) % MOCK_WEEKLY_DAYS.length;
-    return MOCK_WEEKLY_DAYS[tomorrowIndex];
+  async getTomorrowWorkout(userId?: string): Promise<WorkoutDay> {
+    const { days } = await buildPersonalizedWeek(userId);
+    const todayIndex = days.findIndex((d) => d.status === 'today');
+    const tomorrowIndex = (todayIndex + 1) % days.length;
+    return days[tomorrowIndex];
   }
 
-  async getUpcomingWorkouts(_userId?: string): Promise<WorkoutDay[]> {
-    const todayIndex = MOCK_WEEKLY_DAYS.findIndex((d) => d.status === 'today');
-    return MOCK_WEEKLY_DAYS.slice(todayIndex + 2, todayIndex + 5);
+  async getUpcomingWorkouts(userId?: string): Promise<WorkoutDay[]> {
+    const { days } = await buildPersonalizedWeek(userId);
+    const todayIndex = days.findIndex((d) => d.status === 'today');
+    return days.slice(todayIndex + 2, todayIndex + 5);
   }
 
-  async getWorkoutByDate(date: string, _userId?: string): Promise<WorkoutDay | null> {
-    const match = MOCK_WEEKLY_DAYS.find((d) => d.date === date);
-    return match || MOCK_WEEKLY_DAYS[0];
+  async getWorkoutByDate(date: string, userId?: string): Promise<WorkoutDay | null> {
+    const { days } = await buildPersonalizedWeek(userId);
+    const match = days.find((d) => d.date === date);
+    return match || days[0];
   }
 
   /**
