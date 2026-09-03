@@ -90,28 +90,31 @@ describe('feedback', () => {
 });
 
 describe('rep counter', () => {
-  it('counts one full start to end to start cycle', () => {
+  it('counts a rep when the joint reaches the calibrated end position', () => {
     const calibration = createCalibration(160, 60);
     let state = createRepCounterState();
 
     state = updateRepCounter(state, 150, calibration);
     state = updateRepCounter(state, 60, calibration);
+
+    expect(state.reps).toBe(1);
+
+    // Returning to start does not add a second rep; it resets for the next one.
     state = updateRepCounter(state, 100, calibration);
     state = updateRepCounter(state, 160, calibration);
 
     expect(state.reps).toBe(1);
   });
 
-  it('does not double-count while hovering near the middle', () => {
+  it('does not double-count while hovering near the end', () => {
     const calibration = createCalibration(160, 60);
     let state = createRepCounterState();
 
     state = updateRepCounter(state, 60, calibration);
-    state = updateRepCounter(state, 110, calibration);
-    state = updateRepCounter(state, 100, calibration);
-    state = updateRepCounter(state, 105, calibration);
+    state = updateRepCounter(state, 65, calibration);
+    state = updateRepCounter(state, 62, calibration);
 
-    expect(state.reps).toBe(0);
+    expect(state.reps).toBe(1);
   });
 });
 

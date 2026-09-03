@@ -24,17 +24,21 @@ export function updateRepCounter(
 
   const progress = getExerciseProgress(angle, calibration);
 
-  if (state.phase === 'start' && progress >= 0.8) {
+  // A rep is completed when the user REACHES the calibrated end position —
+  // the top of a curl, the bottom of a squat. Returning to start resets the
+  // state for the next rep instead of being the counting event. Counting on
+  // the return was what made curls register mid-descent and feel inverted.
+  if (state.phase === 'start' && progress >= 0.95) {
     return {
       phase: 'end',
-      reps: state.reps
+      reps: state.reps + 1
     };
   }
 
-  if (state.phase === 'end' && progress <= 0.2) {
+  if (state.phase === 'end' && progress <= 0.05) {
     return {
       phase: 'start',
-      reps: state.reps + 1
+      reps: state.reps
     };
   }
 

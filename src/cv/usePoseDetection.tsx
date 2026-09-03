@@ -48,6 +48,7 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
 
   const detectorRef = useRef<PoseDetector | null>(null);
   const lastKeypointsRef = useRef<CvKeypoint[]>([]);
+  const smoothedKeypointsRef = useRef<CvKeypoint[]>([]);
   const lastVisibleRef = useRef<KeypointName[]>([]);
   const lastSourceRef = useRef<SourceSize | null>(null);
   const isActiveRef = useRef(true);
@@ -122,12 +123,18 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
                 setFramesProcessed((currentCount) => currentCount + 1);
                 if (pose && pose.keypoints.length > 0) {
                   const detectedKeypoints = normalizeKeypoints(pose.keypoints);
+                  const smoothed = smoothKeypoints(
+                    smoothedKeypointsRef.current,
+                    detectedKeypoints,
+                    0.55
+                  );
+                  smoothedKeypointsRef.current = smoothed;
                   const visible = detectedKeypoints
                     .filter((keypoint) => typeof keypoint.score !== 'number' || keypoint.score >= 0.35)
                     .map((keypoint) => keypoint.name);
-                  if (keypointsChanged(lastKeypointsRef.current, detectedKeypoints)) {
-                    lastKeypointsRef.current = detectedKeypoints;
-                    setKeypoints(detectedKeypoints);
+                  if (keypointsChanged(lastKeypointsRef.current, smoothed, 0.015)) {
+                    lastKeypointsRef.current = smoothed;
+                    setKeypoints(smoothed);
                   }
                   if (lastVisibleRef.current.join() !== visible.join()) {
                     lastVisibleRef.current = visible;
@@ -206,19 +213,39 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
   };
 }
 
-function keypointsChanged(a: CvKeypoint[], b: CvKeypoint[]) {
+function keypointsChanged(a: CvKeypoint[], b: CvKeypoint[], threshold = 0.001) {
   if (a.length !== b.length) return true;
   for (let i = 0; i < a.length; i++) {
     const ka = a[i];
     const kb = b[i];
     if (
       ka.name !== kb.name ||
-      Math.abs(ka.x - kb.x) > 0.001 ||
-      Math.abs(ka.y - kb.y) > 0.001 ||
+      Math.abs(ka.x - kb.x) > threshold ||
+      Math.abs(ka.y - kb.y) > threshold ||
       (ka.score ?? 0) !== (kb.score ?? 0)
     ) {
       return true;
     }
   }
   return false;
+}
+
+function smoothKeypoints(
+  previous: CvKeypoint[],
+  current: CvKeypoint[],
+  alpha: number
+): CvKeypoint[] {
+  if (previous.length !== current.length) {
+    return current;
+  }
+  const previousMap = new Map(previous.map((keypoint) => [keypoint.name, keypoint]));
+  return current.map((keypoint) => {
+    const last = previousMap.get(keypoint.name);
+    if (!last) return keypoint;
+    return {
+      ...keypoint,
+      x: last.x + (keypoint.x - last.x) * alpha,
+      y: last.y + (keypoint.y - last.y) * alpha
+    };
+  });
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { captureCalibrationAngle, createCalibration } from './calibration';
+import { captureCalibrationAngle, normalizeCalibration } from './calibration';
 import { chooseVisibleSide, exerciseDefinitions } from './exercises';
 import { getFeedbackState } from './feedback';
 import { getVisibleKeypoints } from './keypoints';
@@ -87,12 +87,24 @@ export function useExerciseTracker(
   }, [calibrationPhase, smoothedAngle]);
 
   useEffect(() => {
-    if (calibration === null || smoothedAngle === null) {
+    // Never count reps while calibration is incomplete — during the end-move
+    // transition calibration is partially set and the angle sweep would
+    // register phantom reps.
+    if (
+      calibration === null ||
+      smoothedAngle === null ||
+      calibrationPhase !== 'complete'
+    ) {
       return;
     }
     dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
-  }, [calibration, smoothedAngle]);
+  }, [calibration, calibrationPhase, smoothedAngle]);
 
+  // Calibration is canonicalized so START = the straight/standing pose
+  // (larger joint angle) and END = the bent/contracted pose (smaller angle).
+  // Reps register on REACHING the end. While in the 'start' phase the user is
+  // heading toward the end (curl up / squat down) -> cue 'up'. After the rep
+  // they return toward start -> cue 'down'.
   const target = repState.phase === 'start' ? 'up' : 'down';
   const feedbackValue = getFeedbackState(smoothedAngle, calibration, target);
 
@@ -122,16 +134,17 @@ export function useExerciseTracker(
 
     if (phase === 'start') {
       setCalibration((currentCalibration) =>
-        createCalibration(capturedAngle, currentCalibration?.endAngle ?? capturedAngle)
+        normalizeCalibration(capturedAngle, currentCalibration?.endAngle ?? capturedAngle)
       );
       setCalibrationPhase('idle');
       return true;
     }
 
     if (phase === 'end') {
-      setCalibration((currentCalibration) =>
-        createCalibration(currentCalibration?.startAngle ?? capturedAngle, capturedAngle)
-      );
+      setCalibration((currentCalibration) => {
+        const previousStart = currentCalibration?.startAngle;
+        return normalizeCalibration(previousStart ?? capturedAngle, capturedAngle);
+      });
       setCalibrationPhase('complete');
       return true;
     }

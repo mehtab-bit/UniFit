@@ -44,7 +44,7 @@ const stageDetails: Record<
   },
   complete: {
     label: 'Calibrated',
-    hint: () => 'Now do full reps. Watch the dots follow your body.'
+    hint: () => 'Calibrated — do full reps now. The skeleton tracks your movement.'
   },
   failed: {
     label: 'Not steady',

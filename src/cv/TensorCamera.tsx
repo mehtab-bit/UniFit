@@ -130,8 +130,13 @@ export class TensorCamera extends React.Component<TensorCameraProps, TensorCamer
 
       if (autorender) {
         const renderLoop = () => {
-          updateCameraPreview();
-          gl.endFrameEXP();
+          try {
+            updateCameraPreview();
+            gl.endFrameEXP();
+          } catch {
+            // A dropped GL frame (common when switching cameras/exercises)
+            // must not kill the loop — skip and retry next frame.
+          }
           this.rafId = requestAnimationFrame(renderLoop);
         };
 

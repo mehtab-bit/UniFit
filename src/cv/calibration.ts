@@ -16,3 +16,21 @@ export function createCalibration(startAngle: number, endAngle: number): AngleCa
     endAngle
   };
 }
+
+/**
+ * All five strength families move from a large joint angle (straight /
+ * standing) to a small joint angle (bent / squat bottom / curl peak). If a
+ * user's two calibration holds are captured in reverse order, the rep counter
+ * and feedback invert. Canonicalize so start is always the larger angle.
+ */
+/**
+ * Rep math assumes start (large angle) -> end (small angle). Auto-calibration
+ * can capture the two holds in either order depending on how the user moves,
+ * so canonicalize: the larger measured angle is ALWAYS the start.
+ */
+export function normalizeCalibration(a: number, b: number): AngleCalibration {
+  if (a >= b) {
+    return createCalibration(a, b);
+  }
+  return createCalibration(b, a);
+}
