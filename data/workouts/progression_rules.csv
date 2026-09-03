@@ -1,0 +1,289 @@
+rule_id,lifestyle,week_number,activity_id,session_variant,template_id,sets,reps,rest_seconds,recommended_variation_level,distance_km,distance_m,duration_min,interval_count,work_interval_sec,recovery_interval_sec,intensity,advance_if_completion_pct,progression_note
+PR0001,sedentary,1,strength,strength,STRENGTH_FULL_BODY,2,6,75,1,,,,,,,easy,80,Progress only when the previous workload can be completed with controlled form.
+PR0002,sedentary,1,walking,primary,WALK_EASY,,,,,1.5,,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0003,sedentary,1,walking,secondary,WALK_BRISK,,,,,1.5,,20,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0004,sedentary,1,running,primary,RUN_WALK,,,,,1.2,,15,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0005,sedentary,1,running,secondary,RUN_WALK,,,,,1.2,,15,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0006,sedentary,1,cycling,primary,CYCLE_EASY,,,,,5.0,,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0007,sedentary,1,cycling,secondary,CYCLE_STEADY,,,,,5.0,,20,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0008,sedentary,1,swimming,primary,SWIM_EASY,,,,,,300,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0009,sedentary,1,swimming,secondary,SWIM_TECHNIQUE,,,,,,300,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0010,sedentary,2,strength,strength,STRENGTH_FULL_BODY,2,8,75,1,,,,,,,easy,80,Progress only when the previous workload can be completed with controlled form.
+PR0011,sedentary,2,walking,primary,WALK_EASY,,,,,1.6,,22,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0012,sedentary,2,walking,secondary,WALK_BRISK,,,,,1.6,,22,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0013,sedentary,2,running,primary,RUN_WALK,,,,,1.3,,16,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0014,sedentary,2,running,secondary,RUN_WALK,,,,,1.3,,16,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0015,sedentary,2,cycling,primary,CYCLE_EASY,,,,,5.4,,22,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0016,sedentary,2,cycling,secondary,CYCLE_STEADY,,,,,5.4,,22,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0017,sedentary,2,swimming,primary,SWIM_EASY,,,,,,325,22,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0018,sedentary,2,swimming,secondary,SWIM_TECHNIQUE,,,,,,325,22,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0019,sedentary,3,strength,strength,STRENGTH_FULL_BODY,2,10,75,1,,,,,,,easy,80,Progress only when the previous workload can be completed with controlled form.
+PR0020,sedentary,3,walking,primary,WALK_BRISK,,,,,1.7,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0021,sedentary,3,walking,secondary,WALK_BRISK,,,,,1.7,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0022,sedentary,3,running,primary,RUN_WALK,,,,,1.4,,17,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0023,sedentary,3,running,secondary,RUN_WALK,,,,,1.4,,17,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0024,sedentary,3,cycling,primary,CYCLE_STEADY,,,,,5.8,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0025,sedentary,3,cycling,secondary,CYCLE_STEADY,,,,,5.8,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0026,sedentary,3,swimming,primary,SWIM_TECHNIQUE,,,,,,350,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0027,sedentary,3,swimming,secondary,SWIM_TECHNIQUE,,,,,,350,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0028,sedentary,4,strength,strength,STRENGTH_FULL_BODY,2,8,75,1,,,,,,,easy,80,Consolidation week: reduce volume and focus on technique.
+PR0029,sedentary,4,walking,primary,WALK_EASY,,,,,1.4,,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0030,sedentary,4,walking,secondary,WALK_EASY,,,,,1.4,,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0031,sedentary,4,running,primary,RUN_WALK,,,,,1.1,,14,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0032,sedentary,4,running,secondary,RUN_WALK,,,,,1.1,,14,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0033,sedentary,4,cycling,primary,CYCLE_EASY,,,,,4.8,,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0034,sedentary,4,cycling,secondary,CYCLE_EASY,,,,,4.8,,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0035,sedentary,4,swimming,primary,SWIM_TECHNIQUE,,,,,,275,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0036,sedentary,4,swimming,secondary,SWIM_TECHNIQUE,,,,,,275,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0037,sedentary,5,strength,strength,STRENGTH_FULL_BODY,3,8,75,1,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0038,sedentary,5,walking,primary,WALK_BRISK,,,,,1.7,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0039,sedentary,5,walking,secondary,WALK_BRISK,,,,,1.7,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0040,sedentary,5,running,primary,RUN_EASY,,,,,1.4,,17,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0041,sedentary,5,running,secondary,RUN_WALK,,,,,1.4,,17,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0042,sedentary,5,cycling,primary,CYCLE_STEADY,,,,,5.8,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0043,sedentary,5,cycling,secondary,CYCLE_STEADY,,,,,5.8,,23,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0044,sedentary,5,swimming,primary,SWIM_TECHNIQUE,,,,,,350,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0045,sedentary,5,swimming,secondary,SWIM_TECHNIQUE,,,,,,350,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0046,sedentary,6,strength,strength,STRENGTH_FULL_BODY,3,10,70,1,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0047,sedentary,6,walking,primary,WALK_BRISK,,,,,1.8,,24,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0048,sedentary,6,walking,secondary,WALK_INTERVAL,,,,,1.8,,24,4,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0049,sedentary,6,running,primary,RUN_EASY,,,,,1.5,,18,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0050,sedentary,6,running,secondary,RUN_TEMPO,,,,,1.5,,18,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0051,sedentary,6,cycling,primary,CYCLE_STEADY,,,,,6.1,,24,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0052,sedentary,6,cycling,secondary,CYCLE_INTERVAL,,,,,6.1,,24,4,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0053,sedentary,6,swimming,primary,SWIM_TECHNIQUE,,,,,,375,24,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0054,sedentary,6,swimming,secondary,SWIM_INTERVAL,,,,,,375,24,4,,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0055,sedentary,7,strength,strength,STRENGTH_FULL_BODY,3,8,70,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0056,sedentary,7,walking,primary,WALK_BRISK,,,,,2.0,,26,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0057,sedentary,7,walking,secondary,WALK_INTERVAL,,,,,2.0,,26,5,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0058,sedentary,7,running,primary,RUN_EASY,,,,,1.6,,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0059,sedentary,7,running,secondary,RUN_INTERVAL,,,,,1.6,,20,5,45,90,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0060,sedentary,7,cycling,primary,CYCLE_STEADY,,,,,6.5,,26,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0061,sedentary,7,cycling,secondary,CYCLE_INTERVAL,,,,,6.5,,26,5,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0062,sedentary,7,swimming,primary,SWIM_TECHNIQUE,,,,,,400,26,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0063,sedentary,7,swimming,secondary,SWIM_INTERVAL,,,,,,400,26,5,,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0064,sedentary,8,strength,strength,STRENGTH_FULL_BODY,3,10,65,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0065,sedentary,8,walking,primary,WALK_BRISK,,,,,2.0,,27,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0066,sedentary,8,walking,secondary,WALK_INTERVAL,,,,,2.0,,27,5,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0067,sedentary,8,running,primary,RUN_EASY,,,,,1.6,,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0068,sedentary,8,running,secondary,RUN_TEMPO,,,,,1.6,,20,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0069,sedentary,8,cycling,primary,CYCLE_STEADY,,,,,6.8,,27,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0070,sedentary,8,cycling,secondary,CYCLE_INTERVAL,,,,,6.8,,27,5,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0071,sedentary,8,swimming,primary,SWIM_TECHNIQUE,,,,,,400,27,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0072,sedentary,8,swimming,secondary,SWIM_INTERVAL,,,,,,400,27,5,,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0073,light,1,strength,strength,STRENGTH_FULL_BODY,2,8,70,1,,,,,,,easy,80,Progress only when the previous workload can be completed with controlled form.
+PR0074,light,1,walking,primary,WALK_EASY,,,,,2.5,,30,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0075,light,1,walking,secondary,WALK_BRISK,,,,,2.5,,30,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0076,light,1,running,primary,RUN_WALK,,,,,2.0,,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0077,light,1,running,secondary,RUN_EASY,,,,,2.0,,20,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0078,light,1,cycling,primary,CYCLE_EASY,,,,,8.0,,30,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0079,light,1,cycling,secondary,CYCLE_STEADY,,,,,8.0,,30,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0080,light,1,swimming,primary,SWIM_EASY,,,,,,500,25,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0081,light,1,swimming,secondary,SWIM_TECHNIQUE,,,,,,500,25,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0082,light,2,strength,strength,STRENGTH_FULL_BODY,2,10,70,1,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0083,light,2,walking,primary,WALK_EASY,,,,,2.7,,32,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0084,light,2,walking,secondary,WALK_BRISK,,,,,2.7,,32,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0085,light,2,running,primary,RUN_WALK,,,,,2.2,,22,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0086,light,2,running,secondary,RUN_EASY,,,,,2.2,,22,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0087,light,2,cycling,primary,CYCLE_EASY,,,,,8.6,,32,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0088,light,2,cycling,secondary,CYCLE_STEADY,,,,,8.6,,32,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0089,light,2,swimming,primary,SWIM_EASY,,,,,,550,27,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0090,light,2,swimming,secondary,SWIM_TECHNIQUE,,,,,,550,27,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0091,light,3,strength,strength,STRENGTH_FULL_BODY,3,8,70,1,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0092,light,3,walking,primary,WALK_BRISK,,,,,2.9,,34,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0093,light,3,walking,secondary,WALK_BRISK,,,,,2.9,,34,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0094,light,3,running,primary,RUN_EASY,,,,,2.3,,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0095,light,3,running,secondary,RUN_EASY,,,,,2.3,,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0096,light,3,cycling,primary,CYCLE_STEADY,,,,,9.2,,34,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0097,light,3,cycling,secondary,CYCLE_STEADY,,,,,9.2,,34,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0098,light,3,swimming,primary,SWIM_TECHNIQUE,,,,,,575,29,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0099,light,3,swimming,secondary,SWIM_TECHNIQUE,,,,,,575,29,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0100,light,4,strength,strength,STRENGTH_FULL_BODY,2,8,75,1,,,,,,,easy,80,Consolidation week: reduce volume and focus on technique.
+PR0101,light,4,walking,primary,WALK_EASY,,,,,2.4,,28,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0102,light,4,walking,secondary,WALK_EASY,,,,,2.4,,28,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0103,light,4,running,primary,RUN_EASY,,,,,1.9,,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0104,light,4,running,secondary,RUN_EASY,,,,,1.9,,19,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0105,light,4,cycling,primary,CYCLE_EASY,,,,,7.6,,28,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0106,light,4,cycling,secondary,CYCLE_EASY,,,,,7.6,,28,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0107,light,4,swimming,primary,SWIM_TECHNIQUE,,,,,,475,24,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0108,light,4,swimming,secondary,SWIM_TECHNIQUE,,,,,,475,24,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0109,light,5,strength,strength,STRENGTH_FULL_BODY,3,10,65,1,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0110,light,5,walking,primary,WALK_BRISK,,,,,2.9,,34,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0111,light,5,walking,secondary,WALK_INTERVAL,,,,,2.9,,34,5,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0112,light,5,running,primary,RUN_EASY,,,,,2.3,,23,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0113,light,5,running,secondary,RUN_INTERVAL,,,,,2.3,,23,5,60,90,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0114,light,5,cycling,primary,CYCLE_STEADY,,,,,9.2,,34,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0115,light,5,cycling,secondary,CYCLE_INTERVAL,,,,,9.2,,34,5,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0116,light,5,swimming,primary,SWIM_TECHNIQUE,,,,,,575,29,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0117,light,5,swimming,secondary,SWIM_INTERVAL,,,,,,575,29,5,,45,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0118,light,6,strength,strength,STRENGTH_FULL_BODY,3,12,65,1,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0119,light,6,walking,primary,WALK_BRISK,,,,,3.0,,37,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0120,light,6,walking,secondary,WALK_INTERVAL,,,,,3.0,,37,5,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0121,light,6,running,primary,RUN_EASY,,,,,2.4,,24,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0122,light,6,running,secondary,RUN_TEMPO,,,,,2.4,,24,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0123,light,6,cycling,primary,CYCLE_STEADY,,,,,9.8,,37,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0124,light,6,cycling,secondary,CYCLE_INTERVAL,,,,,9.8,,37,5,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0125,light,6,swimming,primary,SWIM_TECHNIQUE,,,,,,600,30,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0126,light,6,swimming,secondary,SWIM_INTERVAL,,,,,,600,30,5,,45,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0127,light,7,strength,strength,STRENGTH_FULL_BODY,3,8,65,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0128,light,7,walking,primary,WALK_BRISK,,,,,3.2,,39,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0129,light,7,walking,secondary,WALK_INTERVAL,,,,,3.2,,39,6,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0130,light,7,running,primary,RUN_EASY,,,,,2.6,,26,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0131,light,7,running,secondary,RUN_INTERVAL,,,,,2.6,,26,6,60,90,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0132,light,7,cycling,primary,CYCLE_STEADY,,,,,10.4,,39,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0133,light,7,cycling,secondary,CYCLE_INTERVAL,,,,,10.4,,39,6,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0134,light,7,swimming,primary,SWIM_TECHNIQUE,,,,,,650,32,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0135,light,7,swimming,secondary,SWIM_INTERVAL,,,,,,650,32,6,,45,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0136,light,8,strength,strength,STRENGTH_FULL_BODY,3,10,60,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0137,light,8,walking,primary,WALK_BRISK,,,,,3.4,,40,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0138,light,8,walking,secondary,WALK_INTERVAL,,,,,3.4,,40,6,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0139,light,8,running,primary,RUN_EASY,,,,,2.7,,27,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0140,light,8,running,secondary,RUN_TEMPO,,,,,2.7,,27,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0141,light,8,cycling,primary,CYCLE_STEADY,,,,,10.8,,40,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0142,light,8,cycling,secondary,CYCLE_INTERVAL,,,,,10.8,,40,6,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0143,light,8,swimming,primary,SWIM_TECHNIQUE,,,,,,675,34,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0144,light,8,swimming,secondary,SWIM_INTERVAL,,,,,,675,34,6,,45,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0145,moderate,1,strength,strength,STRENGTH_FULL_BODY,3,8,65,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0146,moderate,1,walking,primary,WALK_EASY,,,,,3.5,,40,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0147,moderate,1,walking,secondary,WALK_BRISK,,,,,3.5,,40,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0148,moderate,1,running,primary,RUN_EASY,,,,,3.5,,30,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0149,moderate,1,running,secondary,RUN_EASY,,,,,3.5,,30,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0150,moderate,1,cycling,primary,CYCLE_EASY,,,,,12.0,,40,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0151,moderate,1,cycling,secondary,CYCLE_STEADY,,,,,12.0,,40,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0152,moderate,1,swimming,primary,SWIM_EASY,,,,,,700,35,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0153,moderate,1,swimming,secondary,SWIM_TECHNIQUE,,,,,,700,35,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0154,moderate,2,strength,strength,STRENGTH_FULL_BODY,3,10,65,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0155,moderate,2,walking,primary,WALK_EASY,,,,,3.8,,43,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0156,moderate,2,walking,secondary,WALK_INTERVAL,,,,,3.8,,43,6,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0157,moderate,2,running,primary,RUN_EASY,,,,,3.8,,32,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0158,moderate,2,running,secondary,RUN_TEMPO,,,,,3.8,,32,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0159,moderate,2,cycling,primary,CYCLE_EASY,,,,,13.0,,43,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0160,moderate,2,cycling,secondary,CYCLE_INTERVAL,,,,,13.0,,43,6,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0161,moderate,2,swimming,primary,SWIM_EASY,,,,,,750,38,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0162,moderate,2,swimming,secondary,SWIM_INTERVAL,,,,,,750,38,6,,40,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0163,moderate,3,strength,strength,STRENGTH_FULL_BODY,3,12,60,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0164,moderate,3,walking,primary,WALK_BRISK,,,,,4.0,,46,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0165,moderate,3,walking,secondary,WALK_INTERVAL,,,,,4.0,,46,6,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0166,moderate,3,running,primary,RUN_EASY,,,,,4.0,,34,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0167,moderate,3,running,secondary,RUN_INTERVAL,,,,,4.0,,34,6,75,75,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0168,moderate,3,cycling,primary,CYCLE_STEADY,,,,,13.8,,46,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0169,moderate,3,cycling,secondary,CYCLE_INTERVAL,,,,,13.8,,46,6,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0170,moderate,3,swimming,primary,SWIM_TECHNIQUE,,,,,,800,40,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0171,moderate,3,swimming,secondary,SWIM_INTERVAL,,,,,,800,40,6,,40,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0172,moderate,4,strength,strength,STRENGTH_FULL_BODY,2,10,70,2,,,,,,,easy,80,Consolidation week: reduce volume and focus on technique.
+PR0173,moderate,4,walking,primary,WALK_EASY,,,,,3.3,,38,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0174,moderate,4,walking,secondary,WALK_EASY,,,,,3.3,,38,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0175,moderate,4,running,primary,RUN_EASY,,,,,3.3,,28,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0176,moderate,4,running,secondary,RUN_EASY,,,,,3.3,,28,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0177,moderate,4,cycling,primary,CYCLE_EASY,,,,,11.4,,38,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0178,moderate,4,cycling,secondary,CYCLE_EASY,,,,,11.4,,38,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0179,moderate,4,swimming,primary,SWIM_TECHNIQUE,,,,,,675,33,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0180,moderate,4,swimming,secondary,SWIM_TECHNIQUE,,,,,,675,33,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0181,moderate,5,strength,strength,STRENGTH_FULL_BODY,4,8,65,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0182,moderate,5,walking,primary,WALK_BRISK,,,,,4.0,,46,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0183,moderate,5,walking,secondary,WALK_INTERVAL,,,,,4.0,,46,6,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0184,moderate,5,running,primary,RUN_EASY,,,,,4.0,,34,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0185,moderate,5,running,secondary,RUN_INTERVAL,,,,,4.0,,34,6,75,75,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0186,moderate,5,cycling,primary,CYCLE_STEADY,,,,,13.8,,46,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0187,moderate,5,cycling,secondary,CYCLE_INTERVAL,,,,,13.8,,46,6,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0188,moderate,5,swimming,primary,SWIM_TECHNIQUE,,,,,,800,40,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0189,moderate,5,swimming,secondary,SWIM_INTERVAL,,,,,,800,40,6,,40,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0190,moderate,6,strength,strength,STRENGTH_FULL_BODY,4,10,60,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0191,moderate,6,walking,primary,WALK_BRISK,,,,,4.3,,49,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0192,moderate,6,walking,secondary,WALK_INTERVAL,,,,,4.3,,49,6,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0193,moderate,6,running,primary,RUN_EASY,,,,,4.3,,37,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0194,moderate,6,running,secondary,RUN_TEMPO,,,,,4.3,,37,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0195,moderate,6,cycling,primary,CYCLE_STEADY,,,,,14.6,,49,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0196,moderate,6,cycling,secondary,CYCLE_INTERVAL,,,,,14.6,,49,6,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0197,moderate,6,swimming,primary,SWIM_TECHNIQUE,,,,,,850,43,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0198,moderate,6,swimming,secondary,SWIM_INTERVAL,,,,,,850,43,6,,40,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0199,moderate,7,strength,strength,STRENGTH_FULL_BODY,3,8,60,3,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0200,moderate,7,walking,primary,WALK_BRISK,,,,,4.5,,52,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0201,moderate,7,walking,secondary,WALK_INTERVAL,,,,,4.5,,52,7,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0202,moderate,7,running,primary,RUN_EASY,,,,,4.5,,39,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0203,moderate,7,running,secondary,RUN_INTERVAL,,,,,4.5,,39,7,75,75,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0204,moderate,7,cycling,primary,CYCLE_STEADY,,,,,15.6,,52,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0205,moderate,7,cycling,secondary,CYCLE_INTERVAL,,,,,15.6,,52,7,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0206,moderate,7,swimming,primary,SWIM_TECHNIQUE,,,,,,900,46,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0207,moderate,7,swimming,secondary,SWIM_INTERVAL,,,,,,900,46,7,,40,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0208,moderate,8,strength,strength,STRENGTH_FULL_BODY,3,10,60,3,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0209,moderate,8,walking,primary,WALK_BRISK,,,,,4.7,,54,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0210,moderate,8,walking,secondary,WALK_INTERVAL,,,,,4.7,,54,7,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0211,moderate,8,running,primary,RUN_EASY,,,,,4.7,,40,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0212,moderate,8,running,secondary,RUN_TEMPO,,,,,4.7,,40,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0213,moderate,8,cycling,primary,CYCLE_STEADY,,,,,16.2,,54,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0214,moderate,8,cycling,secondary,CYCLE_INTERVAL,,,,,16.2,,54,7,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0215,moderate,8,swimming,primary,SWIM_TECHNIQUE,,,,,,950,47,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0216,moderate,8,swimming,secondary,SWIM_INTERVAL,,,,,,950,47,7,,40,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0217,very_active,1,strength,strength,STRENGTH_FULL_BODY,3,10,60,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0218,very_active,1,walking,primary,WALK_EASY,,,,,5.0,,55,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0219,very_active,1,walking,secondary,WALK_INTERVAL,,,,,5.0,,55,8,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0220,very_active,1,running,primary,RUN_EASY,,,,,5.0,,40,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0221,very_active,1,running,secondary,RUN_INTERVAL,,,,,5.0,,40,8,90,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0222,very_active,1,cycling,primary,CYCLE_EASY,,,,,18.0,,55,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0223,very_active,1,cycling,secondary,CYCLE_INTERVAL,,,,,18.0,,55,8,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0224,very_active,1,swimming,primary,SWIM_EASY,,,,,,1000,45,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0225,very_active,1,swimming,secondary,SWIM_INTERVAL,,,,,,1000,45,8,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0226,very_active,2,strength,strength,STRENGTH_FULL_BODY,3,12,60,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0227,very_active,2,walking,primary,WALK_EASY,,,,,5.4,,59,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0228,very_active,2,walking,secondary,WALK_INTERVAL,,,,,5.4,,59,8,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0229,very_active,2,running,primary,RUN_EASY,,,,,5.4,,43,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0230,very_active,2,running,secondary,RUN_TEMPO,,,,,5.4,,43,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0231,very_active,2,cycling,primary,CYCLE_EASY,,,,,19.4,,59,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0232,very_active,2,cycling,secondary,CYCLE_INTERVAL,,,,,19.4,,59,8,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0233,very_active,2,swimming,primary,SWIM_EASY,,,,,,1075,49,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0234,very_active,2,swimming,secondary,SWIM_INTERVAL,,,,,,1075,49,8,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0235,very_active,3,strength,strength,STRENGTH_FULL_BODY,4,10,60,2,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0236,very_active,3,walking,primary,WALK_BRISK,,,,,5.8,,63,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0237,very_active,3,walking,secondary,WALK_INTERVAL,,,,,5.8,,63,8,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0238,very_active,3,running,primary,RUN_EASY,,,,,5.8,,46,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0239,very_active,3,running,secondary,RUN_INTERVAL,,,,,5.8,,46,8,90,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0240,very_active,3,cycling,primary,CYCLE_STEADY,,,,,20.7,,63,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0241,very_active,3,cycling,secondary,CYCLE_INTERVAL,,,,,20.7,,63,8,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0242,very_active,3,swimming,primary,SWIM_TECHNIQUE,,,,,,1150,52,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0243,very_active,3,swimming,secondary,SWIM_INTERVAL,,,,,,1150,52,8,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0244,very_active,4,strength,strength,STRENGTH_FULL_BODY,3,8,70,2,,,,,,,easy,80,Consolidation week: reduce volume and focus on technique.
+PR0245,very_active,4,walking,primary,WALK_EASY,,,,,4.8,,52,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0246,very_active,4,walking,secondary,WALK_EASY,,,,,4.8,,52,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0247,very_active,4,running,primary,RUN_EASY,,,,,4.8,,38,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0248,very_active,4,running,secondary,RUN_EASY,,,,,4.8,,38,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0249,very_active,4,cycling,primary,CYCLE_EASY,,,,,17.1,,52,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0250,very_active,4,cycling,secondary,CYCLE_EASY,,,,,17.1,,52,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0251,very_active,4,swimming,primary,SWIM_TECHNIQUE,,,,,,950,43,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0252,very_active,4,swimming,secondary,SWIM_TECHNIQUE,,,,,,950,43,,,,easy,80,Consolidation week: lower total workload and prioritize recovery.
+PR0253,very_active,5,strength,strength,STRENGTH_FULL_BODY,4,10,55,3,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0254,very_active,5,walking,primary,WALK_BRISK,,,,,5.8,,63,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0255,very_active,5,walking,secondary,WALK_INTERVAL,,,,,5.8,,63,8,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0256,very_active,5,running,primary,RUN_EASY,,,,,5.8,,46,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0257,very_active,5,running,secondary,RUN_INTERVAL,,,,,5.8,,46,8,90,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0258,very_active,5,cycling,primary,CYCLE_STEADY,,,,,20.7,,63,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0259,very_active,5,cycling,secondary,CYCLE_INTERVAL,,,,,20.7,,63,8,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0260,very_active,5,swimming,primary,SWIM_TECHNIQUE,,,,,,1150,52,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0261,very_active,5,swimming,secondary,SWIM_INTERVAL,,,,,,1150,52,8,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0262,very_active,6,strength,strength,STRENGTH_FULL_BODY,4,12,55,3,,,,,,,moderate,80,Progress only when the previous workload can be completed with controlled form.
+PR0263,very_active,6,walking,primary,WALK_BRISK,,,,,6.1,,67,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0264,very_active,6,walking,secondary,WALK_INTERVAL,,,,,6.1,,67,8,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0265,very_active,6,running,primary,RUN_EASY,,,,,6.1,,49,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0266,very_active,6,running,secondary,RUN_TEMPO,,,,,6.1,,49,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0267,very_active,6,cycling,primary,CYCLE_STEADY,,,,,22.0,,67,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0268,very_active,6,cycling,secondary,CYCLE_INTERVAL,,,,,22.0,,67,8,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0269,very_active,6,swimming,primary,SWIM_TECHNIQUE,,,,,,1225,55,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0270,very_active,6,swimming,secondary,SWIM_INTERVAL,,,,,,1225,55,8,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0271,very_active,7,strength,strength,STRENGTH_FULL_BODY,4,10,50,3,,,,,,,moderate_hard,80,Progress only when the previous workload can be completed with controlled form.
+PR0272,very_active,7,walking,primary,WALK_BRISK,,,,,6.5,,72,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0273,very_active,7,walking,secondary,WALK_INTERVAL,,,,,6.5,,72,9,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0274,very_active,7,running,primary,RUN_EASY,,,,,6.5,,52,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0275,very_active,7,running,secondary,RUN_INTERVAL,,,,,6.5,,52,9,90,60,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0276,very_active,7,cycling,primary,CYCLE_STEADY,,,,,23.4,,72,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0277,very_active,7,cycling,secondary,CYCLE_INTERVAL,,,,,23.4,,72,9,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0278,very_active,7,swimming,primary,SWIM_TECHNIQUE,,,,,,1300,58,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0279,very_active,7,swimming,secondary,SWIM_INTERVAL,,,,,,1300,58,9,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0280,very_active,8,strength,strength,STRENGTH_FULL_BODY,4,12,50,3,,,,,,,moderate_hard,80,Progress only when the previous workload can be completed with controlled form.
+PR0281,very_active,8,walking,primary,WALK_BRISK,,,,,6.8,,74,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0282,very_active,8,walking,secondary,WALK_INTERVAL,,,,,6.8,,74,9,120,120,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0283,very_active,8,running,primary,RUN_EASY,,,,,6.8,,54,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0284,very_active,8,running,secondary,RUN_TEMPO,,,,,6.8,,54,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0285,very_active,8,cycling,primary,CYCLE_STEADY,,,,,24.3,,74,,,,moderate,80,Progress gradually while keeping the prescribed session controlled.
+PR0286,very_active,8,cycling,secondary,CYCLE_INTERVAL,,,,,24.3,,74,9,90,120,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.
+PR0287,very_active,8,swimming,primary,SWIM_TECHNIQUE,,,,,,1350,61,,,,easy,80,Progress gradually while keeping the prescribed session controlled.
+PR0288,very_active,8,swimming,secondary,SWIM_INTERVAL,,,,,,1350,61,9,,30,moderate_hard,80,Progress gradually while keeping the prescribed session controlled.

@@ -14,16 +14,29 @@ node_modules/
 dist/
 web-build/
 
-# Python Cache & Virtual Environments
+# Python Virtual Environments
+.venv/
+venv/
+env/
+
+# Python Cache & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 .coverage
 htmlcov/
-.venv/
-venv/
-env/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Raw Data / Large Source Files (do not push raw IFCT PDF)
+data/raw/IFCT2017.pdf
+
+# Logs & Temporary Files
+*.log
+*.tmp
+~$*
 
 # IDE & OS Files
 .DS_Store

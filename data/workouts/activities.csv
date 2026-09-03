@@ -1,0 +1,6 @@
+activity_id,activity_name,selectable_in_onboarding,mandatory,minimum_sessions_per_week,primary_metrics,description
+walking,Walking,True,False,0,"distance_km,duration_min,intensity","Low-impact cardiovascular activity that can progress through duration, distance and pace."
+running,Running,True,False,0,"distance_km,duration_min,intervals,intensity","Running progression can use run-walk, easy continuous, interval and tempo sessions."
+cycling,Cycling,True,False,0,"distance_km,duration_min,intervals,intensity","Cycling progresses through duration, distance and controlled interval sessions."
+swimming,Swimming,True,False,0,"distance_m,duration_min,intervals,rest_seconds","Swimming progresses through total distance, technique work and interval sets."
+strength,Full Body Strength,False,True,2,"sets,reps,rest_seconds,variation_level",Mandatory full-body strength training performed twice per week.

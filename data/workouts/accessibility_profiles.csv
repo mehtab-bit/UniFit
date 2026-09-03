@@ -1,0 +1,5 @@
+accessibility_id,display_name,automatic_workout_adaptation,audio_guidance,visual_captions,haptic_cues,notes
+none,No accessibility adaptation,False,False,False,False,Use the standard workout experience.
+blind_low_vision,Blind or low vision,True,True,False,True,Prefer workouts that do not depend on visual navigation. Route-based activities are selected only when the required guide or accessible setup is available.
+deaf_hard_of_hearing,Deaf or hard of hearing,False,False,True,True,"The workout can normally remain unchanged. Present instructions, timers and interval changes visually and/or with haptics."
+other,Other accessibility need,False,False,True,True,Store an optional user note. Do not infer a medical condition or automatically prescribe a different exercise plan.

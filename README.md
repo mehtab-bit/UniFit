@@ -4,6 +4,7 @@
 > **Primary Tagline:** UNIVERSAL FITNESS  
 > **Secondary Tagline:** FITNESS WITHOUT BARRIERS, PROGRESS WITHOUT LIMITS  
 > **Mission:** Inclusive, adaptive, evidence-based fitness and nutrition for athletes of every background and ability level.
+> **Initiative:** Smart India Hackathon (SIH) — Student Innovation in Fitness, Health & Sports Technology.
 
 ---
 
@@ -111,7 +112,7 @@ The frontend is structured around seven core feature screens:
 
 ---
 
-## 4. Workout Activity Engine & Data Isolation
+## 4. Workout Activity Engine & Strict Data Isolation
 
 ### Strict Activity Isolation (Zero Data Leakage)
 Workouts render strictly according to their domain activity type. Strength exercises are **never** attached or rendered on non-strength days:
@@ -143,24 +144,81 @@ router.push({
 ```
 [`app/(app)/workout.tsx`](file:///C:/Users/DEEPANSHU%20KASHYAP/.gemini/antigravity/scratch/unifit-app/app/%28app%29/workout.tsx) receives these parameters via `useLocalSearchParams<{ date?: string; dayId?: string }>()` and resolves the specific day's workout from the cached plan, preventing Monday's strength session from leaking into Tuesday's run or Saturday's ride.
 
-### Adaptive 80% Progression Gate
-* When a workout session is logged via `POST /api/v1/workout/complete`, the backend evaluates the athlete's completion percentage against an **80% progression gate**.
-* **Completion $\ge$ 80% with verified form**: The engine advances the athlete to the next variation level within that exercise family for the subsequent week.
-* **Completion $<$ 80%**: The engine maintains the current variation level, consolidating movement mastery before increasing mechanical load.
-* Each family progresses independently (e.g. an athlete can advance in Push-ups while consolidating in Squats).
+---
+
+## 5. 8-Week Progression Model & 80% Gate
+
+### 8-Week Macrocycle Structure
+The engine employs an 8-week progressive overload architecture designed to balance adaptation and recovery:
+```
+Week 1  → Starting baseline workload (Calibration)
+Week 2  → Progressive overload
+Week 3  → Progressive overload
+Week 4  → Deload / Consolidation week (reduced volume to consolidate adaptation)
+Week 5  → Progressive overload resumes
+Week 6  → Progressive overload
+Week 7  → Peak progression
+Week 8  → Assessment & cycle completion
+```
+
+### 80% Progression / Hold Gate
+When a workout session is completed and logged via `POST /api/v1/workout/complete`, the backend evaluates the athlete's completion percentage:
+```
+overall weekly completion >= 80%
+AND
+that activity's completion >= 80%
+→ ADVANCE to next progression level
+
+otherwise
+→ HOLD current progression level for further movement mastery
+```
+
+### Independent Strength Progression
+Each of the 5 strength families is evaluated independently:
+```
+Squat          92.5%  → ADVANCE
+Lunge          87.5%  → ADVANCE
+Push-up        69.0%  → HOLD
+Bicep Curl     91.0%  → ADVANCE
+Supported Row  89.0%  → ADVANCE
+```
+This ensures a plateau in one movement (e.g. push-ups) does not hold back progress in other functional movements.
+
+### Calendar Week vs Progression Rule Week
+Calendar week and rule progression week are decoupled:
+* An athlete in **Calendar Week 4** may be on **Rule Week 2** for running if running sessions were held, while on **Rule Week 4** for strength.
+* The state is persisted between sessions via:
+  - `activity_rule_week`: current level per discipline
+  - `exercise_rule_week`: current level per strength family
+  - `strength_variation_levels`: active variation index (1, 2, or 3)
+
+### Semantic Activity Mapping
+* `requested_activity_id`: Original user preference (e.g. `running`).
+* `activity_id`: Activity actually executed (e.g. `walking` or `indoor_march` under accessibility adaptation).
+* `progression_key`: Sequence tracking rule (e.g. `accessible_cardio`).
 
 ---
 
-## 5. Nutrition & Meal Planning Architecture
+## 6. Nutrition Engine & Meal Planning
 
-* **Energy Expenditure Formulas**: Strict Mifflin-St Jeor equation calculation adjusted for biological sex, age, height, weight, and lifestyle activity factor.
-* **Macro Targets**: Protein, carbohydrate, fat, and dietary fibre targets tailored to the user's primary goal (Muscle Gain, Fat Loss, Endurance, Longevity).
-* **Dietary Coverage**: Comprehensive support for **Vegetarian**, **Vegan**, **Eggetarian**, and **Non-Vegetarian** meal options.
-* **0.25-Step Serving Scaling**: Meal recipes scale precisely in 0.25-serving increments using Indian Food Composition Tables (IFCT) nutritional data to hit daily calorie targets within $\pm 50$ kcal.
+* **Energy Expenditure Formulas**: Strict Mifflin-St Jeor equation calculation adjusted for biological sex, age, height, weight, and lifestyle activity factor:
+  - Sedentary: $\text{BMR} \times 1.2$
+  - Light: $\text{BMR} \times 1.375$
+  - Moderate: $\text{BMR} \times 1.55$
+  - Very Active: $\text{BMR} \times 1.725$
+* **Workout-Aware Calorie Targets**: Planned workout energy expenditure is dynamically added to daily maintenance:
+  $$\text{Daily Target} = \text{Baseline Maintenance} + \text{Workout Energy} + \text{Goal Adjustment}$$
+* **Protein Rule**:
+  - Minimum: $1.50\text{ g/kg/day}$
+  - Target: $1.625\text{ g/kg/day}$
+  - Maximum: $1.75\text{ g/kg/day}$
+* **Dietary Regimens**: Comprehensive support for **Vegetarian**, **Vegan**, **Eggetarian**, and **Non-Vegetarian** meal catalogs.
+* **0.25-Step Practical Serving Scaling**: Meals scale in practical increments ($0.75\times$, $1.0\times$, $1.25\times$, $1.5\times$, $1.75\times$, $2.0\times$) using Indian Food Composition Tables (IFCT 2017) nutritional values.
+* **Missing IFCT Data Preservation**: Unreported carbohydrate or fibre values in source foods are preserved as SQL `NULL` / status flags (`carbohydrate_status`, `fiber_status`) rather than falsely coerced to 0.
 
 ---
 
-## 6. Accessibility & High-Contrast Design
+## 7. Universal Accessibility Design
 
 UniFit was engineered from inception around Universal Design principles:
 
@@ -170,6 +228,11 @@ UniFit was engineered from inception around Universal Design principles:
 * **Touch Targets**: All buttons, pills, toggles, and list items exceed Android (48×48 dp) and iOS (44×44 pt) guidelines.
 * **Text-to-Speech Engine**: Adjustable speech rate slider in Profile settings connected to `utils/speech.ts` for audible workout cues.
 * **Haptic Tactile Feedback**: Haptic pulses via `utils/haptics.ts` signal rep increments, rest expirations, and form corrections.
+* **Resource-Aware Adaptation**:
+  - Blind / low-vision with guide → `Guided Run`
+  - Blind / low-vision with stationary bike → `Stationary Cycling`
+  - Accessible pool support → `Supported Accessible Swim`
+  - Safe indoor space without equipment → `Indoor March` / `Supported Step-Touch Cardio`
 * **High-Contrast Palette**:
   - Deep Navy Hero Surface: `#001554`
   - Accent / Metric Highlight: `#00C8FF`
@@ -180,7 +243,7 @@ UniFit was engineered from inception around Universal Design principles:
 
 ---
 
-## 7. Terminology & Brand Standards
+## 8. Terminology & Brand Standards
 
 > [!IMPORTANT]
 > **Zero User-Facing "AI" Terminology**: UniFit does not use buzzwords like "AI Coach", "AI Workout", "AI-Powered", or "Artificial Intelligence" in the client interface.  
@@ -193,7 +256,7 @@ UniFit was engineered from inception around Universal Design principles:
 
 ---
 
-## 8. Backend API Endpoints Reference (`/api/v1`)
+## 9. Backend API Endpoints Reference (`/api/v1`)
 
 The FastAPI server exposes RESTful endpoints at `/api/v1`:
 
@@ -214,7 +277,7 @@ The FastAPI server exposes RESTful endpoints at `/api/v1`:
 
 ---
 
-## 9. Frontend API Layer, Caching & Mock Fallbacks
+## 10. Frontend API Layer, Caching & Mock Fallbacks
 
 * **Typed API Client (`services/api/apiClient.ts`)**: Centralized HTTP client configured with base URL, 12-second timeout, Supabase auth bearer token propagation, and normalized error responses.
 * **In-Memory Plan Caching**: [`services/api/workoutApi.ts`](file:///C:/Users/DEEPANSHU%20KASHYAP/.gemini/antigravity/scratch/unifit-app/services/api/workoutApi.ts) caches the weekly plan in client memory. Subsequent day selections (Monday, Tuesday, Saturday, Streak & Plan) resolve in **$< 1$ ms with 0 redundant network calls**.
@@ -223,14 +286,18 @@ The FastAPI server exposes RESTful endpoints at `/api/v1`:
 
 ---
 
-## 10. Database Schema & Seeding
+## 11. Database Schema & Seeding
 
-* **PostgreSQL Schema (`supabase/full_schema.sql`)**: Defines 14 normalized tables including `profiles`, `user_weekly_plans`, `workout_logs`, `progression_states`, `foods`, `meals`, and `exercises`.
-* **Automated CSV Seeder (`backend/scripts/seed_csv_to_supabase.py`)**: Parses 14 nutritional and workout CSV datasets from `vijul-engine/data/`, properly handles missing IFCT data as SQL `NULL` (rather than coercing to 0), and generates `supabase/seed.sql` with 753 records.
+* **PostgreSQL Schema (`supabase/full_schema.sql`)**: Defines 14 normalized tables:
+  - `profiles`, `user_activity_preferences`, `user_accessibility_resources`
+  - `user_weekly_plans`, `workout_logs`, `progression_states`
+  - `foods`, `meals`, `meal_items`, `activities`, `workout_templates`
+  - `exercise_variations`, `strength_session_items`, `accessibility_profiles`
+* **Automated CSV Seeder (`backend/scripts/seed_csv_to_supabase.py`)**: Parses 14 nutritional and workout CSV datasets from `data/`, properly handles missing IFCT data as SQL `NULL`, and generates `supabase/seed.sql` with 753 records.
 
 ---
 
-## 11. Local Development & Setup Instructions
+## 12. Local Development & Setup Instructions
 
 ### Prerequisites
 * **Node.js**: `v18+` (Tested on `v22.17.0`)
@@ -294,7 +361,7 @@ npm run ios
 
 ---
 
-## 12. Security & Secrets Management
+## 13. Security & Secrets Management
 
 > [!CAUTION]
 > **Never commit `.env` or sensitive credentials to version control.**  
@@ -305,7 +372,7 @@ npm run ios
 
 ---
 
-## 13. Verification & Validation Commands
+## 14. Verification & Validation Commands
 
 All core validation checks pass cleanly:
 
@@ -329,7 +396,13 @@ python -m pytest backend/tests/test_engine_api.py -v
 
 ---
 
-## 14. Repository Directory Structure
+## 15. Scope and Safety
+
+UniFit is an adaptive fitness and wellness application. It is not intended as medical diagnosis, clinical rehabilitation, medical nutritional therapy, or individual medical advice. Users with severe cardiovascular conditions, acute injuries, pregnancy-related complications, or clinical exercise restrictions should consult a qualified physician or healthcare provider.
+
+---
+
+## 16. Repository Directory Structure
 
 ```
 unifit-app/
@@ -338,7 +411,8 @@ unifit-app/
 ├── app.json                         # Expo application configuration & splash metadata
 ├── package.json                     # Frontend dependencies (Expo SDK 52, React Native 0.76)
 ├── tsconfig.json                    # TypeScript strict mode configuration
-├── README.md                        # Master repository documentation
+├── requirements.txt                 # Authoritative Python engine dependencies
+├── README.md                        # Master unified repository documentation
 │
 ├── app/                             # Expo Router file-based route hierarchy
 │   ├── _layout.tsx                  # Root authentication guard & font loading
@@ -363,6 +437,17 @@ unifit-app/
 │   ├── scripts/                     # seed_csv_to_supabase.py database seeder
 │   └── tests/                       # test_engine_api.py (12 contract integration tests)
 │
+├── data/                            # Processed IFCT food data and workout CSV templates
+│   ├── processed/                   # Curated 100 foods, meals, meal_items
+│   └── workouts/                    # Activities, templates, variations, accessibility rules
+│
+├── engine/                          # Authoritative Python Inclusive Adaptive Fitness Engine
+│   ├── nutrition_targets.py         # Mifflin-St Jeor & macro calculator
+│   ├── daily_targets.py             # Day-specific workout-aware energy adjustments
+│   ├── weekly_targets.py            # Weekly adherence and macro rollups
+│   ├── weekly_workout_engine.py     # 8-week progressive schedule & template assembler
+│   └── weekly_meal_planner.py       # 0.25-step practical portion meal planner
+│
 ├── components/                      # Modular reusable UI components
 │   ├── animations/                  # Reanimated micro-interactions (rings, buttons, reps)
 │   ├── common/                      # Primary buttons, text inputs, headers, loaders
@@ -380,4 +465,3 @@ unifit-app/
 ├── types/                           # TypeScript domain models, streak types, & navigation
 └── utils/                           # Text-to-speech audio engine & haptic feedback drivers
 ```
-
