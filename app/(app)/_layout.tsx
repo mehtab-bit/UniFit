@@ -106,6 +106,7 @@ export default function AppTabsLayout() {
         name="cv-session"
         options={{
           href: null,
+          tabBarStyle: { display: 'none' }
         }}
       />
 
