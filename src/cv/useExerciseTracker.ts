@@ -19,19 +19,22 @@ export function useExerciseTracker(
   const [activeSide, setActiveSide] = useState<Side>(
     sideOverride ?? definition.defaultSide
   );
-  useEffect(() => {
-    setActiveSide(sideOverride ?? definition.defaultSide);
-  }, [definition, sideOverride]);
+  const sideLockedRef = useRef<Side>(sideOverride ?? definition.defaultSide);
+  sideLockedRef.current = sideOverride ?? sideLockedRef.current;
 
+  // When no explicit override is given, auto-pick the visible side, but only
+  // when it is clearly better (hysteresis lives in chooseVisibleSide). This
+  // runs as a side-effect on keypoint updates, never during render.
   useEffect(() => {
     if (sideOverride) {
       return;
     }
-    const detected = chooseVisibleSide(exerciseId, keypoints, activeSide);
-    if (detected !== activeSide) {
+    const detected = chooseVisibleSide(exerciseId, keypoints, sideLockedRef.current);
+    if (detected !== sideLockedRef.current) {
+      sideLockedRef.current = detected;
       setActiveSide(detected);
     }
-  }, [activeSide, exerciseId, keypoints, sideOverride]);
+  }, [exerciseId, keypoints, sideOverride]);
 
   const requiredKeypoints = useMemo(
     () => definition.getRequiredKeypoints(activeSide),
