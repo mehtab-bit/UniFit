@@ -10,10 +10,12 @@ import {
   VisionCameraProxy
 } from 'react-native-vision-camera';
 import { Worklets } from 'react-native-worklets-core';
-import type { HandDetectionResult } from 'expo-vision-camera-v4-mediapipe';
-import { nativePoseToCvKeypoints } from '../nativePose';
+import {
+  nativePoseToCvKeypoints,
+  NativePoseFrame
+} from '../nativePose';
 import { CvKeypoint } from '../types';
-import { smoothLandmarks } from '../landmarkSmoothing';
+import { smoothWithHold } from '../landmarkSmoothing';
 
 /**
  * Standalone native pose debug screen. Kept behind a lazy route so Expo Go /
@@ -38,16 +40,17 @@ export default function NativePoseDebugView() {
     lastPoseUpdate: 0,
     smoothed: [] as CvKeypoint[]
   });
+  const lastSeenRef = useRef<Map<string, number>>(new Map());
 
-  const handLandmarkerPlugin = useMemo(
-    () => VisionCameraProxy.initFrameProcessorPlugin('handLandmarker', {}),
+  const poseLandmarkerPlugin = useMemo(
+    () => VisionCameraProxy.initFrameProcessorPlugin('poseLandmarker', {}),
     []
   );
 
-  if (handLandmarkerPlugin == null) {
+  if (poseLandmarkerPlugin == null) {
     return (
       <View style={styles.center}>
-        <Text style={styles.centerTitle}>handLandmarker plugin not found</Text>
+        <Text style={styles.centerTitle}>poseLandmarker plugin not found</Text>
         <Text style={styles.error}>
           Check that the native build registered the frame processor plugin.
         </Text>
@@ -57,7 +60,7 @@ export default function NativePoseDebugView() {
 
   const onDetected = useMemo(
     () =>
-      Worklets.createRunOnJS((result: HandDetectionResult) => {
+      Worklets.createRunOnJS((result: NativePoseFrame) => {
         const now = Date.now();
         const snapshot = stateRef.current;
         snapshot.frameCount += 1;
@@ -69,10 +72,14 @@ export default function NativePoseDebugView() {
           if (now - snapshot.lastPoseUpdate >= 120) {
             snapshot.lastPoseUpdate = now;
             const mapped = nativePoseToCvKeypoints(result.pose);
-            snapshot.smoothed = smoothLandmarks(
+            snapshot.smoothed = smoothWithHold(
               snapshot.smoothed,
               mapped,
-              0.6
+              0.72,
+              0.1,
+              300,
+              now,
+              lastSeenRef.current
             );
             setKeypoints(snapshot.smoothed);
             setImageSize({
@@ -96,14 +103,14 @@ export default function NativePoseDebugView() {
   const frameProcessor = useFrameProcessor(
     (frame) => {
       'worklet';
-      const result = handLandmarkerPlugin.call(frame) as
-        | HandDetectionResult
+      const result = poseLandmarkerPlugin.call(frame) as
+        | NativePoseFrame
         | undefined;
       if (result) {
         onDetected(result);
       }
     },
-    [handLandmarkerPlugin, onDetected]
+    [poseLandmarkerPlugin, onDetected]
   );
 
   const overlayPoints = useMemo(() => {

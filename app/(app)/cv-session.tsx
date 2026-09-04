@@ -76,7 +76,8 @@ export default function CvSessionScreen() {
     (
       completionPct: number,
       repsCompleted: number,
-      source: 'camera' | 'manual'
+      source: 'camera' | 'manual',
+      rangeScore: number | null = null
     ): WorkoutCompletionPayload => ({
       user_id: user?.id || 'user_default',
       activity_id: params.activityId || 'strength',
@@ -88,7 +89,8 @@ export default function CvSessionScreen() {
         [family]: Math.max(0, Math.min(100, completionPct))
       },
       source,
-      reps_completed: repsCompleted
+      reps_completed: repsCompleted,
+      range_score: rangeScore
     }),
     [family, params.activityId, params.progressionKey, params.sessionType, user?.id]
   );
@@ -174,7 +176,7 @@ export default function CvSessionScreen() {
         score: averageScore
       });
 
-      const payload = makePayload(100, reps, 'camera');
+      const payload = makePayload(100, reps, 'camera', averageScore);
       void logCompletion(payload, reps).finally(() => router.back());
     },
     [exerciseId, family, logCompletion, makePayload, router]

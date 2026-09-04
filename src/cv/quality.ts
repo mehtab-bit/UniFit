@@ -47,7 +47,8 @@ export function assessQuality(
   keypoints: CvKeypoint[],
   side: Side,
   angle: number | null,
-  calibration: AngleCalibration | null
+  calibration: AngleCalibration | null,
+  geometricIssues: QualityIssue[] = []
 ): QualityAssessment {
   const issues: QualityIssue[] = [];
 
@@ -84,6 +85,12 @@ export function assessQuality(
           10
         );
       }
+    }
+  }
+
+  for (const issue of geometricIssues) {
+    if (!issues.some((existing) => existing.code === issue.code)) {
+      issues.push(issue);
     }
   }
 

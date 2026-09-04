@@ -193,6 +193,8 @@ export interface WorkoutCompletionPayload {
   exercise_completion_pct?: Record<string, number>;
   source?: 'camera' | 'manual';
   reps_completed?: number;
+  range_score?: number | null;
+  issue_codes?: string[];
 }
 
 // -------------------------------------------------------------

@@ -28,6 +28,12 @@ class WorkoutCompletionRequest(BaseModel):
     reps_completed: Optional[int] = Field(
         None, description="Total repetitions actually completed in the session."
     )
+    range_score: Optional[float] = Field(
+        None, description="Average calibration-based range score (0-100)."
+    )
+    issue_codes: Optional[list[str]] = Field(
+        None, description="Form/geometry issue codes observed during the session."
+    )
 
 
 class WorkoutCompletionResponse(BaseModel):

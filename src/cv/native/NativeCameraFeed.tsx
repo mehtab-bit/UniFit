@@ -8,7 +8,6 @@ import {
   VisionCameraProxy
 } from 'react-native-vision-camera';
 import { Worklets } from 'react-native-worklets-core';
-import type { HandDetectionResult } from 'expo-vision-camera-v4-mediapipe';
 import { CameraType } from 'expo-camera';
 import { NativePoseFrame } from '../nativePose';
 
@@ -38,7 +37,7 @@ export function NativeCameraFeed({
   }, [hasPermission, requestPermission]);
 
   const plugin = useMemo(
-    () => VisionCameraProxy.initFrameProcessorPlugin('handLandmarker', {}),
+    () => VisionCameraProxy.initFrameProcessorPlugin('poseLandmarker', {}),
     []
   );
 
@@ -52,13 +51,8 @@ export function NativeCameraFeed({
   }, [device, onError, plugin]);
 
   const onDetectedOnJS = useMemo(
-    () => Worklets.createRunOnJS((result: HandDetectionResult) => {
-      onDetected({
-        pose: result.pose,
-        imageWidth: result.imageWidth,
-        imageHeight: result.imageHeight,
-        error: result.error
-      });
+    () => Worklets.createRunOnJS((result: NativePoseFrame) => {
+      onDetected(result);
     }),
     [onDetected]
   );
@@ -67,7 +61,7 @@ export function NativeCameraFeed({
     (frame) => {
       'worklet';
       if (plugin == null) return;
-      const result = plugin.call(frame) as HandDetectionResult | undefined;
+      const result = plugin.call(frame) as NativePoseFrame | undefined;
       if (result) {
         onDetectedOnJS(result);
       }

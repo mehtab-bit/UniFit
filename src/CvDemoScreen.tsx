@@ -6,6 +6,7 @@ import { usePoseDetection } from './cv/usePoseDetection';
 import { useExerciseTracker } from './cv/useExerciseTracker';
 import { ExerciseId, Side } from './cv/types';
 import { assessQuality } from './cv/quality';
+import { assessGeometryIssues } from './cv/geometryIssues';
 import { isRepTooFast } from './cv/tempo';
 import { SkeletonOverlay } from './cv/SkeletonOverlay';
 import { KEYPOINT_MIN_SCORE } from './cv/confidence';
@@ -171,6 +172,14 @@ export function CvDemoScreen({
     onManualRequestRef.current = onManualRequest;
   }, [onSessionComplete, onManualRequest, onProgress, repsPerSet, restSeconds, targetReps]);
 
+  const geometricIssues = useMemo(
+    () =>
+      tracker.calibration
+        ? assessGeometryIssues(exerciseId, pose.keypoints, tracker.side)
+        : [],
+    [exerciseId, pose.keypoints, tracker.calibration, tracker.side]
+  );
+
   const quality = useMemo(
     () =>
       assessQuality(
@@ -178,9 +187,17 @@ export function CvDemoScreen({
         pose.keypoints,
         tracker.side,
         tracker.smoothedAngle,
-        tracker.calibration
+        tracker.calibration,
+        geometricIssues
       ),
-    [exerciseId, pose.keypoints, tracker.side, tracker.smoothedAngle, tracker.calibration]
+    [
+      exerciseId,
+      geometricIssues,
+      pose.keypoints,
+      tracker.side,
+      tracker.smoothedAngle,
+      tracker.calibration
+    ]
   );
 
   // The skeleton is the form indicator: green only while the tracked joint is

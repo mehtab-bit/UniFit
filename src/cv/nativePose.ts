@@ -16,9 +16,16 @@ export type NativePosePoint = {
 
 export type NativePoseFrame = {
   pose?: NativePosePoint[];
+  worldPose?: NativeWorldPoint[];
   imageWidth?: number;
   imageHeight?: number;
   error?: string;
+};
+
+export type NativeWorldPoint = {
+  x: number;
+  y: number;
+  z: number;
 };
 
 const NATIVE_POSE_INDEX: ReadonlyArray<readonly [KeypointName, number]> = [

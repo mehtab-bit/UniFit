@@ -23,7 +23,6 @@ export function isNativePoseAvailable(): boolean {
     // Go one of them throws and we fall back to MoveNet.
     require('react-native-vision-camera');
     require('react-native-worklets-core');
-    require('expo-vision-camera-v4-mediapipe');
     nativeAvailable = true;
   } catch {
     nativeAvailable = false;

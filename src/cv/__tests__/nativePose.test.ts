@@ -3,7 +3,8 @@ import { nativePoseToCvKeypoints } from '../nativePose';
 import { NativePosePoint } from '../nativePose';
 import {
   keypointsMoved,
-  smoothLandmarks
+  smoothLandmarks,
+  smoothWithHold
 } from '../landmarkSmoothing';
 import { CvKeypoint } from '../types';
 
@@ -85,5 +86,45 @@ describe('landmark smoothing', () => {
     const a = [point('left_knee', 0.5, 0.5)];
     expect(keypointsMoved(a, [point('left_knee', 0.5, 0.5)], 0.006)).toBe(false);
     expect(keypointsMoved(a, [point('left_knee', 0.51, 0.5)], 0.006)).toBe(true);
+  });
+
+  it('holds a briefly missing landmark then releases it', () => {
+    const previous = [point('left_knee', 0.5, 0.5)];
+    const lastSeen = new Map<string, number>([['left_knee', 0]]);
+    const held = smoothWithHold(
+      previous,
+      [],
+      0.72,
+      0.1,
+      300,
+      200,
+      lastSeen
+    );
+    expect(held).toHaveLength(1);
+    const released = smoothWithHold(
+      previous,
+      [],
+      0.72,
+      0.1,
+      300,
+      400,
+      lastSeen
+    );
+    expect(released).toEqual([]);
+  });
+
+  it('snaps fast when a landmark teleports between frames', () => {
+    const previous = [point('left_shoulder', 0.5, 0.5)];
+    const lastSeen = new Map<string, number>();
+    const snapped = smoothWithHold(
+      previous,
+      [point('left_shoulder', 0.8, 0.5)],
+      0.5,
+      0.1,
+      300,
+      100,
+      lastSeen
+    );
+    expect(snapped[0].x).toBeCloseTo(0.785, 3);
   });
 });

@@ -25,6 +25,8 @@ def complete_workout(payload: WorkoutCompletionRequest):
             exercise_completion_pct=payload.exercise_completion_pct,
             source=payload.source,
             reps_completed=payload.reps_completed,
+            range_score=payload.range_score,
+            issue_codes=payload.issue_codes,
         )
 
         return WorkoutCompletionResponse(

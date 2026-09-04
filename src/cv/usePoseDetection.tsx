@@ -12,7 +12,7 @@ import { CvKeypoint, KeypointName } from './types';
 import { KEYPOINT_MIN_SCORE } from './confidence';
 import { createBundledModelIO } from './modelAssets';
 import { nativePoseToCvKeypoints, NativePoseFrame } from './nativePose';
-import { smoothLandmarks, keypointsMoved } from './landmarkSmoothing';
+import { keypointsMoved, smoothWithHold } from './landmarkSmoothing';
 import { PoseSourceMode } from './native/runtime';
 
 // Bundled model keeps CV usable offline and avoids a long first-load fetch.
@@ -33,9 +33,10 @@ type FrameImages = IterableIterator<tf.Tensor3D>;
 
 const DETECTION_INTERVAL_MS = 180;
 const DEFAULT_FACING: CameraType = 'front';
-const NATIVE_UPDATE_INTERVAL_MS = 90;
-const NATIVE_SMOOTH_ALPHA = 0.6;
-const NATIVE_EMPTY_FRAMES_TO_CLEAR = 2;
+const NATIVE_UPDATE_INTERVAL_MS = 45;
+const NATIVE_SMOOTH_ALPHA = 0.72;
+const NATIVE_TELEPORT_DISTANCE = 0.1;
+const NATIVE_HOLD_MS = 300;
 
 /**
  * Live pose pipeline: loads MoveNet once, then runs inference on camera
@@ -65,7 +66,7 @@ export function usePoseDetection(
   const modeRef = useRef<PoseSourceMode>(mode);
   modeRef.current = mode;
   const nativeLastUpdateRef = useRef(0);
-  const nativeEmptyFramesRef = useRef(0);
+  const nativeLastSeenRef = useRef<Map<string, number>>(new Map());
   const isActiveRef = useRef(true);
   const isDetectingRef = useRef(false);
   const lastDetectionAtRef = useRef(0);
@@ -159,35 +160,19 @@ export function usePoseDetection(
     }
 
     const detected = nativePoseToCvKeypoints(payload.pose);
-    if (detected.length === 0) {
-      nativeEmptyFramesRef.current += 1;
-      if (nativeEmptyFramesRef.current < NATIVE_EMPTY_FRAMES_TO_CLEAR) {
-        return;
-      }
-      if (isActiveRef.current) {
-        if (lastKeypointsRef.current.length > 0) {
-          lastKeypointsRef.current = [];
-          smoothedKeypointsRef.current = [];
-          setKeypoints([]);
-        }
-        if (lastVisibleRef.current.length > 0) {
-          lastVisibleRef.current = [];
-          setVisibleKeypointNames([]);
-        }
-      }
-      return;
-    }
-    nativeEmptyFramesRef.current = 0;
-
-    const smoothed = smoothLandmarks(
+    const smoothed = smoothWithHold(
       smoothedKeypointsRef.current,
       detected,
-      NATIVE_SMOOTH_ALPHA
+      NATIVE_SMOOTH_ALPHA,
+      NATIVE_TELEPORT_DISTANCE,
+      NATIVE_HOLD_MS,
+      now,
+      nativeLastSeenRef.current
     );
     smoothedKeypointsRef.current = smoothed;
 
     if (isActiveRef.current) {
-      if (keypointsMoved(lastKeypointsRef.current, smoothed, 0.008)) {
+      if (keypointsMoved(lastKeypointsRef.current, smoothed, 0.004)) {
         lastKeypointsRef.current = smoothed;
         setKeypoints(smoothed);
       }

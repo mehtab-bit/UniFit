@@ -43,3 +43,58 @@ export function keypointsMoved(
   }
   return false;
 }
+
+/**
+ * Smoothing with missing-landmark hold and teleport handling.
+ *
+ * - Fast-moving landmarks snap quickly instead of leaving trails.
+ * - A joint missing for a frame or two keeps its last position (up to
+ *   `holdMs`) instead of flickering out, then disappears cleanly.
+ */
+export function smoothWithHold(
+  previous: CvKeypoint[],
+  current: CvKeypoint[],
+  alpha: number,
+  teleportDistance: number,
+  holdMs: number,
+  now: number,
+  lastSeen: Map<string, number>
+): CvKeypoint[] {
+  if (previous.length === 0 && current.length === 0) {
+    return [];
+  }
+
+  const previousMap = new Map(previous.map((point) => [point.name, point]));
+  const seen = new Set<string>();
+  const next: CvKeypoint[] = [];
+
+  for (const point of current) {
+    const last = previousMap.get(point.name);
+    lastSeen.set(point.name, now);
+    seen.add(point.name);
+    if (!last) {
+      next.push(point);
+      continue;
+    }
+    const distance = Math.hypot(point.x - last.x, point.y - last.y);
+    const effectiveAlpha =
+      distance > teleportDistance ? 0.95 : Math.min(1, Math.max(0.05, alpha));
+    next.push({
+      ...point,
+      x: last.x + (point.x - last.x) * effectiveAlpha,
+      y: last.y + (point.y - last.y) * effectiveAlpha
+    });
+  }
+
+  for (const point of previous) {
+    if (seen.has(point.name)) continue;
+    const lastSeenAt = lastSeen.get(point.name) ?? 0;
+    if (now - lastSeenAt < holdMs) {
+      next.push(point);
+    } else {
+      lastSeen.delete(point.name);
+    }
+  }
+
+  return next;
+}
