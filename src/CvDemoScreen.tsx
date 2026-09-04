@@ -363,7 +363,7 @@ export function CvDemoScreen({
     }
     let active = true;
     applyingSavedCalibrationRef.current = true;
-    loadSavedCalibration(exerciseId, tracker.side).then((saved) => {
+    loadSavedCalibration(exerciseId, tracker.side, pose.mode).then((saved) => {
       if (!active || !saved) {
         applyingSavedCalibrationRef.current = false;
         return;
@@ -380,7 +380,7 @@ export function CvDemoScreen({
     return () => {
       active = false;
     };
-  }, [calibrationStage, exerciseId, pose.modelStatus, tracker.side]);
+  }, [calibrationStage, exerciseId, pose.mode, pose.modelStatus, tracker.side]);
 
   // Persist a freshly captured calibration for next time.
   useEffect(() => {
@@ -388,11 +388,11 @@ export function CvDemoScreen({
     if (calibrationStage !== 'complete' || tracker.calibration === null) {
       return;
     }
-    saveCalibration(exerciseId, tracker.side, tracker.calibration).catch(() => {
+    saveCalibration(exerciseId, tracker.side, pose.mode, tracker.calibration).catch(() => {
       // Saving is best-effort; a failed save only means the next session
       // recalibrates again.
     });
-  }, [calibrationStage, exerciseId, tracker.calibration, tracker.side]);
+  }, [calibrationStage, exerciseId, pose.mode, tracker.calibration, tracker.side]);
 
   useEffect(() => {
     trackEffectBurst('cv.calAnnounce');
