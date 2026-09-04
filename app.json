@@ -1,4 +1,4 @@
-﻿{
+{
   "expo": {
     "name": "UniFit",
     "slug": "unifit",
@@ -17,12 +17,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.unifit.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "UniFit uses the camera to detect exercise posture and count repetitions."
+        "NSCameraUsageDescription": "UniFit uses the camera to count repetitions and measure your movement range."
       }
     },
     "android": {
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/unifit-logo.png",
@@ -47,6 +48,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "b45b0243-bf99-41a1-8819-dde526f5fc6a"
+      }
+    },
+    "owner": "mehtab-bit"
   }
 }
