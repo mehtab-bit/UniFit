@@ -43,10 +43,10 @@ export default function ProgressScreen() {
     loadProgressData();
   }, [loadProgressData]);
 
-  const monthlyConsistency = summary?.monthlyConsistency ?? 83;
-  const currentStreak = summary?.currentStreak ?? 5;
-  const workoutsCompleted = summary?.workoutsCompleted ?? 10;
-  const totalActiveMinutes = summary?.totalActiveMinutes ?? 245;
+  const monthlyConsistency = summary?.monthlyConsistency ?? 0;
+  const currentStreak = summary?.currentStreak ?? 0;
+  const workoutsCompleted = summary?.workoutsCompleted ?? 0;
+  const totalActiveMinutes = summary?.totalActiveMinutes ?? 0;
   const phaseTitle = summary?.phaseTitle ?? 'Week 1 • Phase 1 Calibration';
 
   return (

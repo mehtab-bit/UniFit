@@ -15,15 +15,16 @@ export const NutritionSnapshotCard: React.FC<NutritionSnapshotCardProps> = ({
   targets,
   onPress,
 }) => {
-  const consumed = targets.consumedCalories || 1940;
-  const total = targets.calories || 2400;
-  const remaining = targets.remainingCalories || 460;
-  const progressPercent = Math.min(100, Math.round((consumed / total) * 100));
+  const consumed = targets.consumedCalories ?? 0;
+  const total = targets.calories ?? 0;
+  const remaining = targets.remainingCalories ?? 0;
+  const progressPercent =
+    total > 0 ? Math.min(100, Math.round((consumed / total) * 100)) : 0;
 
-  const protein = targets.proteinG || 145;
-  const carbs = targets.carbsG || targets.carbohydratesG || 210;
-  const fat = targets.fatG || 58;
-  const fibre = targets.fibreG || 28;
+  const protein = targets.proteinG ?? 0;
+  const carbs = targets.carbsG ?? targets.carbohydratesG ?? 0;
+  const fat = targets.fatG ?? 0;
+  const fibre = targets.fibreG ?? 0;
 
   return (
     <ScalePressable

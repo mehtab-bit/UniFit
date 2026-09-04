@@ -107,7 +107,7 @@ export default function ActivityScreen() {
                 </View>
 
                 <View style={styles.heroMetricRow}>
-                  <AnimatedNumberCounter value={summary?.activeMinutes || 117} surface="dark" style={styles.heroMinutesNumber} />
+                  <AnimatedNumberCounter value={summary?.activeMinutes ?? 0} surface="dark" style={styles.heroMinutesNumber} />
                   <View style={styles.heroMinutesLabelCol}>
                     <Text style={styles.heroMinutesLabel}>ACTIVE</Text>
                     <Text style={styles.heroMinutesLabelBold}>MINUTES</Text>
@@ -117,12 +117,12 @@ export default function ActivityScreen() {
 
                 <View style={styles.heroSubMetricsRow}>
                   <View style={styles.subMetricItem}>
-                    <Text style={styles.subMetricVal}>{summary?.sessionsCount || 4}</Text>
+                    <Text style={styles.subMetricVal}>{summary?.sessionsCount ?? 0}</Text>
                     <Text style={styles.subMetricLab}>SESSIONS</Text>
                   </View>
                   <View style={styles.subMetricDivider} />
                   <View style={styles.subMetricItem}>
-                    <Text style={styles.subMetricVal}>{summary?.activeCalories || 915}</Text>
+                    <Text style={styles.subMetricVal}>{summary?.activeCalories ?? 0}</Text>
                     <Text style={styles.subMetricLab}>ACTIVE KCAL</Text>
                   </View>
                   <View style={styles.subMetricDivider} />

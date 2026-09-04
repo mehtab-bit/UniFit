@@ -61,7 +61,7 @@ export default function StreakPlanScreen() {
 
   // Screen Reader announcement on entry
   useScreenAnnouncement(
-    `Streak and Monthly Fitness Plan screen. ${streakData?.currentStreak || 5} day streak active. Viewing ${monthName} calendar.`
+    `Streak and Monthly Fitness Plan screen. ${streakData?.currentStreak ?? 0} day streak active. Viewing ${monthName} calendar.`
   );
 
   const loadStreakAndWorkouts = useCallback(async () => {
@@ -99,8 +99,8 @@ export default function StreakPlanScreen() {
   const activeMonthStats = useMemo<StreakData>(() => {
     const stats = calculateMonthStats(calendarDays as any);
     return {
-      currentStreak: streakData?.currentStreak || 5,
-      bestStreak: streakData?.bestStreak || 12,
+      currentStreak: streakData?.currentStreak ?? 0,
+      bestStreak: streakData?.bestStreak ?? 0,
       monthlyWorkouts: stats.monthlyWorkouts,
       monthlyCompleted: stats.monthlyCompleted,
       monthlyMissed: stats.monthlyMissed,

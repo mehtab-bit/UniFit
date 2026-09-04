@@ -87,6 +87,31 @@ export default function ProfileScreen() {
     return 'Maintain & Tone';
   };
 
+  const sexLabel =
+    profile?.sex === 'female' ? 'F' : profile?.sex === 'male' ? 'M' : '—';
+
+  const activityLabel =
+    profile?.lifestyle_activity === 'sedentary'
+      ? 'Sedentary'
+      : profile?.lifestyle_activity === 'light'
+        ? 'Light'
+        : profile?.lifestyle_activity === 'very_active'
+          ? 'Very Active'
+          : profile?.lifestyle_activity === 'moderate'
+            ? 'Moderate'
+            : '—';
+
+  const dietLabel =
+    profile?.diet === 'vegetarian'
+      ? 'Vegetarian'
+      : profile?.diet === 'vegan'
+        ? 'Vegan'
+        : profile?.diet === 'eggetarian'
+          ? 'Eggetarian'
+          : profile?.diet === 'non_vegetarian'
+            ? 'Non-Vegetarian'
+            : '—';
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" backgroundColor="#F9FAFB" />
@@ -117,10 +142,10 @@ export default function ProfileScreen() {
         <CardSpringEntry index={1}>
           <SectionHeader title="Fitness Baseline" />
           <View style={styles.sectionGroup}>
-            <RowItem icon="user" title="Age & Sex" value={`${profile?.age || 28} yrs, ${profile?.sex === 'female' ? 'F' : 'M'}`} />
-            <RowItem icon="minimize" title="Height & Weight" value={`${profile?.height_cm || 175}cm, ${profile?.weight_kg || 72}kg`} />
-            <RowItem icon="activity" title="Daily Activity" value="Moderate" />
-            <RowItem icon="coffee" title="Diet" value="Balanced" isLast onPress={handleRetakeQuiz} />
+            <RowItem icon="user" title="Age & Sex" value={`${profile?.age ?? '—'} yrs, ${sexLabel}`} />
+            <RowItem icon="minimize" title="Height & Weight" value={`${profile?.height_cm ?? '—'}cm, ${profile?.weight_kg ?? '—'}kg`} />
+            <RowItem icon="activity" title="Daily Activity" value={activityLabel} />
+            <RowItem icon="coffee" title="Diet" value={dietLabel} isLast onPress={handleRetakeQuiz} />
           </View>
         </CardSpringEntry>
 

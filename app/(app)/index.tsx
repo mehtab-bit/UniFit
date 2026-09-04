@@ -25,6 +25,7 @@ import { ScalePressable } from '../../components/animations/ScalePressable';
 import { HomeTodayWorkoutCard } from '../../components/workout/HomeTodayWorkoutCard';
 import { NutritionSnapshotCard } from '../../components/nutrition/NutritionSnapshotCard';
 import { AsyncStateView } from '../../components/common/AsyncStateView';
+import { formatDateISO } from '../../utils/date';
 
 // Services & Domain Models
 import {
@@ -95,7 +96,7 @@ export default function HomeScreen() {
       }
 
       // Load user note for today
-      const targetDate = todayResult?.date || '2026-09-21';
+      const targetDate = todayResult?.date || formatDateISO();
       const existingNote = await workoutNoteService.getNote(targetDate, user?.id);
       setUserNote(existingNote);
     } catch {
@@ -143,7 +144,7 @@ export default function HomeScreen() {
     if (!noteInputText.trim()) return;
     try {
       setIsSavingNote(true);
-      const targetDate = todayWorkout?.date || '2026-09-21';
+      const targetDate = todayWorkout?.date || formatDateISO();
       const saved = await workoutNoteService.saveNote(targetDate, noteInputText.trim(), user?.id);
       setUserNote(saved);
       setIsNoteModalVisible(false);
@@ -156,7 +157,7 @@ export default function HomeScreen() {
 
   const handleDeleteNote = async () => {
     try {
-      const targetDate = todayWorkout?.date || '2026-09-21';
+      const targetDate = todayWorkout?.date || formatDateISO();
       await workoutNoteService.deleteNote(targetDate, user?.id);
       setUserNote(null);
     } catch {
@@ -216,14 +217,14 @@ export default function HomeScreen() {
               <ScalePressable
                 onPress={handleOpenStreakPlan}
                 accessibilityRole="button"
-                accessibilityLabel={`Current streak: ${streakData?.currentStreak || 5} days. Best streak: ${streakData?.bestStreak || 12} days.`}
+                accessibilityLabel={`Current streak: ${streakData?.currentStreak ?? 0} days. Best streak: ${streakData?.bestStreak ?? 0} days.`}
                 style={styles.streakWidget}
               >
                 <MaterialCommunityIcons name="fire" size={18} color="#EA580C" style={{ marginRight: 6 }} />
-                <Text style={styles.streakNum}>{streakData?.currentStreak || 5}</Text>
+                <Text style={styles.streakNum}>{streakData?.currentStreak ?? 0}</Text>
                 <View style={styles.streakCol}>
                   <Text style={styles.streakLabel}>DAY STREAK</Text>
-                  <Text style={styles.streakBest}>Best {streakData?.bestStreak || 12}</Text>
+                  <Text style={styles.streakBest}>Best {streakData?.bestStreak ?? 0}</Text>
                 </View>
               </ScalePressable>
             </View>

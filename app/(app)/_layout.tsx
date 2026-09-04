@@ -94,9 +94,14 @@ export default function AppTabsLayout() {
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="streak-plan" options={{ href: null }} />
       <Tabs.Screen name="workout" options={{ href: null }} />
-      <Tabs.Screen name="cv-session" options={{ href: null }} />
-      <Tabs.Screen name="cv-native-test" options={{ href: null }} />
-      <Tabs.Screen name="exercise-detail" options={{ href: null }} />
+      <Tabs.Screen
+        name="cv-session"
+        options={{ href: null, tabBarStyle: { display: 'none' } }}
+      />
+      <Tabs.Screen
+        name="cv-native-test"
+        options={{ href: null, tabBarStyle: { display: 'none' } }}
+      />
       <Tabs.Screen name="performance-test" options={{ href: null }} />
     </Tabs>
   );

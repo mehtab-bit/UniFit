@@ -46,8 +46,8 @@ export default function FoodScreen() {
   }, [loadMealData]);
 
   const targets = mealPlan?.targets;
-  const consumedCalories = targets?.consumedCalories || 1940;
-  const targetCalories = targets?.calories || 2400;
+  const consumedCalories = targets?.consumedCalories || 0;
+  const targetCalories = targets?.calories ?? 0;
   const remainingCalories = targets?.remainingCalories || Math.max(0, targetCalories - consumedCalories);
   const progressPercent = Math.min(100, Math.round((consumedCalories / targetCalories) * 100));
 
@@ -97,7 +97,7 @@ export default function FoodScreen() {
                   <View style={styles.macroProgressCol}>
                     <View style={styles.macroLabelRow}>
                       <Text style={styles.macroKey}>PROTEIN</Text>
-                      <Text style={styles.macroRatio}>{targets?.proteinG || 145}g</Text>
+                      <Text style={styles.macroRatio}>{targets?.proteinG ?? 0}g</Text>
                     </View>
                     <View style={styles.macroTrack}>
                       <View style={[styles.macroFill, { width: '85%', backgroundColor: '#00C8FF' }]} />
@@ -107,7 +107,7 @@ export default function FoodScreen() {
                   <View style={styles.macroProgressCol}>
                     <View style={styles.macroLabelRow}>
                       <Text style={styles.macroKey}>CARBS</Text>
-                      <Text style={styles.macroRatio}>{targets?.carbohydratesG || targets?.carbsG || 210}g</Text>
+                      <Text style={styles.macroRatio}>{targets?.carbohydratesG ?? targets?.carbsG ?? 0}g</Text>
                     </View>
                     <View style={styles.macroTrack}>
                       <View style={[styles.macroFill, { width: '75%', backgroundColor: '#10B981' }]} />
@@ -117,7 +117,7 @@ export default function FoodScreen() {
                   <View style={styles.macroProgressCol}>
                     <View style={styles.macroLabelRow}>
                       <Text style={styles.macroKey}>FAT</Text>
-                      <Text style={styles.macroRatio}>{targets?.fatG || 58}g</Text>
+                      <Text style={styles.macroRatio}>{targets?.fatG ?? 0}g</Text>
                     </View>
                     <View style={styles.macroTrack}>
                       <View style={[styles.macroFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
