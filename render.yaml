@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: unifit-api
+    runtime: docker
+    repo: https://github.com/mehtab-bit/UniFit
+    plan: free
+    dockerfilePath: ./deploy/hf-space/Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: EXPO_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
