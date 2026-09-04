@@ -21,6 +21,11 @@ import { CardSpringEntry } from '../../components/animations/CardSpringEntry';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
+import {
+  getPoseSourceOverride,
+  setPoseSourceOverride,
+  PoseSourceOverride
+} from '../../src/cv/native/runtime';
 
 export default function ProfileScreen() {
   useScreenAnnouncement('Profile screen. Manage your preferences, performance animation mode, speech speed, and accessibility settings.');
@@ -43,6 +48,23 @@ export default function ProfileScreen() {
   const { performanceMode, setPerformanceMode, isAutoDetected } = useAnimationTheme();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [poseOverride, setPoseOverrideState] = useState<PoseSourceOverride>(
+    () => getPoseSourceOverride()
+  );
+
+  const cyclePoseOverride = () => {
+    const order: PoseSourceOverride[] = ['auto', 'movenet', 'mediapipe'];
+    const next =
+      order[(order.indexOf(getPoseSourceOverride()) + 1) % order.length];
+    setPoseSourceOverride(next);
+    setPoseOverrideState(next);
+  };
+
+  const poseOverrideLabel: Record<PoseSourceOverride, string> = {
+    auto: 'Auto',
+    movenet: 'MoveNet',
+    mediapipe: 'MediaPipe'
+  };
 
   const speechSpeedOptions = [
     { label: '0.8x', speedText: 'Slower', value: 0.8 },
@@ -325,6 +347,25 @@ export default function ProfileScreen() {
 
             {typeof __DEV__ !== 'undefined' && __DEV__ ? (
               <>
+                <ScalePressable
+                  activeScale={0.98}
+                  onPress={cyclePoseOverride}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Pose backend override: ${poseOverrideLabel[poseOverride]}`}
+                  accessibilityHint="Cycles automatic, MoveNet, or MediaPipe pose backend"
+                  style={styles.stressTestBtn}
+                >
+                  <Feather name="cpu" size={18} color={Colors.primary} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stressTestTitle}>
+                      Pose backend: {poseOverrideLabel[poseOverride]}
+                    </Text>
+                    <Text style={styles.stressTestSub}>
+                      Auto uses MediaPipe in native builds, MoveNet elsewhere
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={Colors.primary} />
+                </ScalePressable>
                 <ScalePressable
                   activeScale={0.98}
                   onPress={() => router.push('/(app)/cv-native-test' as any)}

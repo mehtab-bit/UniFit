@@ -11,6 +11,9 @@ import { shouldMirrorPreview } from './TensorCamera';
 import { CvKeypoint, KeypointName } from './types';
 import { KEYPOINT_MIN_SCORE } from './confidence';
 import { createBundledModelIO } from './modelAssets';
+import { nativePoseToCvKeypoints, NativePoseFrame } from './nativePose';
+import { smoothLandmarks, keypointsMoved } from './landmarkSmoothing';
+import { PoseSourceMode } from './native/runtime';
 
 // Bundled model keeps CV usable offline and avoids a long first-load fetch.
 const movenetModelJson = require('../../assets/models/movenet-lightning/model.json');
@@ -30,13 +33,20 @@ type FrameImages = IterableIterator<tf.Tensor3D>;
 
 const DETECTION_INTERVAL_MS = 180;
 const DEFAULT_FACING: CameraType = 'front';
+const NATIVE_UPDATE_INTERVAL_MS = 90;
+const NATIVE_SMOOTH_ALPHA = 0.6;
+const NATIVE_EMPTY_FRAMES_TO_CLEAR = 2;
 
 /**
  * Live pose pipeline: loads MoveNet once, then runs inference on camera
  * frames at a fixed rate. Keeps the hook purely about detection so the rest
  * of the app only has to read keypoints/model status.
  */
-export function usePoseDetection(facing: CameraType = DEFAULT_FACING, resetKey?: string) {
+export function usePoseDetection(
+  facing: CameraType = DEFAULT_FACING,
+  resetKey?: string,
+  mode: PoseSourceMode = 'movenet'
+) {
   const [permission, requestPermission] = useCameraPermissions();
   const [modelStatus, setModelStatus] = useState<ModelStatus>('loading');
   const [keypoints, setKeypoints] = useState<CvKeypoint[]>([]);
@@ -52,11 +62,18 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING, resetKey?:
   const smoothedKeypointsRef = useRef<CvKeypoint[]>([]);
   const lastVisibleRef = useRef<KeypointName[]>([]);
   const lastSourceRef = useRef<SourceSize | null>(null);
+  const modeRef = useRef<PoseSourceMode>(mode);
+  modeRef.current = mode;
+  const nativeLastUpdateRef = useRef(0);
+  const nativeEmptyFramesRef = useRef(0);
   const isActiveRef = useRef(true);
   const isDetectingRef = useRef(false);
   const lastDetectionAtRef = useRef(0);
 
-  const mirrorX = shouldMirrorPreview(facing === 'front');
+  const mirrorX =
+    mode === 'mediapipe'
+      ? facing === 'front'
+      : shouldMirrorPreview(facing === 'front');
 
   // Reset the whole pipeline whenever `facing` or an explicit session nonce
   // changes. Without a full teardown, re-entering a session after exiting
@@ -76,6 +93,15 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING, resetKey?:
 
     async function loadModel() {
       try {
+        if (modeRef.current !== 'movenet') {
+          // Native MediaPipe needs no model loading: the frame processor
+          // plugin owns the landmarker and this hook only smooths results.
+          if (isActiveRef.current) {
+            setModelStatus('ready');
+            setError(null);
+          }
+          return;
+        }
         await tf.ready();
         await tf.setBackend('rn-webgl');
         const modelIO = await createBundledModelIO(movenetModelJson, [
@@ -108,10 +134,92 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING, resetKey?:
 
     return () => {
       isActiveRef.current = false;
-      detectorRef.current?.dispose();
-      detectorRef.current = null;
+      if (modeRef.current === 'movenet') {
+        detectorRef.current?.dispose();
+        detectorRef.current = null;
+      }
     };
   }, [resetKey]);
+
+  const handleNativeFrame = useCallback((payload: NativePoseFrame) => {
+    if (!isActiveRef.current) {
+      return;
+    }
+    const now = Date.now();
+    if (now - nativeLastUpdateRef.current < NATIVE_UPDATE_INTERVAL_MS) {
+      return;
+    }
+    nativeLastUpdateRef.current = now;
+
+    if (payload.error) {
+      if (isActiveRef.current) {
+        setError(payload.error);
+      }
+      return;
+    }
+
+    const detected = nativePoseToCvKeypoints(payload.pose);
+    if (detected.length === 0) {
+      nativeEmptyFramesRef.current += 1;
+      if (nativeEmptyFramesRef.current < NATIVE_EMPTY_FRAMES_TO_CLEAR) {
+        return;
+      }
+      if (isActiveRef.current) {
+        if (lastKeypointsRef.current.length > 0) {
+          lastKeypointsRef.current = [];
+          smoothedKeypointsRef.current = [];
+          setKeypoints([]);
+        }
+        if (lastVisibleRef.current.length > 0) {
+          lastVisibleRef.current = [];
+          setVisibleKeypointNames([]);
+        }
+      }
+      return;
+    }
+    nativeEmptyFramesRef.current = 0;
+
+    const smoothed = smoothLandmarks(
+      smoothedKeypointsRef.current,
+      detected,
+      NATIVE_SMOOTH_ALPHA
+    );
+    smoothedKeypointsRef.current = smoothed;
+
+    if (isActiveRef.current) {
+      if (keypointsMoved(lastKeypointsRef.current, smoothed, 0.008)) {
+        lastKeypointsRef.current = smoothed;
+        setKeypoints(smoothed);
+      }
+      const visible = detected
+        .filter(
+          (keypoint) =>
+            typeof keypoint.score !== 'number' ||
+            keypoint.score >= KEYPOINT_MIN_SCORE
+        )
+        .map((keypoint) => keypoint.name);
+      if (lastVisibleRef.current.join() !== visible.join()) {
+        lastVisibleRef.current = visible;
+        setVisibleKeypointNames(visible);
+      }
+
+      const nextSource = {
+        width: payload.imageWidth ?? 0,
+        height: payload.imageHeight ?? 0
+      };
+      if (
+        nextSource.width > 0 &&
+        nextSource.height > 0 &&
+        (!lastSourceRef.current ||
+          lastSourceRef.current.width !== nextSource.width ||
+          lastSourceRef.current.height !== nextSource.height)
+      ) {
+        lastSourceRef.current = nextSource;
+        setSourceSize(nextSource);
+      }
+      setError(null);
+    }
+  }, []);
 
   const handleCameraStream = useCallback(
     (images: FrameImages, _updateCameraPreview: () => void, _gl: ExpoWebGLRenderingContext) => {
@@ -226,7 +334,10 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING, resetKey?:
     mirrorX,
     facing,
     handleCameraStream,
-    handleCameraError
+    handleCameraError,
+    handleNativeFrame,
+    native: mode === 'mediapipe',
+    mode
   };
 }
 

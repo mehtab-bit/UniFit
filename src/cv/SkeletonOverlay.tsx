@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { CvKeypoint, KeypointName, Side } from './types';
 import { KEYPOINT_MIN_SCORE } from './confidence';
+import { keypointToViewPx, SourceSize } from './overlayGeometry';
 
 const BONES: Array<[KeypointName, KeypointName]> = [
   ['left_shoulder', 'right_shoulder'],
@@ -25,6 +26,7 @@ type SkeletonOverlayProps = {
   keypoints: CvKeypoint[];
   mirrorX: boolean;
   size: { width: number; height: number };
+  sourceSize?: SourceSize | null;
   activeSide?: Side;
   isGoodForm: boolean;
 };
@@ -32,14 +34,14 @@ type SkeletonOverlayProps = {
 function toPx(
   keypoint: CvKeypoint,
   mirrorX: boolean,
-  size: { width: number; height: number }
+  size: { width: number; height: number },
+  sourceSize?: SourceSize | null
 ) {
   // Keypoints are normalized to 0..1 fractions by normalizeKeypoints.
-  const xFraction = mirrorX ? 1 - keypoint.x : keypoint.x;
-  const yFraction = keypoint.y;
+  const fitted = keypointToViewPx(keypoint, size, sourceSize, mirrorX);
   return {
-    x: xFraction * size.width,
-    y: yFraction * size.height
+    x: fitted.x,
+    y: fitted.y
   };
 }
 
@@ -47,6 +49,7 @@ export function SkeletonOverlay({
   keypoints,
   mirrorX,
   size,
+  sourceSize,
   activeSide,
   isGoodForm
 }: SkeletonOverlayProps) {
@@ -73,8 +76,8 @@ export function SkeletonOverlay({
     const isActive =
       activeSide &&
       (start.startsWith(`${activeSide}_`) || end.startsWith(`${activeSide}_`));
-    const from = toPx(startKeypoint, mirrorX, size);
-    const to = toPx(endKeypoint, mirrorX, size);
+    const from = toPx(startKeypoint, mirrorX, size, sourceSize);
+    const to = toPx(endKeypoint, mirrorX, size, sourceSize);
     const length = Math.max(1, Math.hypot(to.x - from.x, to.y - from.y));
     const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
     const midX = (from.x + to.x) / 2;

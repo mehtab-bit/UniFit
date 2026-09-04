@@ -14,6 +14,13 @@ export type NativePosePoint = {
   visibility?: number;
 };
 
+export type NativePoseFrame = {
+  pose?: NativePosePoint[];
+  imageWidth?: number;
+  imageHeight?: number;
+  error?: string;
+};
+
 const NATIVE_POSE_INDEX: ReadonlyArray<readonly [KeypointName, number]> = [
   ['nose', 0],
   ['left_eye', 2],

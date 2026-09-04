@@ -10,6 +10,8 @@ import { isRepTooFast } from './cv/tempo';
 import { SkeletonOverlay } from './cv/SkeletonOverlay';
 import { KEYPOINT_MIN_SCORE } from './cv/confidence';
 import { loadSavedCalibration, saveCalibration } from './cv/calibrationStore';
+import { resolvePoseSourceMode } from './cv/native/runtime';
+import { keypointToViewPx } from './cv/overlayGeometry';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 type CalibrationStage = 'idle' | 'start_hold' | 'end_move' | 'end_hold' | 'complete' | 'failed';
@@ -124,13 +126,18 @@ export function CvDemoScreen({
   const [retryKey, setRetryKey] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
   const { provideFeedback } = useAccessibility();
+  const poseMode = useMemo(() => resolvePoseSourceMode(), []);
 
   const cameraSize = {
     width: windowWidth,
     height: windowWidth * CAMERA_HEIGHT_RATIO
   };
 
-  const pose = usePoseDetection(cameraFacing, `${sessionKey ?? 'default'}-${retryKey}`);
+  const pose = usePoseDetection(
+    cameraFacing,
+    `${sessionKey ?? 'default'}-${retryKey}`,
+    poseMode
+  );
   const tracker = useExerciseTracker(
     exerciseId,
     pose.keypoints,
@@ -459,6 +466,40 @@ export function CvDemoScreen({
   const canCalibrate =
     pose.modelStatus === 'ready' && missingRequired.length === 0;
 
+  function renderCameraFeed() {
+    if (pose.native) {
+      // Lazy-required so Expo Go/MoveNet bundles never evaluate the native
+      // Vision Camera + MediaPipe modules.
+      const NativeFeed: any = require('./cv/native/NativeCameraFeed')
+        .NativeCameraFeed;
+      return (
+        <NativeFeed
+          key={`native-cam-${sessionKey ?? 'default'}-${cameraFacing}`}
+          facing={pose.facing}
+          onDetected={pose.handleNativeFrame}
+          onError={pose.handleCameraError}
+        />
+      );
+    }
+    return (
+      <TensorCamera
+        key={`cam-${sessionKey ?? 'default'}-${cameraFacing}`}
+        style={StyleSheet.absoluteFill}
+        facing={pose.facing}
+        ratio={Platform.OS === 'android' ? '4:3' : undefined}
+        autorender={true}
+        useCustomShadersToResize={false}
+        cameraTextureWidth={0}
+        cameraTextureHeight={0}
+        resizeWidth={192}
+        resizeHeight={192}
+        resizeDepth={3}
+        onReady={pose.handleCameraStream}
+        onError={pose.handleCameraError}
+      />
+    );
+  }
+
   const sourceWidth = pose.sourceSize?.width ?? 192;
   const sourceHeight = pose.sourceSize?.height ?? 192;
 
@@ -506,27 +547,14 @@ export function CvDemoScreen({
     <View style={styles.screen}>
       <View style={styles.cameraArea}>
         <View style={cameraSize}>
-          <TensorCamera
-            key={`cam-${sessionKey ?? 'default'}-${cameraFacing}`}
-            style={StyleSheet.absoluteFill}
-            facing={pose.facing}
-            ratio={Platform.OS === 'android' ? '4:3' : undefined}
-            autorender={true}
-            useCustomShadersToResize={false}
-            cameraTextureWidth={0}
-            cameraTextureHeight={0}
-            resizeWidth={192}
-            resizeHeight={192}
-            resizeDepth={3}
-            onReady={pose.handleCameraStream}
-            onError={pose.handleCameraError}
-          />
+          {renderCameraFeed()}
 
           <View pointerEvents="none" style={styles.overlay}>
             <SkeletonOverlay
               keypoints={pose.keypoints}
               mirrorX={pose.mirrorX}
               size={cameraSize}
+              sourceSize={pose.native ? pose.sourceSize : null}
               activeSide={tracker.side}
               isGoodForm={isGoodForm}
             />
@@ -539,8 +567,12 @@ export function CvDemoScreen({
               }
 
               const isTracked = selectedKeypointNames.includes(keypoint.name);
-              const xFraction = pose.mirrorX ? 1 - keypoint.x : keypoint.x;
-              const yFraction = keypoint.y;
+              const fitted = keypointToViewPx(
+                keypoint,
+                cameraSize,
+                pose.native ? pose.sourceSize : null,
+                pose.mirrorX
+              );
 
               return (
                 <View
@@ -549,8 +581,8 @@ export function CvDemoScreen({
                     styles.keypoint,
                     isTracked ? styles.trackedKeypoint : styles.otherKeypoint,
                     {
-                      left: `${xFraction * 100}%`,
-                      top: `${yFraction * 100}%`
+                      left: fitted.x,
+                      top: fitted.y
                     }
                   ]}
                 />
