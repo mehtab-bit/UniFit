@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -68,6 +68,7 @@ export default function WorkoutScreen() {
   const [lastFeedback, setLastFeedback] = useState('Position yourself in camera frame. Keep a stable base.');
   const [bannerType, setBannerType] = useState<'info' | 'correction' | 'success'>('info');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const cvSessionNonceRef = useRef(0);
 
   const loadWorkoutData = useCallback(async () => {
     try {
@@ -108,12 +109,14 @@ export default function WorkoutScreen() {
 
     if (ex.family && LIVE_FAMILIES.includes(ex.family)) {
       setIsSessionActive(false);
+      cvSessionNonceRef.current += 1;
       router.push({
         pathname: '/(app)/cv-session',
         params: {
           exerciseId: ex.id,
           family: ex.family,
           name: ex.name,
+          nonce: String(cvSessionNonceRef.current),
           sets: String(ex.sets || 2),
           reps: String(ex.reps || 8),
           target: String(Number(ex.sets || 2) * Number(ex.reps || 8)),

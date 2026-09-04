@@ -23,11 +23,13 @@ export default function CvSessionScreen() {
     activityId?: string;
     progressionKey?: string;
     sessionType?: string;
+    nonce?: string;
   }>();
   const { provideFeedback } = useAccessibility();
   const { user } = useAuth();
 
   const family = (params.family ?? 'squat') as ExerciseId;
+  const sessionKey = params.nonce ?? family;
   const exerciseId = params.exerciseId ?? `ex-${family}`;
   const totalReps = Number(params.target ?? (Number(params.sets || 2) * Number(params.reps || 8)));
   const bilateral = BILATERAL_FAMILIES.includes(family);
@@ -101,7 +103,9 @@ export default function CvSessionScreen() {
   return (
     <View style={styles.screen}>
       <CvDemoScreen
+        key={sessionKey}
         exerciseId={family}
+        sessionKey={sessionKey}
         onExit={() => router.back()}
         facing="front"
         showExerciseSwitcher={false}

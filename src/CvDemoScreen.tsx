@@ -75,6 +75,7 @@ function jointLabel(name: string) {
 
 type CvDemoScreenProps = {
   exerciseId: ExerciseId;
+  sessionKey?: string;
   onExerciseChange?: (exerciseId: ExerciseId) => void;
   onExit?: () => void;
   facing?: CameraType;
@@ -87,6 +88,7 @@ type CvDemoScreenProps = {
 
 export function CvDemoScreen({
   exerciseId,
+  sessionKey,
   onExerciseChange,
   onExit,
   facing = 'front',
@@ -108,7 +110,7 @@ export function CvDemoScreen({
     height: windowWidth * CAMERA_HEIGHT_RATIO
   };
 
-  const pose = usePoseDetection(cameraFacing);
+  const pose = usePoseDetection(cameraFacing, sessionKey);
   const tracker = useExerciseTracker(exerciseId, pose.keypoints, sideOverride);
   const trackerRef = useRef(tracker);
   trackerRef.current = tracker;
@@ -362,6 +364,7 @@ export function CvDemoScreen({
       <View style={styles.cameraArea}>
         <View style={cameraSize}>
           <TensorCamera
+            key={`cam-${sessionKey ?? 'default'}`}
             style={StyleSheet.absoluteFill}
             facing={pose.facing}
             ratio={Platform.OS === 'android' ? '4:3' : undefined}

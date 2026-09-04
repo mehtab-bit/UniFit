@@ -36,7 +36,7 @@ const DEFAULT_FACING: CameraType = 'front';
  * frames at a fixed rate. Keeps the hook purely about detection so the rest
  * of the app only has to read keypoints/model status.
  */
-export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
+export function usePoseDetection(facing: CameraType = DEFAULT_FACING, resetKey?: string) {
   const [permission, requestPermission] = useCameraPermissions();
   const [modelStatus, setModelStatus] = useState<ModelStatus>('loading');
   const [keypoints, setKeypoints] = useState<CvKeypoint[]>([]);
@@ -58,8 +58,21 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
 
   const mirrorX = shouldMirrorPreview(facing === 'front');
 
+  // Reset the whole pipeline whenever `facing` or an explicit session nonce
+  // changes. Without a full teardown, re-entering a session after exiting
+  // mid-rep keeps the previous WebGL/camera frame alive and the overlay shows
+  // frozen dots.
   useEffect(() => {
     isActiveRef.current = true;
+    lastKeypointsRef.current = [];
+    smoothedKeypointsRef.current = [];
+    lastVisibleRef.current = [];
+    lastSourceRef.current = null;
+    setKeypoints([]);
+    setVisibleKeypointNames([]);
+    setSourceSize(null);
+    setModelStatus('loading');
+    setError(null);
 
     async function loadModel() {
       try {
@@ -98,7 +111,7 @@ export function usePoseDetection(facing: CameraType = DEFAULT_FACING) {
       detectorRef.current?.dispose();
       detectorRef.current = null;
     };
-  }, []);
+  }, [resetKey]);
 
   const handleCameraStream = useCallback(
     (images: FrameImages, _updateCameraPreview: () => void, _gl: ExpoWebGLRenderingContext) => {
