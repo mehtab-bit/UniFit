@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { CvKeypoint, KeypointName, Side } from './types';
 import { KEYPOINT_MIN_SCORE } from './confidence';
 import { keypointToViewPx, SourceSize } from './overlayGeometry';
+import { trackRenderBurst } from './debugRenderCount';
 
 const BONES: Array<[KeypointName, KeypointName]> = [
   ['left_shoulder', 'right_shoulder'],
@@ -55,6 +56,7 @@ export function SkeletonOverlay({
   isGoodForm,
   requiredKeypointNames
 }: SkeletonOverlayProps) {
+  trackRenderBurst('SkeletonOverlay');
   if (keypoints.length === 0) {
     return null;
   }

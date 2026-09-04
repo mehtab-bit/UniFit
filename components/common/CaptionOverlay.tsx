@@ -3,8 +3,10 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { Colors } from '../../constants/colors';
 import { Layout } from '../../constants/layout';
+import { trackRenderBurst } from '../../src/cv/debugRenderCount';
 
 export const CaptionOverlay: React.FC = () => {
+  trackRenderBurst('CaptionOverlay');
   const { captionsEnabled, activeCaption } = useAccessibility();
 
   if (!captionsEnabled || !activeCaption) {

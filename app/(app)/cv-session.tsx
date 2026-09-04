@@ -13,8 +13,10 @@ import { workoutService } from '../../services';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { WorkoutCompletionPayload } from '../../types/domain';
 import { useAuth } from '../../context/AuthContext';
+import { trackRenderBurst } from '../../src/cv/debugRenderCount';
 
 const BILATERAL_FAMILIES: ExerciseId[] = ['lunge', 'bicep_curl', 'supported_row'];
+let screenMountLogged = false;
 
 type SessionProgress = {
   side: Side;
@@ -23,6 +25,11 @@ type SessionProgress = {
 };
 
 export default function CvSessionScreen() {
+  trackRenderBurst('CvSessionScreen');
+  if (typeof __DEV__ !== 'undefined' && __DEV__ && !screenMountLogged) {
+    console.info('[UniFit-screen] cv-session mounted');
+    screenMountLogged = true;
+  }
   const router = useRouter();
   const params = useLocalSearchParams<{
     exerciseId?: string;

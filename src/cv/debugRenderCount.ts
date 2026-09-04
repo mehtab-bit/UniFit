@@ -16,7 +16,7 @@ export function trackRenderBurst(component: string) {
   bucket.lastMs = now;
   bucket.count += 1;
   buckets.set(component, bucket);
-  if (bucket.count === 40) {
-    console.warn(`[UniFit-depth] ${component} rendered 40x in one flush`);
+  if (bucket.count === 30) {
+    console.warn(`[UniFit-depth] ${component} rendered 30x in one flush`);
   }
 }

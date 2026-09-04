@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import type { ComponentType } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { trackRenderBurst } from '../../src/cv/debugRenderCount';
+
+let screenMountLogged = false;
 
 /**
  * Dev-only native pose debug route. The native MediaPipe screen is required
  * lazily so Expo Go / MoveNet builds never evaluate Vision Camera modules.
  */
 export default function NativePoseTestScreen() {
+  trackRenderBurst('NativePoseTestScreen');
+  if (typeof __DEV__ !== 'undefined' && __DEV__ && !screenMountLogged) {
+    console.info('[UniFit-screen] cv-native-test mounted');
+    screenMountLogged = true;
+  }
   const [DebugView, setDebugView] = useState<ComponentType | null>(null);
 
   useEffect(() => {
