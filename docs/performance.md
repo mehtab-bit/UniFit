@@ -12,6 +12,17 @@
 | Warm (cached) plan generation | ~2 s | Backend caches plans in `user_weekly_plans`; kept |
 | `force_regenerate=true` after cache warm | ~20 s (full regen) | `force_regenerate` + `invalidate_weekly_plan()` so profile edits don't serve stale plans |
 | Two different profiles | 3 active days/1,281 kcal vs 5 days/3,349 kcal | Profile → engine wiring works end-to-end |
+| Web export initial JS (single entry) | 5.24 MB raw / 1.08 MB gzip | Lazy-load the CV route: TensorFlow moved into an on-demand `CvDemoScreen` chunk |
+
+**Web bundle after the fix (re-measured with the same export command):**
+
+| Bundle | Size |
+|---|---|
+| Initial entry JS | 2.54 MB raw / 0.66 MB gzip (-51% raw, -39% gzip) |
+| `CvDemoScreen` lazy chunk (loaded only when a camera session opens) | 2.70 MB raw / 0.42 MB gzip |
+
+TFJS-family modules are ~71% of bundled source and never run on web/desktop;
+route-level lazy loading keeps them out of first paint.
 
 **Where they came from:** every plan request timed out at 12 s during cold
 generation, so the app silently fell back to mocks. Raising the timeout to
@@ -54,6 +65,9 @@ These are qualitative (symptom-based); device numbers still need capturing.
 
 - Keep typecheck + Vitest green (`npm test`, `npx tsc --noEmit`) and backend
   tests green (`pytest backend/tests/test_engine_api.py`).
+- Watch the web entry budget: keep initial entry JS under ~0.8 MB gzip; if it
+  creeps up, re-run `npx expo export -p web` and profile the bundle before
+  adding anything heavy to the route graph.
 - After touching CV, run a curl flow on-device under both engines and watch
   for render-burst warnings.
 - When touching backend plan endpoints, verify a cold (~20 s) and warm (~2 s)

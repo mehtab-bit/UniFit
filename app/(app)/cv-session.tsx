@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CvDemoScreen } from '../../src/CvDemoScreen';
 import { ExerciseId, Side } from '../../src/cv/types';
 import { buildSessionPlan } from '../../src/cv/sessionPlan';
 import {
@@ -17,6 +16,14 @@ import { trackRenderBurst } from '../../src/cv/debugRenderCount';
 
 const BILATERAL_FAMILIES: ExerciseId[] = ['lunge', 'bicep_curl', 'supported_row'];
 let screenMountLogged = false;
+
+// The camera pipeline pulls in TensorFlow.js, which is heavy and never used
+// on web/desktop. Lazy-load it only when a CV session actually opens.
+const CvDemoScreen = lazy(() =>
+  import('../../src/CvDemoScreen').then((module) => ({
+    default: module.CvDemoScreen
+  }))
+);
 
 type SessionProgress = {
   side: Side;
@@ -265,23 +272,31 @@ export default function CvSessionScreen() {
 
   return (
     <View style={styles.screen}>
-      <CvDemoScreen
-        key={sessionKey}
-        exerciseId={family}
-        exerciseName={exerciseName}
-        sessionKey={sessionKey}
-        onExit={handleExitRequest}
-        facing="front"
-        showExerciseSwitcher={false}
-        targetReps={plan.repsPerSide}
-        repsPerSet={plan.repsPerSet}
-        restSeconds={restSeconds}
-        bilateral={isBilateral}
-        sideOverride={activeSide}
-        onManualRequest={handleManualRequest}
-        onProgress={handleProgress}
-        onSessionComplete={handleSessionComplete}
-      />
+      <Suspense
+        fallback={
+          <View style={styles.loadingFallback}>
+            <Text style={styles.doneText}>Loading pose engine…</Text>
+          </View>
+        }
+      >
+        <CvDemoScreen
+          key={sessionKey}
+          exerciseId={family}
+          exerciseName={exerciseName}
+          sessionKey={sessionKey}
+          onExit={handleExitRequest}
+          facing="front"
+          showExerciseSwitcher={false}
+          targetReps={plan.repsPerSide}
+          repsPerSet={plan.repsPerSet}
+          restSeconds={restSeconds}
+          bilateral={isBilateral}
+          sideOverride={activeSide}
+          onManualRequest={handleManualRequest}
+          onProgress={handleProgress}
+          onSessionComplete={handleSessionComplete}
+        />
+      </Suspense>
       {completed ? (
         <View style={styles.donePill} pointerEvents="none">
           <Text style={styles.doneText}>Session recorded</Text>
@@ -292,6 +307,12 @@ export default function CvSessionScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0b1220'
+  },
   screen: {
     flex: 1,
     backgroundColor: '#0b1220'
