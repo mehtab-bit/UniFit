@@ -1,0 +1,33 @@
+# EAS ignores this file if present, so it must mirror .gitignore.
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Expo / Builds
+.expo/
+dist/
+dist-hf/
+dist/
+web-build/
+android/
+ios/
+
+# IDE / System
+.DS_Store
+Thumbs.db
+graphify-out/
+supabase/.temp/
+supabase/.branches/
+
+# @generated expo-cli sync-2b81b286409207a5da26e14c78851eb30d8ccbdb
+expo-env.d.ts
