@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
@@ -16,40 +15,25 @@ interface StreakHeroProps {
 export const StreakHero: React.FC<StreakHeroProps> = ({
   currentStreak,
   bestStreak,
-  motivationalHeadline = "You're on a roll!",
-  motivationalSubtext = 'Keep your momentum going.',
 }) => {
   return (
     <View
       style={styles.heroCard}
       accessible={true}
       accessibilityRole="summary"
-      accessibilityLabel={`${currentStreak} day streak. ${motivationalHeadline} ${motivationalSubtext} Best streak is ${bestStreak} days.`}
+      accessibilityLabel={`${currentStreak} day streak. Best streak is ${bestStreak} days.`}
     >
-      {/* Top Flame Graphic Container */}
-      <View style={styles.flameBadge} accessible={false} importantForAccessibility="no">
-        <MaterialCommunityIcons name="fire" size={44} color="#00C8FF" />
-      </View>
-
-      {/* Huge Streak Number */}
-      <View style={styles.streakNumberRow}>
+      <View style={styles.streakRow}>
         <AnimatedNumberCounter
           value={currentStreak}
+          surface="dark"
           style={styles.streakNumber}
           accessibilityLabel={`${currentStreak}`}
         />
+        <Text style={styles.streakTitle}> DAY STREAK</Text>
       </View>
-      <Text style={styles.streakTitle}>DAY STREAK</Text>
-
-      {/* Motivational Headline & Subtext */}
-      <Text style={styles.headline}>{motivationalHeadline}</Text>
-      <Text style={styles.subtext}>{motivationalSubtext}</Text>
-
-      {/* Best Streak Badge */}
-      <View style={styles.bestStreakBadge}>
-        <Feather name="award" size={15} color="#00C8FF" style={styles.awardIcon} />
-        <Text style={styles.bestStreakLabel}>Best Streak: </Text>
-        <Text style={styles.bestStreakValue}>{bestStreak} days</Text>
+      <View style={styles.bestStreakRow}>
+        <Text style={styles.bestStreakText}>Best {bestStreak} days</Text>
       </View>
     </View>
   );
@@ -57,81 +41,46 @@ export const StreakHero: React.FC<StreakHeroProps> = ({
 
 const styles = StyleSheet.create({
   heroCard: {
-    backgroundColor: '#001554',
+    backgroundColor: '#000000',
     borderRadius: Layout.borderRadius.xl,
-    paddingVertical: Layout.spacing.xl,
+    paddingVertical: Layout.spacing.xxl,
     paddingHorizontal: Layout.spacing.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#07328D',
     marginBottom: Layout.spacing.lg,
     ...Layout.shadows.card,
   },
-  flameBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0, 200, 255, 0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 200, 255, 0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Layout.spacing.sm,
-  },
-  streakNumberRow: {
-    alignItems: 'center',
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     justifyContent: 'center',
   },
   streakNumber: {
-    fontSize: 56,
+    fontSize: 72,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: -2,
-    lineHeight: 60,
+    letterSpacing: -3,
+    lineHeight: 80,
   },
   streakTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#00C8FF',
-    letterSpacing: 2,
-    marginTop: 2,
-    marginBottom: Layout.spacing.sm,
-  },
-  headline: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '800',
     color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginLeft: 8,
   },
-  subtext: {
-    ...Typography.bodyMedium,
-    color: '#CBD5E1',
-    textAlign: 'center',
-    fontSize: 13,
-    marginBottom: Layout.spacing.md,
-  },
-  bestStreakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  bestStreakRow: {
+    marginTop: Layout.spacing.sm,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: Layout.borderRadius.full,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 200, 255, 0.25)',
   },
-  awardIcon: {
-    marginRight: 6,
-  },
-  bestStreakLabel: {
-    color: '#9E9FA9',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  bestStreakValue: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 12,
+  bestStreakText: {
+    color: '#CBD5E1',
+    fontWeight: '700',
+    fontSize: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });
+

@@ -366,3 +366,14 @@ export interface AsyncState<T> {
   loading: boolean;
   error: string | null;
 }
+
+// -------------------------------------------------------------
+// 9. Workout Reflection Note Model
+// -------------------------------------------------------------
+export interface WorkoutNote {
+  id: string;
+  date: string; // YYYY-MM-DD
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+}

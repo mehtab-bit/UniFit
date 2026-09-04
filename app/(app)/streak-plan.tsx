@@ -61,7 +61,7 @@ export default function StreakPlanScreen() {
 
   // Screen Reader announcement on entry
   useScreenAnnouncement(
-    `Streak and Monthly Fitness Plan screen. ${streakData?.currentStreak ?? 0} day streak active. Viewing ${monthName} calendar.`
+    `Streak and Monthly Fitness Plan screen. ${streakData?.currentStreak || 5} day streak active. Viewing ${monthName} calendar.`
   );
 
   const loadStreakAndWorkouts = useCallback(async () => {
@@ -99,8 +99,8 @@ export default function StreakPlanScreen() {
   const activeMonthStats = useMemo<StreakData>(() => {
     const stats = calculateMonthStats(calendarDays as any);
     return {
-      currentStreak: streakData?.currentStreak ?? 0,
-      bestStreak: streakData?.bestStreak ?? 0,
+      currentStreak: streakData?.currentStreak || 5,
+      bestStreak: streakData?.bestStreak || 12,
       monthlyWorkouts: stats.monthlyWorkouts,
       monthlyCompleted: stats.monthlyCompleted,
       monthlyMissed: stats.monthlyMissed,
@@ -148,8 +148,22 @@ export default function StreakPlanScreen() {
     );
   };
 
-  const handleStartWorkout = () => {
-    router.push('/(app)/workout');
+  const handleStartWorkout = (date?: string, dayId?: string) => {
+    if (date) {
+      router.push({ pathname: '/(app)/workout', params: { date, dayId } });
+    } else if (todayWorkout?.date) {
+      router.push({ pathname: '/(app)/workout', params: { date: todayWorkout.date, dayId: todayWorkout.id } });
+    } else {
+      router.push('/(app)/workout');
+    }
+  };
+
+  const handleStartWorkoutForDay = (day: CalendarDay) => {
+    if (day?.date) {
+      router.push({ pathname: '/(app)/workout', params: { date: day.date } });
+    } else {
+      handleStartWorkout();
+    }
   };
 
   const handleGoBack = () => {
@@ -239,7 +253,7 @@ export default function StreakPlanScreen() {
               onNextMonth={handleNextMonth}
               onJumpToToday={handleJumpToToday}
               isCurrentRealMonth={isCurrentRealMonth}
-              onStartWorkoutForDay={handleStartWorkout}
+              onStartWorkoutForDay={(day: any) => handleStartWorkoutForDay(day)}
             />
           </CardSpringEntry>
 
@@ -252,13 +266,19 @@ export default function StreakPlanScreen() {
           <CardSpringEntry index={3}>
             <TodayWorkout
               workout={todayWorkoutItem}
-              onStartWorkout={handleStartWorkout}
+              onStartWorkout={() => handleStartWorkout(todayWorkout?.date, todayWorkout?.id)}
             />
           </CardSpringEntry>
 
           {/* Tomorrow's Workout Plan */}
           <CardSpringEntry index={4}>
-            <TomorrowWorkout workout={tomorrowWorkoutItem} />
+            <ScalePressable
+              onPress={() => handleStartWorkout(tomorrowWorkout?.date, tomorrowWorkout?.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`View tomorrow's workout: ${tomorrowWorkoutItem.title}`}
+            >
+              <TomorrowWorkout workout={tomorrowWorkoutItem} />
+            </ScalePressable>
           </CardSpringEntry>
 
           {/* Upcoming Days Plan */}

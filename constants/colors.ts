@@ -59,6 +59,45 @@ export const Colors = {
 
   shadow: '#001554',
   overlay: 'rgba(0, 21, 84, 0.6)',
+
+  // ── Surface-based text color tokens ──
+  // Dark surface (backgrounds: #001554, #02185D, #040E34, #0F172A)
+  darkSurfaceTextPrimary: '#FFFFFF',
+  darkSurfaceTextSecondary: '#CBD5E1',
+  darkSurfaceTextMuted: '#94A3B8',
+  darkSurfaceAccent: '#00C8FF',
+
+  // Light surface (backgrounds: #FFFFFF, #F6F7F9, #F8FAFC)
+  lightSurfaceTextPrimary: '#040E34',
+  lightSurfaceTextSecondary: '#4B5563',
+  lightSurfaceTextMuted: '#9E9FA9',
 } as const;
 
 export type ColorKeys = keyof typeof Colors;
+
+export const SurfaceColors = {
+  dark: {
+    background: '#001554',
+    backgroundAlt: '#02185D',
+    textPrimary: '#FFFFFF',
+    textSecondary: '#CBD5E1',
+    textMuted: '#94A3B8',
+    accent: '#00C8FF',
+    number: '#FFFFFF',
+    border: '#07328D',
+    track: '#1E293B',
+  },
+  light: {
+    background: '#FFFFFF',
+    backgroundAlt: '#F6F7F9',
+    textPrimary: '#040E34',
+    textSecondary: '#4B5563',
+    textMuted: '#9E9FA9',
+    accent: '#2166BF',
+    number: '#040E34',
+    border: '#E5E7EB',
+    track: '#E2E8F0',
+  },
+} as const;
+
+export type SurfaceType = 'dark' | 'light';

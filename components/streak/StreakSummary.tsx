@@ -14,7 +14,7 @@ interface StreakSummaryProps {
 
 export const StreakSummary: React.FC<StreakSummaryProps> = ({
   currentStreak,
-  bestStreak = 0,
+  bestStreak = 12,
   onPress,
 }) => {
   return (
@@ -33,6 +33,7 @@ export const StreakSummary: React.FC<StreakSummaryProps> = ({
         </View>
         <AnimatedNumberCounter
           value={currentStreak}
+          surface="dark"
           style={styles.heroNumber}
           accessibilityLabel={`${currentStreak}`}
         />

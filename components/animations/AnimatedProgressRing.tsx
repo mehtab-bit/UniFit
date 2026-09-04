@@ -7,9 +7,10 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors } from '../../constants/colors';
+import { Colors, SurfaceType } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { useAnimationTheme } from '../../context/AnimationContext';
+import { useSurfaceColors } from '../../context/SurfaceContext';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -21,6 +22,9 @@ interface AnimatedProgressRingProps {
   backgroundColor?: string;
   label?: string;
   showPercentText?: boolean;
+  surface?: SurfaceType;
+  textColor?: string;
+  labelColor?: string;
   style?: ViewStyle;
   accessibilityLabel?: string;
 }
@@ -29,13 +33,22 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
   progress,
   size = 90,
   strokeWidth = 8,
-  color = Colors.primary,
-  backgroundColor = Colors.surfaceBorder,
+  color,
+  backgroundColor,
   label,
   showPercentText = true,
+  surface,
+  textColor,
+  labelColor,
   style,
   accessibilityLabel,
 }) => {
+  const colors = useSurfaceColors(surface);
+  const effectiveArcColor = color || colors.accent;
+  const effectiveTrackColor = backgroundColor || (surface === 'dark' ? colors.track : Colors.surfaceBorder);
+  const effectiveTextColor = textColor || colors.number;
+  const effectiveLabelColor = labelColor || colors.textSecondary;
+
   const { performanceMode, config } = useAnimationTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -77,7 +90,7 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={backgroundColor}
+          stroke={effectiveTrackColor}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -86,7 +99,7 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={color}
+          stroke={effectiveArcColor}
           strokeWidth={strokeWidth}
           strokeDasharray={`${circumference} ${circumference}`}
           animatedProps={animatedProps}
@@ -100,8 +113,8 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
 
       {showPercentText && (
         <View style={styles.centerContent} accessible={false} importantForAccessibility="no">
-          <Text style={styles.percentText}>{Math.round(progress)}%</Text>
-          {label ? <Text style={styles.labelText}>{label}</Text> : null}
+          <Text style={[styles.percentText, { color: effectiveTextColor }]}>{Math.round(progress)}%</Text>
+          {label ? <Text style={[styles.labelText, { color: effectiveLabelColor }]}>{label}</Text> : null}
         </View>
       )}
     </View>

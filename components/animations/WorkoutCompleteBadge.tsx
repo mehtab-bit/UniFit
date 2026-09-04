@@ -19,8 +19,7 @@ interface WorkoutCompleteBadgeProps {
   visible: boolean;
   exerciseName: string;
   reps: number;
-  formScore?: number | null;
-  source?: 'camera' | 'manual';
+  formScore: number;
   onClose: () => void;
 }
 
@@ -29,7 +28,6 @@ export const WorkoutCompleteBadge: React.FC<WorkoutCompleteBadgeProps> = ({
   exerciseName,
   reps,
   formScore,
-  source = 'camera',
   onClose,
 }) => {
   const { performanceMode, config } = useAnimationTheme();
@@ -88,11 +86,7 @@ export const WorkoutCompleteBadge: React.FC<WorkoutCompleteBadgeProps> = ({
           style={[styles.card, cardAnimatedStyle]}
           accessible={true}
           accessibilityRole="alert"
-          accessibilityLabel={
-            source === 'camera'
-              ? `Workout Complete! ${exerciseName}. Completed ${reps} repetitions with ${formScore} percent range score.`
-              : `Exercise complete. ${exerciseName}. Completed ${reps} repetitions manually.`
-          }
+          accessibilityLabel={`Workout Complete! ${exerciseName}. Completed ${reps} repetitions with ${formScore} percent form score.`}
         >
           {/* Checkmark badge */}
           <Animated.View style={[styles.checkCircle, checkAnimatedStyle]}>
@@ -112,31 +106,14 @@ export const WorkoutCompleteBadge: React.FC<WorkoutCompleteBadgeProps> = ({
             <View style={styles.statDivider} />
 
             <View style={styles.statBox}>
-              {source === 'camera' && typeof formScore === 'number' ? (
-                <>
-                  <Text style={[styles.statNumber, { color: Colors.primary }]}>
-                    {formScore}%
-                  </Text>
-                  <Text style={styles.statLabel}>RANGE SCORE</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={[styles.statNumber, { color: Colors.primary }]}>
-                    MANUAL
-                  </Text>
-                  <Text style={styles.statLabel}>RECORDING</Text>
-                </>
-              )}
+              <Text style={[styles.statNumber, { color: Colors.primary }]}>{formScore}%</Text>
+              <Text style={styles.statLabel}>FORM SCORE</Text>
             </View>
           </View>
 
           <View style={styles.qualityPill}>
             <Feather name="award" size={14} color={Colors.success} style={{ marginRight: 4 }} />
-            <Text style={styles.qualityText}>
-              {source === 'camera'
-                ? 'Range calibrated & saved'
-                : 'Manual reps recorded — no camera used'}
-            </Text>
+            <Text style={styles.qualityText}>Biomechanics Calibrated & Saved</Text>
           </View>
 
           <PrimaryButton

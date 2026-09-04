@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
@@ -17,60 +16,34 @@ export const MonthlyStats: React.FC<MonthlyStatsProps> = ({ stats }) => {
       style={styles.container}
       accessible={true}
       accessibilityRole="summary"
-      accessibilityLabel={`This month: ${stats.monthlyWorkouts} total workouts, ${stats.monthlyCompleted} completed, ${stats.monthlyMissed} missed, with ${stats.consistency}% consistency.`}
+      accessibilityLabel={`Monthly consistency is ${stats.consistency}%. Workouts: ${stats.monthlyWorkouts}, Completed: ${stats.monthlyCompleted}, Missed: ${stats.monthlyMissed}.`}
     >
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionHeader}>THIS MONTH</Text>
-        <View style={styles.consistencyBadge}>
-          <Feather name="trending-up" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
-          <Text style={styles.consistencyBadgeText}>{stats.consistency}% Consistency</Text>
+      <View style={styles.consistencyHero}>
+        <View style={styles.consistencyRow}>
+          <AnimatedNumberCounter
+            value={stats.consistency}
+            style={styles.consistencyNumber}
+            accessibilityLabel={`${stats.consistency}%`}
+          />
+          <Text style={styles.percentageSymbol}>%</Text>
         </View>
+        <Text style={styles.consistencyLabel}>MONTHLY CONSISTENCY</Text>
       </View>
 
       <View style={styles.statsGrid}>
-        {/* Workouts Target */}
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            <AnimatedNumberCounter value={stats.monthlyWorkouts} style={styles.statValueText} accessibilityLabel={`${stats.monthlyWorkouts}`} />
-          </Text>
-          <Text style={styles.statLabel}>Workouts</Text>
+          <Text style={styles.statValue}>{stats.monthlyWorkouts}</Text>
+          <Text style={styles.statLabel}>PLANNED</Text>
         </View>
-
-        {/* Completed */}
+        <View style={styles.statDivider} />
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            <AnimatedNumberCounter
-              value={stats.monthlyCompleted}
-              style={[styles.statValueText, { color: Colors.primary }]}
-              accessibilityLabel={`${stats.monthlyCompleted}`}
-            />
-          </Text>
-          <Text style={styles.statLabel}>Completed</Text>
+          <Text style={[styles.statValue, { color: '#000000' }]}>{stats.monthlyCompleted}</Text>
+          <Text style={styles.statLabel}>COMPLETED</Text>
         </View>
-
-        {/* Missed */}
+        <View style={styles.statDivider} />
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>
-            <AnimatedNumberCounter
-              value={stats.monthlyMissed}
-              style={[styles.statValueText, { color: Colors.textMuted }]}
-              accessibilityLabel={`${stats.monthlyMissed}`}
-            />
-          </Text>
-          <Text style={styles.statLabel}>Missed</Text>
-        </View>
-
-        {/* Consistency */}
-        <View style={[styles.statCard, styles.statCardHighlight]}>
-          <Text style={styles.statValue}>
-            <AnimatedNumberCounter
-              value={stats.consistency}
-              style={[styles.statValueText, { color: Colors.primary }]}
-              accessibilityLabel={`${stats.consistency}%`}
-            />
-            <Text style={styles.percentageSymbol}>%</Text>
-          </Text>
-          <Text style={styles.statLabel}>Consistency</Text>
+          <Text style={[styles.statValue, { color: Colors.textMuted }]}>{stats.monthlyMissed}</Text>
+          <Text style={styles.statLabel}>MISSED</Text>
         </View>
       </View>
     </View>
@@ -79,81 +52,70 @@ export const MonthlyStats: React.FC<MonthlyStatsProps> = ({ stats }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.background,
+    backgroundColor: '#FFFFFF',
     borderRadius: Layout.borderRadius.xl,
     padding: Layout.spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E5E7EB',
     marginBottom: Layout.spacing.lg,
     ...Layout.shadows.subtle,
   },
-  headerRow: {
-    flexDirection: 'row',
+  consistencyHero: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.md,
+    marginBottom: Layout.spacing.xl,
+    marginTop: Layout.spacing.md,
   },
-  sectionHeader: {
-    ...Typography.caption,
+  consistencyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  consistencyNumber: {
+    fontSize: 64,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: -2,
+    lineHeight: 70,
+  },
+  percentageSymbol: {
+    fontSize: 24,
     fontWeight: '800',
-    color: Colors.textSecondary,
-    letterSpacing: 1.2,
-    fontSize: 11,
+    color: '#000000',
+    marginTop: 8,
   },
-  consistencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: Layout.borderRadius.full,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  consistencyBadgeText: {
-    ...Typography.caption,
-    fontWeight: '700',
-    color: Colors.primary,
-    fontSize: 11,
+  consistencyLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#71717A',
+    letterSpacing: 2,
+    marginTop: 4,
   },
   statsGrid: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Layout.spacing.xs,
+    backgroundColor: '#F4F4F5',
+    borderRadius: Layout.borderRadius.lg,
+    padding: Layout.spacing.md,
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.lg,
-    paddingVertical: Layout.spacing.md,
-    paddingHorizontal: Layout.spacing.xs,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  statCardHighlight: {
-    backgroundColor: '#F0F7FF',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#D4D4D8',
   },
   statValue: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 2,
-  },
-  statValueText: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.text,
-  },
-  percentageSymbol: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
+    color: '#3F3F46',
   },
   statLabel: {
-    ...Typography.caption,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#A1A1AA',
+    letterSpacing: 1,
+    marginTop: 4,
   },
 });

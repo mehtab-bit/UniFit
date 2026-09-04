@@ -10,22 +10,18 @@ import { StatusBar } from 'expo-status-bar';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useScreenAnnouncement } from '../../hooks/useScreenAnnouncement';
-import { Colors } from '../../constants/colors';
-import { Typography } from '../../constants/typography';
-import { Layout } from '../../constants/layout';
 import { CardSpringEntry } from '../../components/animations/CardSpringEntry';
 import { AnimatedProgressRing } from '../../components/animations/AnimatedProgressRing';
-import { AnimatedNumberCounter } from '../../components/animations/AnimatedNumberCounter';
 import { ScalePressable } from '../../components/animations/ScalePressable';
 import { AsyncStateView } from '../../components/common/AsyncStateView';
 
-// Services & Domain Models
 import { mealService } from '../../services';
-import { MealPlan, Meal } from '../../types/domain';
+import { MealPlan } from '../../types/domain';
+import { Surface } from '../../context/SurfaceContext';
 
 export default function FoodScreen() {
   const { user } = useAuth();
-  useScreenAnnouncement('Nutrition and Meal Planner screen. View daily caloric budget, macronutrient targets, and 4 scheduled meals.');
+  useScreenAnnouncement('Nutrition and Meal Planner screen.');
 
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
@@ -59,223 +55,160 @@ export default function FoodScreen() {
     setExpandedMealId((prev) => (prev === id ? null : id));
   };
 
-  const getMealIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'coffee':
-        return <Feather name="coffee" size={20} color={Colors.primary} />;
-      case 'sun':
-        return <Feather name="sun" size={20} color="#D97706" />;
-      case 'smile':
-        return <Feather name="smile" size={20} color="#059669" />;
-      case 'moon':
-      default:
-        return <Feather name="moon" size={20} color="#7C3AED" />;
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark" backgroundColor={Colors.background} />
+      <StatusBar style="dark" backgroundColor="#F8FAFC" />
 
-      {/* Header */}
-      <View style={styles.header} accessible={true} accessibilityRole="header">
-        <Text style={styles.headerTitle}>Nutrition & Fuel</Text>
-        <Text style={styles.headerSubtitle}>Daily caloric budget and macronutrient breakdown</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Nutrition</Text>
+        <Text style={styles.headerSubtitle}>Fuel and macro tracking</Text>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <AsyncStateView loading={loading} error={error} onRetry={loadMealData}>
-          {/* Unified Daily Fuel Hero Card */}
+          
           <CardSpringEntry index={0}>
-            <View
-              style={styles.fuelHeroCard}
-              accessible={true}
-              accessibilityRole="summary"
-              accessibilityLabel={`Daily Caloric Goal: ${targetCalories} kcal. ${consumedCalories} consumed. ${remainingCalories} remaining.`}
-            >
-              {/* Top Row: Title & Calorie Ring */}
-              <View style={styles.fuelHeroTopRow}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={styles.fuelBadge}>TODAY'S FUEL TARGET</Text>
-                  <Text style={styles.heroCalorieNumber}>
-                    {targetCalories.toLocaleString()} <Text style={styles.heroCalorieUnit}>kcal</Text>
-                  </Text>
-                  <Text style={styles.heroCalorieSub}>
-                    <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>{consumedCalories.toLocaleString()}</Text> consumed •{' '}
-                    <Text style={{ fontWeight: '700', color: '#00C8FF' }}>{remainingCalories.toLocaleString()}</Text> remaining
-                  </Text>
+            <Surface type="dark">
+              <View style={styles.fuelHeroCard}>
+                <View style={styles.fuelHeroTopRow}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={styles.fuelBadge}>TODAY'S FUEL</Text>
+                    <Text style={styles.heroCalorieNumber}>
+                      {targetCalories.toLocaleString()} <Text style={styles.heroCalorieUnit}>kcal</Text>
+                    </Text>
+                    <Text style={styles.heroCalorieSub}>
+                      <Text style={{ fontWeight: '800', color: '#FFFFFF' }}>{consumedCalories.toLocaleString()}</Text> CONSUMED  /  <Text style={{ fontWeight: '800', color: '#00C8FF' }}>{remainingCalories.toLocaleString()}</Text> REMAINING
+                    </Text>
+                  </View>
+                  <AnimatedProgressRing
+                    progress={progressPercent}
+                    size={100}
+                    strokeWidth={8}
+                    color="#00C8FF"
+                    backgroundColor="#1E293B"
+                    label="GOAL"
+                    surface="dark"
+                    textColor="#FFFFFF"
+                    labelColor="#CBD5E1"
+                  />
                 </View>
 
-                <AnimatedProgressRing
-                  progress={progressPercent}
-                  size={90}
-                  strokeWidth={8}
-                  color="#00C8FF"
-                  backgroundColor="#07328D"
-                  label="GOAL"
-                />
-              </View>
+                <View style={styles.macroProgressRow}>
+                  <View style={styles.macroProgressCol}>
+                    <View style={styles.macroLabelRow}>
+                      <Text style={styles.macroKey}>PROTEIN</Text>
+                      <Text style={styles.macroRatio}>{targets?.proteinG || 145}g</Text>
+                    </View>
+                    <View style={styles.macroTrack}>
+                      <View style={[styles.macroFill, { width: '85%', backgroundColor: '#00C8FF' }]} />
+                    </View>
+                  </View>
 
-              {/* Compact Visual Macro Bars */}
-              <View style={styles.macroProgressRow}>
-                {/* Protein */}
-                <View style={styles.macroProgressCol}>
-                  <View style={styles.macroLabelRow}>
-                    <Text style={styles.macroKey}>PROTEIN</Text>
-                    <Text style={styles.macroRatio}>{targets?.proteinG || 145}g</Text>
+                  <View style={styles.macroProgressCol}>
+                    <View style={styles.macroLabelRow}>
+                      <Text style={styles.macroKey}>CARBS</Text>
+                      <Text style={styles.macroRatio}>{targets?.carbohydratesG || targets?.carbsG || 210}g</Text>
+                    </View>
+                    <View style={styles.macroTrack}>
+                      <View style={[styles.macroFill, { width: '75%', backgroundColor: '#10B981' }]} />
+                    </View>
                   </View>
-                  <View style={styles.macroTrack}>
-                    <View style={[styles.macroFill, { width: '85%', backgroundColor: '#00C8FF' }]} />
-                  </View>
-                </View>
 
-                {/* Carbs */}
-                <View style={styles.macroProgressCol}>
-                  <View style={styles.macroLabelRow}>
-                    <Text style={styles.macroKey}>CARBS</Text>
-                    <Text style={styles.macroRatio}>{targets?.carbohydratesG || targets?.carbsG || 210}g</Text>
-                  </View>
-                  <View style={styles.macroTrack}>
-                    <View style={[styles.macroFill, { width: '75%', backgroundColor: '#10B981' }]} />
-                  </View>
-                </View>
-
-                {/* Fat */}
-                <View style={styles.macroProgressCol}>
-                  <View style={styles.macroLabelRow}>
-                    <Text style={styles.macroKey}>FAT</Text>
-                    <Text style={styles.macroRatio}>{targets?.fatG || 58}g</Text>
-                  </View>
-                  <View style={styles.macroTrack}>
-                    <View style={[styles.macroFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
+                  <View style={styles.macroProgressCol}>
+                    <View style={styles.macroLabelRow}>
+                      <Text style={styles.macroKey}>FAT</Text>
+                      <Text style={styles.macroRatio}>{targets?.fatG || 58}g</Text>
+                    </View>
+                    <View style={styles.macroTrack}>
+                      <View style={[styles.macroFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
+            </Surface>
           </CardSpringEntry>
 
-          {/* Scheduled Meals List (Breakfast, Lunch, Evening Snack, Dinner) */}
-          <View style={styles.mealsHeaderRow} accessible={true} accessibilityRole="header">
-            <Text style={styles.sectionHeading}>TODAY'S MEALS</Text>
-            <Text style={styles.sectionSubHeading}>4 nutrient-dense fuel allocations</Text>
+          <View style={styles.mealsHeaderRow}>
+            <Text style={styles.sectionHeading}>MEAL TIMELINE</Text>
           </View>
 
-          {(mealPlan?.meals || []).map((meal, index) => {
-            const isExpanded = expandedMealId === meal.id;
+          <View style={styles.timelineContainer}>
+            {(mealPlan?.meals || []).map((meal, index) => {
+              const isExpanded = expandedMealId === meal.id;
+              const isLast = index === (mealPlan?.meals.length || 0) - 1;
 
-            return (
-              <CardSpringEntry key={meal.id} index={index + 2}>
-                <ScalePressable
-                  activeScale={0.98}
-                  onPress={() => toggleMealExpand(meal.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${meal.title} at ${meal.time}. ${meal.caloriesFormatted}. ${meal.servingLabel}. Protein: ${meal.proteinG}g, Carbs: ${meal.carbohydratesG || meal.carbsG || 0}g, Fat: ${meal.fatG}g, Fibre: ${meal.fibreG || 0}g. ${meal.items}. Double tap to ${isExpanded ? 'collapse' : 'view ingredients and preparation'}.`}
-                  accessibilityHint="Expands scaled ingredients, preparation notes, and macro breakdown"
-                  style={styles.mealCard}
-                >
-                  <View style={styles.mealTopRow}>
-                    <View style={styles.mealIconBox}>
-                      {getMealIcon(meal.icon)}
+              return (
+                <View key={meal.id} style={styles.timelineRow}>
+                  <View style={styles.timelineLineContainer}>
+                    <View style={styles.timelineTimeBox}>
+                      <Text style={styles.timelineTimeText}>{meal.time || '08:30'}</Text>
                     </View>
-
-                    <View style={styles.mealInfo}>
-                      <View style={styles.mealTitleRow}>
-                        <Text style={styles.mealCategoryLabel}>{meal.title.toUpperCase()}</Text>
-                        <Text style={styles.mealCalories}>{meal.caloriesFormatted}</Text>
-                      </View>
-                      <Text style={styles.mealDishName} numberOfLines={1}>{meal.items}</Text>
-                      <Text style={styles.mealSubMeta}>
-                        {meal.time} • {meal.proteinG}g Protein
-                      </Text>
-                    </View>
-
-                    <Feather
-                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color={Colors.textSecondary}
-                    />
+                    <View style={styles.timelineDot} />
+                    {!isLast && <View style={styles.timelineLine} />}
                   </View>
 
-                  {/* Expanded Scaled Ingredients, Preparation, and Macro Breakdown */}
-                  {isExpanded ? (
-                    <View style={styles.expandedSection}>
-                      <View style={styles.expandedDivider} />
+                  <View style={styles.timelineContent}>
+                    <CardSpringEntry index={index + 2}>
+                      <ScalePressable
+                        activeScale={0.98}
+                        onPress={() => toggleMealExpand(meal.id)}
+                        style={styles.mealCard}
+                      >
+                        <View style={styles.mealTopRow}>
+                          <View style={styles.mealHeaderLeft}>
+                            <Text style={styles.mealCategoryLabel}>{meal.title.toUpperCase()}</Text>
+                            <Text style={styles.mealDishName} numberOfLines={1}>{meal.items}</Text>
+                          </View>
+                          <View style={styles.mealHeaderRight}>
+                            <Text style={styles.mealCalories}>{meal.caloriesFormatted}</Text>
+                            <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#94A3B8" style={{ marginLeft: 8 }} />
+                          </View>
+                        </View>
 
-                      {/* Serving Portion */}
-                      <View style={styles.portionBadge}>
-                        <Feather name="user" size={12} color={Colors.primary} style={{ marginRight: 5 }} />
-                        <Text style={styles.portionText}>
-                          Portion: {meal.servingLabel || `${meal.servings} serving`}
-                        </Text>
-                      </View>
-
-                      {/* Macro Pill Specs (Revealed on Expand) */}
-                      <View style={styles.mealMacrosPillsRow}>
-                        <View style={styles.mealMacroPill}>
-                          <Text style={[styles.mealMacroPillVal, { color: '#2563EB' }]}>{meal.proteinG}g</Text>
-                          <Text style={styles.mealMacroPillLab}>Protein</Text>
-                        </View>
-                        <View style={styles.mealMacroPill}>
-                          <Text style={[styles.mealMacroPillVal, { color: '#059669' }]}>
-                            {meal.carbohydratesG !== undefined && meal.carbohydratesG !== null
-                              ? `${meal.carbohydratesG}g`
-                              : meal.carbsG !== undefined && meal.carbsG !== null
-                              ? `${meal.carbsG}g`
-                              : 'Not reported'}
-                          </Text>
-                          <Text style={styles.mealMacroPillLab}>Carbs</Text>
-                        </View>
-                        <View style={styles.mealMacroPill}>
-                          <Text style={[styles.mealMacroPillVal, { color: '#D97706' }]}>{meal.fatG}g</Text>
-                          <Text style={styles.mealMacroPillLab}>Fat</Text>
-                        </View>
-                        <View style={styles.mealMacroPill}>
-                          <Text style={[styles.mealMacroPillVal, { color: '#7C3AED' }]}>
-                            {meal.fibreG !== undefined && meal.fibreG !== null
-                              ? `${meal.fibreG}g`
-                              : 'Not reported'}
-                          </Text>
-                          <Text style={styles.mealMacroPillLab}>Fibre</Text>
-                        </View>
-                      </View>
-
-                      {/* Scaled Ingredients with Quantities */}
-                      {meal.scaledIngredientQuantities && meal.scaledIngredientQuantities.length > 0 ? (
-                        <View style={styles.ingredientsContainer}>
-                          <Text style={styles.ingredientsHeading}>SCALED INGREDIENTS</Text>
-                          <View style={styles.scaledList}>
-                            {meal.scaledIngredientQuantities.map((item, iIdx) => (
-                              <View key={iIdx} style={styles.scaledRow}>
-                                <Text style={styles.scaledName}>{item.name}</Text>
-                                <Text style={styles.scaledAmount}>{item.amount}</Text>
+                        {isExpanded && (
+                          <View style={styles.expandedSection}>
+                            <View style={styles.expandedDivider} />
+                            
+                            <View style={styles.mealMacrosPillsRow}>
+                              <View style={styles.mealMacroPill}>
+                                <Text style={styles.mealMacroPillVal}>{meal.proteinG}g</Text>
+                                <Text style={styles.mealMacroPillLab}>PRO</Text>
                               </View>
-                            ))}
-                          </View>
-                        </View>
-                      ) : null}
+                              <View style={styles.mealMacroPill}>
+                                <Text style={styles.mealMacroPillVal}>{meal.carbohydratesG || meal.carbsG || 0}g</Text>
+                                <Text style={styles.mealMacroPillLab}>CARBS</Text>
+                              </View>
+                              <View style={styles.mealMacroPill}>
+                                <Text style={styles.mealMacroPillVal}>{meal.fatG}g</Text>
+                                <Text style={styles.mealMacroPillLab}>FAT</Text>
+                              </View>
+                            </View>
 
-                      {/* Preparation Note */}
-                      {meal.preparationNote || meal.prepNote ? (
-                        <View style={styles.prepNoteContainer}>
-                          <Feather name="book-open" size={13} color={Colors.primary} style={{ marginRight: 6, marginTop: 2 }} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.prepNoteHeading}>PREPARATION NOTE</Text>
-                            <Text style={styles.prepNoteText}>
-                              {meal.preparationNote || meal.prepNote}
-                            </Text>
+                            {meal.scaledIngredientQuantities && meal.scaledIngredientQuantities.length > 0 && (
+                              <View style={styles.ingredientsContainer}>
+                                {meal.scaledIngredientQuantities.map((item, iIdx) => (
+                                  <View key={iIdx} style={styles.scaledRow}>
+                                    <Text style={styles.scaledName}>{item.name}</Text>
+                                    <Text style={styles.scaledAmount}>{item.amount}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            )}
+
+                            {(meal.preparationNote || meal.prepNote) && (
+                              <View style={styles.prepNoteContainer}>
+                                <Text style={styles.prepNoteText}>{meal.preparationNote || meal.prepNote}</Text>
+                              </View>
+                            )}
                           </View>
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : null}
-                </ScalePressable>
-              </CardSpringEntry>
-            );
-          })}
+                        )}
+                      </ScalePressable>
+                    </CardSpringEntry>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </AsyncStateView>
       </ScrollView>
     </SafeAreaView>
@@ -283,341 +216,59 @@ export default function FoodScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.surfaceSecondary,
-  },
-  header: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.md,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  headerTitle: {
-    ...Typography.h2,
-    color: Colors.dark,
-  },
-  headerSubtitle: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xxl,
-  },
-  card: {
-    backgroundColor: Colors.background,
-    borderRadius: Layout.borderRadius.xl,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Layout.spacing.md,
-    ...Layout.shadows.subtle,
-  },
-  caloriesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cardTitle: {
-    ...Typography.h3,
-    fontSize: 16,
-    color: Colors.text,
-  },
-  cardSub: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    marginBottom: Layout.spacing.md,
-  },
-  calorieStatRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  calorieStatItem: {
-    alignItems: 'flex-start',
-  },
-  calorieStatValue: {
-    ...Typography.h3,
-    fontSize: 18,
-    color: Colors.text,
-  },
-  calorieStatLabel: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    marginTop: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: Colors.border,
-    marginHorizontal: Layout.spacing.md,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: '#F8FAFC' },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 24, paddingBottom: 100 },
   fuelHeroCard: {
-    backgroundColor: '#001554',
-    borderRadius: Layout.borderRadius.xl,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: '#07328D',
-    ...Layout.shadows.card,
+    backgroundColor: '#0F172A', borderRadius: 24, padding: 24, marginBottom: 32,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 8,
   },
-  fuelHeroTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  fuelBadge: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#00C8FF',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  heroCalorieNumber: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  heroCalorieUnit: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#9E9FA9',
-    letterSpacing: 0,
-  },
-  heroCalorieSub: {
-    fontSize: 12,
-    color: '#CBD5E1',
-    marginTop: 4,
-  },
-  macroProgressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  macroProgressCol: {
-    flex: 1,
-  },
-  macroLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  macroKey: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#9E9FA9',
-    letterSpacing: 0.8,
-  },
-  macroRatio: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  macroTrack: {
-    height: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 2.5,
-    overflow: 'hidden',
-  },
-  macroFill: {
-    height: '100%',
-    borderRadius: 2.5,
-  },
-  mealsHeaderRow: {
-    marginTop: Layout.spacing.sm,
-    marginBottom: Layout.spacing.sm,
-  },
-  sectionHeading: {
-    ...Typography.h3,
-    color: Colors.dark,
-  },
-  sectionSubHeading: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    marginTop: 1,
-  },
+  fuelHeroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  fuelBadge: { fontSize: 11, fontWeight: '800', color: '#00C8FF', letterSpacing: 1.2, marginBottom: 8 },
+  heroCalorieNumber: { fontSize: 40, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1.5, lineHeight: 44 },
+  heroCalorieUnit: { fontSize: 16, fontWeight: '600', color: '#CBD5E1', letterSpacing: 0 },
+  heroCalorieSub: { fontSize: 11, color: '#CBD5E1', marginTop: 8, letterSpacing: 0.5 },
+  macroProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#1E293B' },
+  macroProgressCol: { flex: 1 },
+  macroLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  macroKey: { fontSize: 10, fontWeight: '800', color: '#CBD5E1', letterSpacing: 1 },
+  macroRatio: { fontSize: 11, fontWeight: '800', color: '#F8FAFC' },
+  macroTrack: { height: 4, backgroundColor: '#1E293B', borderRadius: 2, overflow: 'hidden' },
+  macroFill: { height: '100%', borderRadius: 2 },
+  mealsHeaderRow: { marginBottom: 24 },
+  sectionHeading: { fontSize: 13, fontWeight: '800', color: '#0F172A', letterSpacing: 1.5 },
+  timelineContainer: { marginTop: 8 },
+  timelineRow: { flexDirection: 'row' },
+  timelineLineContainer: { width: 60, alignItems: 'center', position: 'relative' },
+  timelineTimeBox: { marginBottom: 8 },
+  timelineTimeText: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#0EA5E9', borderWidth: 3, borderColor: '#E0F2FE', zIndex: 2 },
+  timelineLine: { position: 'absolute', top: 28, bottom: -16, width: 2, backgroundColor: '#E2E8F0', zIndex: 1 },
+  timelineContent: { flex: 1, paddingBottom: 24 },
   mealCard: {
-    backgroundColor: Colors.background,
-    borderRadius: Layout.borderRadius.xl,
-    padding: Layout.spacing.md + 2,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Layout.spacing.md,
-    ...Layout.shadows.subtle,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+    borderWidth: 1, borderColor: '#F1F5F9',
   },
-  mealTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  mealIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: Layout.borderRadius.md,
-    backgroundColor: Colors.primaryMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Layout.spacing.md,
-  },
-  mealInfo: {
-    flex: 1,
-    marginRight: Layout.spacing.sm,
-  },
-  mealTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  mealTitle: {
-    ...Typography.bodyLarge,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  mealCategoryLabel: {
-    ...Typography.caption,
-    fontWeight: '800',
-    color: Colors.primary,
-    fontSize: 10,
-    letterSpacing: 0.5,
-  },
-  mealCalories: {
-    ...Typography.caption,
-    fontWeight: '800',
-    color: Colors.text,
-    fontSize: 12,
-  },
-  mealDishName: {
-    ...Typography.bodyMedium,
-    fontWeight: '700',
-    color: Colors.text,
-    fontSize: 14,
-    lineHeight: 18,
-    marginTop: 1,
-  },
-  mealSubMeta: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  portionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Layout.spacing.sm,
-  },
-  portionText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  expandedDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginBottom: Layout.spacing.sm,
-  },
-  mealMacrosPillsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-    marginBottom: Layout.spacing.sm,
-  },
-  mealMacroPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: Layout.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  mealMacroPillVal: {
-    fontSize: 11,
-    fontWeight: '800',
-    marginRight: 3,
-  },
-  mealMacroPillLab: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-  },
-  expandedSection: {
-    marginTop: Layout.spacing.md,
-    paddingTop: Layout.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  ingredientsContainer: {
-    marginBottom: 8,
-  },
-  ingredientsHeading: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: Colors.textSecondary,
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  scaledList: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.sm,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  scaledRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  scaledName: {
-    ...Typography.caption,
-    fontSize: 12,
-    color: Colors.text,
-    fontWeight: '600',
-  },
-  scaledAmount: {
-    ...Typography.caption,
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '700',
-  },
-  prepNoteContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#EFF6FF',
-    padding: Layout.spacing.sm,
-    borderRadius: Layout.borderRadius.md,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  prepNoteHeading: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: 0.6,
-    marginBottom: 2,
-  },
-  prepNoteText: {
-    ...Typography.caption,
-    fontSize: 11,
-    color: Colors.dark,
-    lineHeight: 16,
-  },
+  mealTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  mealHeaderLeft: { flex: 1, paddingRight: 16 },
+  mealHeaderRight: { flexDirection: 'row', alignItems: 'center' },
+  mealCategoryLabel: { fontSize: 10, fontWeight: '800', color: '#0EA5E9', letterSpacing: 1.2, marginBottom: 4 },
+  mealDishName: { fontSize: 15, fontWeight: '700', color: '#0F172A', lineHeight: 20 },
+  mealCalories: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  expandedSection: { marginTop: 16 },
+  expandedDivider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 16 },
+  mealMacrosPillsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  mealMacroPill: { backgroundColor: '#F8FAFC', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  mealMacroPillVal: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  mealMacroPillLab: { fontSize: 9, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
+  ingredientsContainer: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, marginBottom: 12 },
+  scaledRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  scaledName: { fontSize: 13, color: '#334155', fontWeight: '500' },
+  scaledAmount: { fontSize: 13, color: '#0F172A', fontWeight: '700' },
+  prepNoteContainer: { backgroundColor: '#F1F5F9', padding: 12, borderRadius: 12 },
+  prepNoteText: { fontSize: 13, color: '#334155', lineHeight: 18 },
 });

@@ -1,5 +1,5 @@
-﻿import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, AccessibilityInfo } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, AccessibilityInfo, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -12,6 +12,7 @@ import { PrimaryButton } from '../../components/common/PrimaryButton';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
+import { isDemoModeEnabled } from '../../constants/demo';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -22,8 +23,11 @@ export default function LoginScreen() {
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+
+  const isDemoMode = isDemoModeEnabled();
 
   const validateForm = (): boolean => {
     const errors: { email?: string; password?: string } = {};
@@ -77,19 +81,24 @@ export default function LoginScreen() {
   };
 
   const handleDemoLogin = async () => {
+    if (isLoading || isDemoLoading) return;
     setErrorMessage(null);
-    setIsLoading(true);
+    setIsDemoLoading(true);
     try {
       const result = await signInWithDemo();
       if (result.success) {
         router.replace('/(app)');
       } else {
-        setErrorMessage(result.error || 'Demo login failed.');
+        const err = result.error || 'Demo login failed. Please try again.';
+        setErrorMessage(err);
+        AccessibilityInfo.announceForAccessibility(err);
       }
-    } catch (err) {
-      setErrorMessage('Unable to log in with the demo account.');
+    } catch {
+      const netErr = 'Unable to connect to demo account service.';
+      setErrorMessage(netErr);
+      AccessibilityInfo.announceForAccessibility(netErr);
     } finally {
-      setIsLoading(false);
+      setIsDemoLoading(false);
     }
   };
 
@@ -171,24 +180,37 @@ export default function LoginScreen() {
           title="Login"
           onPress={handleLogin}
           isLoading={isLoading}
+          disabled={isLoading || isDemoLoading}
           accessibilityLabel="Login"
           accessibilityHint="Submits credentials and logs in"
           style={styles.loginButton}
         />
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleDemoLogin}
-          disabled={isLoading}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Continue with demo account"
-          accessibilityHint="Signs in with the UniFit presentation demo account"
-          style={styles.demoButton}
-        >
-          <Feather name="zap" size={17} color={Colors.primary} style={styles.demoIcon} />
-          <Text style={styles.demoButtonText}>Continue with Demo Account</Text>
-        </TouchableOpacity>
+        {/* Demo Account Quick Access (Presentation / Testing Mode) */}
+        {isDemoMode && (
+          <TouchableOpacity
+            style={[styles.demoButton, (isLoading || isDemoLoading) && styles.demoButtonDisabled]}
+            onPress={handleDemoLogin}
+            disabled={isLoading || isDemoLoading}
+            activeOpacity={0.7}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isDemoLoading ? "Signing in to demo account" : "Continue with Demo Account"}
+            accessibilityHint="Authenticates using the predefined presentation demo account"
+          >
+            {isDemoLoading ? (
+              <View style={styles.demoLoadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} style={styles.demoSpinner} />
+                <Text style={styles.demoButtonText}>Signing in...</Text>
+              </View>
+            ) : (
+              <View style={styles.demoContentContainer}>
+                <Feather name="zap" size={16} color={Colors.primary} style={styles.demoIcon} accessible={false} />
+                <Text style={styles.demoButtonText}>Continue with Demo Account</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Bottom Sign Up Link */}
@@ -251,21 +273,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginButton: {
-    marginBottom: Layout.spacing.md,
+    marginBottom: Layout.spacing.sm,
   },
   demoButton: {
+    backgroundColor: '#F0F7FF',
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    borderRadius: Layout.borderRadius.md,
+    paddingVertical: 14,
+    paddingHorizontal: Layout.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Layout.spacing.lg,
+    minHeight: 48,
+  },
+  demoButtonDisabled: {
+    opacity: 0.6,
+  },
+  demoLoadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
-    marginBottom: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: Layout.borderRadius.md,
-    backgroundColor: Colors.surfaceSecondary,
+  },
+  demoContentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   demoIcon: {
-    marginRight: Layout.spacing.sm,
+    marginRight: Layout.spacing.xs,
+  },
+  demoSpinner: {
+    marginRight: Layout.spacing.xs,
   },
   demoButtonText: {
     ...Typography.bodyMedium,

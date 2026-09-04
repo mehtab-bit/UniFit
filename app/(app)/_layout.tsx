@@ -1,29 +1,52 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
+
+const TabIcon = ({ name, focused, isMci }: { name: any; focused: boolean; isMci?: boolean }) => {
+  return (
+    <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+      {isMci ? (
+        <MaterialCommunityIcons 
+          name={name} 
+          size={24} 
+          color={focused ? Colors.background : Colors.textSecondary} 
+        />
+      ) : (
+        <Feather 
+          name={name} 
+          size={22} 
+          color={focused ? Colors.background : Colors.textSecondary} 
+        />
+      )}
+    </View>
+  );
+};
 
 export default function AppTabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
+        tabBarActiveTintColor: '#040E34',
         tabBarInactiveTintColor: Colors.textSecondary,
         tabBarStyle: {
           backgroundColor: Colors.background,
-          borderTopColor: Colors.border,
+          borderTopColor: '#F1F5F9',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 92 : 72,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          paddingTop: 12,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
           ...Typography.caption,
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 10,
+          fontWeight: '700',
+          marginTop: 4,
         },
       }}
     >
@@ -33,9 +56,7 @@ export default function AppTabsLayout() {
           title: 'Home',
           tabBarLabel: 'Home',
           tabBarAccessibilityLabel: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size || 22} color={color} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
       />
 
@@ -45,9 +66,7 @@ export default function AppTabsLayout() {
           title: 'Activity',
           tabBarLabel: 'Activity',
           tabBarAccessibilityLabel: 'Activity',
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="compass" size={size || 22} color={color} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="compass" focused={focused} />,
         }}
       />
 
@@ -57,9 +76,7 @@ export default function AppTabsLayout() {
           title: 'Food',
           tabBarLabel: 'Food',
           tabBarAccessibilityLabel: 'Food and Nutrition',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="silverware-fork-knife" size={size || 22} color={color} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="silverware-fork-knife" focused={focused} isMci />,
         }}
       />
 
@@ -69,61 +86,31 @@ export default function AppTabsLayout() {
           title: 'Progress',
           tabBarLabel: 'Progress',
           tabBarAccessibilityLabel: 'Progress',
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="bar-chart-2" size={size || 22} color={color} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="bar-chart-2" focused={focused} />,
         }}
       />
 
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
-          tabBarAccessibilityLabel: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size || 22} color={color} />
-          ),
-        }}
-      />
-
-      {/* Hidden Screens accessible via navigation */}
-      <Tabs.Screen
-        name="streak-plan"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="workout"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="cv-session"
-        options={{
-          href: null,
-          tabBarStyle: { display: 'none' }
-        }}
-      />
-
-      <Tabs.Screen
-        name="cv-native-test"
-        options={{
-          href: null,
-          tabBarStyle: { display: 'none' }
-        }}
-      />
-
-      <Tabs.Screen
-        name="performance-test"
-        options={{
-          href: null,
-        }}
-      />
+      {/* Hidden Screens (accessible via router.push) */}
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="streak-plan" options={{ href: null }} />
+      <Tabs.Screen name="workout" options={{ href: null }} />
+      <Tabs.Screen name="cv-session" options={{ href: null }} />
+      <Tabs.Screen name="cv-native-test" options={{ href: null }} />
+      <Tabs.Screen name="exercise-detail" options={{ href: null }} />
+      <Tabs.Screen name="performance-test" options={{ href: null }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 44,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainerActive: {
+    backgroundColor: '#040E34', // Premium dark
+  }
+});

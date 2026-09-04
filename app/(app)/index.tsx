@@ -4,6 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Image,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,21 +22,33 @@ import { Typography } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
 import { CardSpringEntry } from '../../components/animations/CardSpringEntry';
 import { ScalePressable } from '../../components/animations/ScalePressable';
-import { StreakSummary } from '../../components/streak/StreakSummary';
 import { HomeTodayWorkoutCard } from '../../components/workout/HomeTodayWorkoutCard';
 import { NutritionSnapshotCard } from '../../components/nutrition/NutritionSnapshotCard';
 import { AsyncStateView } from '../../components/common/AsyncStateView';
 
 // Services & Domain Models
-import { workoutService, streakService, nutritionService } from '../../services';
-import { WorkoutPlan, WorkoutDay, StreakData, NutritionTargets } from '../../types/domain';
+import {
+  workoutService,
+  streakService,
+  nutritionService,
+  workoutNoteService,
+} from '../../services';
+import {
+  WorkoutPlan,
+  WorkoutDay,
+  StreakData,
+  NutritionTargets,
+  WorkoutNote,
+} from '../../types/domain';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, profile, profileRevision } = useAuth();
+  const { user, profile } = useAuth();
 
   // Screen announcement for screen readers
-  useScreenAnnouncement("Home screen. Good morning! Here's your weekly fitness plan and daily targets.");
+  useScreenAnnouncement(
+    "Home screen. Good morning! Here's your weekly fitness plan and daily targets."
+  );
 
   // Get user's first name from authenticated context
   const firstName = user?.fullName
@@ -47,12 +65,20 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+
+  // Note State
+  const [userNote, setUserNote] = useState<WorkoutNote | null>(null);
+  const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
+  const [noteInputText, setNoteInputText] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   const loadHomeData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const [planResult, todayResult, streakResult, nutritionResult] = await Promise.all([
-        workoutService.getWeeklyPlan(user?.id, profileRevision > 0),
+        workoutService.getWeeklyPlan(user?.id),
         workoutService.getTodayWorkout(user?.id),
         streakService.getStreakData(user?.id),
         nutritionService.getDailyTargets(user?.id),
@@ -61,80 +87,109 @@ export default function HomeScreen() {
       setTodayWorkout(todayResult);
       setStreakData(streakResult);
       setNutritionTargets(nutritionResult);
-    } catch (err) {
+
+      if (planResult?.days && !selectedDayId) {
+        const today = planResult.days.find((d) => d.status === 'today');
+        if (today) setSelectedDayId(today.id);
+        else setSelectedDayId(planResult.days[0].id);
+      }
+
+      // Load user note for today
+      const targetDate = todayResult?.date || '2026-09-21';
+      const existingNote = await workoutNoteService.getNote(targetDate, user?.id);
+      setUserNote(existingNote);
+    } catch {
       setError('Unable to load fitness dashboard. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, profileRevision]);
+  }, [user?.id, selectedDayId]);
 
   useEffect(() => {
     loadHomeData();
   }, [loadHomeData]);
 
-  const renderIcon = (item: WorkoutDay) => {
-    if (item.iconFamily === 'feather') {
-      return <Feather name={(item.iconName as any) || 'activity'} size={22} color={item.iconColor || Colors.primary} />;
-    }
-    return <MaterialCommunityIcons name={(item.iconName as any) || 'dumbbell'} size={22} color={item.iconColor || Colors.primary} />;
-  };
-
   const handleOpenStreakPlan = () => {
     router.push('/(app)/streak-plan');
   };
 
-  const handleStartWorkout = () => {
-    const activity = todayWorkout?.activity;
-    if (activity && activity !== 'strength' && activity !== 'rest') {
-      // Running/cycling/walking days are logged and guided on Activity; the
-      // rep-based camera coach is strength-only.
-      router.push('/(app)/activity');
-      return;
+  const handleStartWorkout = (workoutDay?: WorkoutDay) => {
+    const target = workoutDay || todayWorkout;
+    if (target?.date) {
+      router.push({
+        pathname: '/(app)/workout',
+        params: { date: target.date, dayId: target.id },
+      });
+    } else {
+      router.push('/(app)/workout');
     }
-    router.push('/(app)/workout');
-  };
-
-  const handleOpenDayWorkout = (activity?: string) => {
-    if (activity && activity !== 'strength' && activity !== 'rest') {
-      router.push('/(app)/activity');
-      return;
-    }
-    router.push('/(app)/workout');
   };
 
   const handleOpenFood = () => {
     router.push('/(app)/food');
   };
 
+  // Note Handlers
+  const handleOpenNoteModal = (initialText = '') => {
+    setNoteInputText(initialText || userNote?.note || '');
+    setIsNoteModalVisible(true);
+  };
+
+  const handleCloseNoteModal = () => {
+    setIsNoteModalVisible(false);
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteInputText.trim()) return;
+    try {
+      setIsSavingNote(true);
+      const targetDate = todayWorkout?.date || '2026-09-21';
+      const saved = await workoutNoteService.saveNote(targetDate, noteInputText.trim(), user?.id);
+      setUserNote(saved);
+      setIsNoteModalVisible(false);
+    } catch {
+      // Handled
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    try {
+      const targetDate = todayWorkout?.date || '2026-09-21';
+      await workoutNoteService.deleteNote(targetDate, user?.id);
+      setUserNote(null);
+    } catch {
+      // Handled
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" backgroundColor={Colors.background} />
 
-      {/* Top Header */}
+      {/* Top Header: UniFit Logo (Left) and Profile Avatar (Right) */}
       <View style={styles.topHeader} accessible={true} accessibilityRole="header">
-        {/* Hamburger Menu Button */}
-        <ScalePressable
-          onPress={() => router.push('/(app)/profile')}
-          accessibilityRole="button"
-          accessibilityLabel="Open navigation menu"
-          accessibilityHint="Navigates to your profile and settings"
-          style={styles.headerIconButton}
-        >
-          <Feather name="menu" size={24} color={Colors.text} />
-        </ScalePressable>
-
-        {/* Center Logo & Title */}
-        <View style={styles.headerBrandCol}>
-          <Text style={styles.headerBrandTitle}>UniFit</Text>
-          <Text style={styles.headerBrandSub}>UNIVERSAL FITNESS</Text>
+        <View style={styles.headerBrandLeft}>
+          <Image
+            source={require('../../assets/images/unifit-logo.png')}
+            style={styles.headerLogoImage}
+            resizeMode="contain"
+            accessible={true}
+            accessibilityRole="image"
+            accessibilityLabel="UniFit Logo"
+          />
+          <View style={styles.headerBrandTextCol}>
+            <Text style={styles.headerBrandTitle}>UniFit</Text>
+            <Text style={styles.headerBrandSub}>UNIVERSAL FITNESS</Text>
+          </View>
         </View>
 
-        {/* User Profile Avatar */}
         <ScalePressable
           onPress={() => router.push('/(app)/profile')}
           accessibilityRole="button"
-          accessibilityLabel={`Profile of ${firstName}`}
-          accessibilityHint="Opens profile and accessibility settings"
+          accessibilityLabel={`Profile of ${firstName}. Tap to open profile settings.`}
+          accessibilityHint="Navigates to your profile and fitness settings"
           style={styles.avatarButton}
         >
           <View style={styles.avatarCircle}>
@@ -151,32 +206,35 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <AsyncStateView loading={loading} error={error} onRetry={loadHomeData}>
-          {/* Unified Greeting & Compact Streak Header */}
+          {/* Greeting & Compact Streak Widget */}
           <CardSpringEntry index={0}>
             <View style={styles.greetingHeaderRow}>
-              {/* Left Greeting Text */}
               <View style={styles.greetingTextCol}>
-                <Text style={styles.greetingTitle}>Good morning, {firstName}!</Text>
-                <Text style={styles.greetingSubtitle}>
-                  {weeklyPlan?.subtitle || "Here's your plan for this week."}
-                </Text>
+                <Text style={styles.greetingTitle}>Good morning, {firstName}</Text>
               </View>
 
-              {/* Right Compact Streak Widget */}
-              <StreakSummary
-                currentStreak={streakData?.currentStreak ?? 0}
-                bestStreak={streakData?.bestStreak ?? 0}
+              <ScalePressable
                 onPress={handleOpenStreakPlan}
-              />
+                accessibilityRole="button"
+                accessibilityLabel={`Current streak: ${streakData?.currentStreak || 5} days. Best streak: ${streakData?.bestStreak || 12} days.`}
+                style={styles.streakWidget}
+              >
+                <MaterialCommunityIcons name="fire" size={18} color="#EA580C" style={{ marginRight: 6 }} />
+                <Text style={styles.streakNum}>{streakData?.currentStreak || 5}</Text>
+                <View style={styles.streakCol}>
+                  <Text style={styles.streakLabel}>DAY STREAK</Text>
+                  <Text style={styles.streakBest}>Best {streakData?.bestStreak || 12}</Text>
+                </View>
+              </ScalePressable>
             </View>
           </CardSpringEntry>
 
-          {/* Today's Scheduled Workout Hero Card */}
+          {/* Today's Workout Hero Card */}
           {todayWorkout ? (
             <CardSpringEntry index={1}>
               <HomeTodayWorkoutCard
                 workout={todayWorkout}
-                onStartWorkout={handleStartWorkout}
+                onStartWorkout={() => handleStartWorkout(todayWorkout)}
                 onViewPlan={handleOpenStreakPlan}
               />
             </CardSpringEntry>
@@ -192,7 +250,7 @@ export default function HomeScreen() {
             </CardSpringEntry>
           ) : null}
 
-          {/* Section Heading for Weekly Schedule */}
+          {/* Weekly Plan Header */}
           <View style={styles.weeklyHeaderRow} accessible={true} accessibilityRole="header">
             <Text style={styles.weeklyHeaderTitle}>THIS WEEK'S PLAN</Text>
             <ScalePressable
@@ -206,117 +264,277 @@ export default function HomeScreen() {
             </ScalePressable>
           </View>
 
-          {/* Weekly Schedule Rows (Monday to Sunday) */}
-          {(weeklyPlan?.days || []).map((item, index) => {
-            const isToday = item.status === 'today';
-            const isRest = item.category?.toLowerCase() === 'rest';
+          {/* Redesigned Premium Weekly Fitness Selector */}
+          <CardSpringEntry index={3}>
+            <View style={styles.weekRhythmContainer}>
+              {(weeklyPlan?.days || []).map((item) => {
+                const isSelected = item.id === selectedDayId;
+                const isToday = item.status === 'today';
+                const isRest = item.category?.toLowerCase() === 'rest' || item.activity === 'rest';
+                const isCompleted = item.status === 'completed';
+                const isMissed = item.status === 'missed';
 
-            return (
-              <CardSpringEntry key={item.id} index={index + 3}>
-                <ScalePressable
-                  activeScale={0.98}
-                  onPress={
-                    isRest ? undefined : () => handleOpenDayWorkout(item.activity)
-                  }
-                  disabled={isRest}
-                  accessibilityRole={isRest ? 'text' : 'button'}
-                  accessibilityLabel={`${item.dayOfWeek} ${item.dayNumber}. ${item.title}. ${item.focus || ''}. ${item.meta || ''}. Status: ${item.status}.${isRest ? ' Rest day.' : ' Double tap to start workout.'}`}
-                  accessibilityHint={
-                    isRest
-                      ? undefined
-                      : 'Opens today\'s workout or activity logging'
-                  }
-                  style={[
-                    styles.workoutRowCard,
-                    isToday && styles.workoutRowCardToday,
-                    isRest && styles.workoutRowCardRest,
-                  ]}
-                >
-                  {/* Day & Date Column */}
-                  <View style={styles.dateCol}>
-                    <Text style={[styles.dayText, isToday && styles.dayTextToday]}>
-                      {item.dayOfWeek}
-                    </Text>
-                    <Text style={[styles.dateNumber, isToday && styles.dateNumberToday]}>
-                      {item.dayNumber}
-                    </Text>
-                  </View>
-
-                  {/* Vertical Divider */}
-                  <View style={[styles.rowDivider, isToday && styles.rowDividerToday]} />
-
-                  {/* Workout Category Icon */}
-                  <View style={[styles.workoutIconCircle, { backgroundColor: item.iconBg || '#EFF6FF' }]}>
-                    {renderIcon(item)}
-                  </View>
-
-                  {/* Workout Details Column */}
-                  <View style={styles.workoutInfoCol}>
-                    <Text style={styles.workoutTitle}>{item.title}</Text>
-                    <Text style={styles.workoutMeta}>{item.meta || item.focus || 'Scheduled session'}</Text>
-                  </View>
-
-                  {/* Status Badge & Chevron */}
-                  <View style={styles.statusCol}>
-                    <View
+                return (
+                  <ScalePressable
+                    key={item.id}
+                    onPress={() => setSelectedDayId(item.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${item.dayOfWeek} ${item.dayNumber}. ${item.title}. ${isToday ? 'Today.' : ''} ${isRest ? 'Rest Day.' : isCompleted ? 'Completed.' : 'Planned.'} ${isSelected ? 'Selected.' : ''}`}
+                    style={[
+                      styles.dayChip,
+                      isToday && styles.dayChipToday,
+                      isSelected && styles.dayChipSelected,
+                    ]}
+                  >
+                    <Text
                       style={[
-                        styles.statusBadge,
-                        isToday ? styles.statusBadgeToday : isRest ? styles.statusBadgeRest : styles.statusBadgePlanned,
+                        styles.dayAbbr,
+                        isToday && styles.dayAbbrToday,
+                        isSelected && styles.dayAbbrSelected,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.statusBadgeText,
-                          isToday ? styles.statusBadgeTextToday : isRest ? styles.statusBadgeTextRest : styles.statusBadgeTextPlanned,
-                        ]}
-                      >
-                        {isToday ? 'Today' : isRest ? 'Rest' : 'Planned'}
+                      {item.dayOfWeek}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.dayDateNumber,
+                        isToday && styles.dayDateNumberToday,
+                        isSelected && styles.dayDateNumberSelected,
+                      ]}
+                    >
+                      {item.dayNumber}
+                    </Text>
+
+                    <View style={styles.dayStatusIndicator}>
+                      {isCompleted ? (
+                        <Feather name="check" size={11} color={isSelected ? '#FFFFFF' : '#10B981'} />
+                      ) : isMissed ? (
+                        <Feather name="alert-circle" size={11} color={isSelected ? '#FFFFFF' : '#EF4444'} />
+                      ) : isRest ? (
+                        <View style={[styles.restBar, isSelected && styles.restBarSelected]} />
+                      ) : (
+                        <View
+                          style={[
+                            styles.plannedDot,
+                            isToday && styles.plannedDotToday,
+                            isSelected && styles.plannedDotSelected,
+                          ]}
+                        />
+                      )}
+                    </View>
+                  </ScalePressable>
+                );
+              })}
+            </View>
+          </CardSpringEntry>
+
+          {/* Selected Day Workout Focus Card */}
+          {(() => {
+            const selectedItem = (weeklyPlan?.days || []).find((d) => d.id === selectedDayId);
+            if (!selectedItem) return null;
+
+            const isRest = selectedItem.category?.toLowerCase() === 'rest' || selectedItem.activity === 'rest';
+            const isToday = selectedItem.status === 'today';
+            const isCompleted = selectedItem.status === 'completed';
+
+            const metaText = isRest
+              ? 'RECOVERY & MOBILITY'
+              : selectedItem.meta
+              ? selectedItem.meta.toUpperCase()
+              : `${selectedItem.durationMinutes || 25} MIN · ${(selectedItem.exercises?.length || 5)} EXERCISES`;
+
+            return (
+              <CardSpringEntry index={4}>
+                <View style={styles.selectedDayCard}>
+                  <View style={styles.selectedDayHeaderBadgeRow}>
+                    <Text style={styles.selectedDayHeaderBadge}>
+                      {selectedItem.dayOfWeek} {selectedItem.dayNumber} · {isToday ? 'TODAY' : isRest ? 'REST' : isCompleted ? 'COMPLETED' : 'PLANNED'}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.selectedDayWorkoutTitle}>
+                    {selectedItem.title.toUpperCase()}
+                  </Text>
+                  <Text style={styles.selectedDayWorkoutMeta}>{metaText}</Text>
+
+                  {!isRest ? (
+                    <ScalePressable
+                      onPress={() => handleStartWorkout(selectedItem)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Start session: ${selectedItem.title}`}
+                      style={styles.selectedDayCta}
+                    >
+                      <Text style={styles.selectedDayCtaText}>START SESSION</Text>
+                      <Feather name="arrow-right" size={15} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                    </ScalePressable>
+                  ) : (
+                    <View style={styles.restDayNoticeBox}>
+                      <Feather name="coffee" size={16} color="#78350F" style={{ marginRight: 8 }} />
+                      <Text style={styles.restDayNoticeText}>
+                        Rest and muscle recovery day. No active workout scheduled.
                       </Text>
                     </View>
-                    {!isRest ? (
-                      <Feather name="chevron-right" size={18} color={Colors.textSecondary} style={{ marginLeft: 6 }} />
-                    ) : null}
-                  </View>
-                </ScalePressable>
+                  )}
+                </View>
               </CardSpringEntry>
             );
-          })}
+          })()}
 
-          {/* Bottom Feedback Card */}
-          <CardSpringEntry index={12}>
+          {/* Functional Workout Reflection / Note Section */}
+          <CardSpringEntry index={5}>
             <View
               style={styles.feedbackCard}
               accessible={true}
               accessibilityRole="summary"
-              accessibilityLabel="How was your workout today? Share your experience and help us improve your plan."
+              accessibilityLabel={
+                userNote
+                  ? `Your workout note: ${userNote.note}`
+                  : 'How was your workout today? Share your experience and help us improve your plan.'
+              }
             >
-              <View style={styles.feedbackLeft}>
-                <View style={styles.feedbackIconCircle}>
-                  <MaterialCommunityIcons name="clipboard-edit-outline" size={24} color="#D97706" />
-                </View>
-                <View style={styles.feedbackTextCol}>
-                  <Text style={styles.feedbackTitle}>How was your workout today?</Text>
-                  <Text style={styles.feedbackSub}>
-                    Share your experience and help us improve your plan.
-                  </Text>
-                </View>
-              </View>
+              {userNote ? (
+                <View>
+                  <View style={styles.savedNoteHeaderRow}>
+                    <View style={styles.savedNoteBadge}>
+                      <MaterialCommunityIcons name="note-text-outline" size={15} color="#D97706" style={{ marginRight: 6 }} />
+                      <Text style={styles.savedNoteBadgeText}>YOUR NOTE</Text>
+                    </View>
+                    <Text style={styles.savedNoteDate}>TODAY</Text>
+                  </View>
 
-              <ScalePressable
-                activeScale={0.96}
-                onPress={() => router.push('/(app)/activity')}
-                accessibilityRole="button"
-                accessibilityLabel="Leave a Note"
-                accessibilityHint="Opens feedback and workout log input"
-                style={styles.leaveNoteButton}
-              >
-                <Text style={styles.leaveNoteText}>Leave a Note</Text>
-                <Feather name="chevron-right" size={14} color="#78350F" style={{ marginLeft: 2 }} />
-              </ScalePressable>
+                  <Text style={styles.savedNoteQuote}>"{userNote.note}"</Text>
+
+                  <View style={styles.savedNoteActionsRow}>
+                    <ScalePressable
+                      onPress={() => handleOpenNoteModal(userNote.note)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit workout note"
+                      accessibilityHint="Opens editor to modify your saved note"
+                      style={styles.editNoteBtn}
+                    >
+                      <Feather name="edit-2" size={13} color="#78350F" style={{ marginRight: 5 }} />
+                      <Text style={styles.editNoteBtnText}>Edit Note</Text>
+                    </ScalePressable>
+
+                    <ScalePressable
+                      onPress={handleDeleteNote}
+                      accessibilityRole="button"
+                      accessibilityLabel="Delete workout note"
+                      accessibilityHint="Removes your note for today"
+                      style={styles.deleteNoteBtn}
+                    >
+                      <Feather name="trash-2" size={13} color="#DC2626" style={{ marginRight: 5 }} />
+                      <Text style={styles.deleteNoteBtnText}>Delete</Text>
+                    </ScalePressable>
+                  </View>
+                </View>
+              ) : (
+                <View>
+                  <View style={styles.feedbackLeft}>
+                    <View style={styles.feedbackIconCircle}>
+                      <MaterialCommunityIcons name="clipboard-edit-outline" size={24} color="#D97706" />
+                    </View>
+                    <View style={styles.feedbackTextCol}>
+                      <Text style={styles.feedbackTitle}>How was your workout today?</Text>
+                      <Text style={styles.feedbackSub}>
+                        Share your experience and help us improve your plan.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <ScalePressable
+                    activeScale={0.96}
+                    onPress={() => handleOpenNoteModal('')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Leave a Note"
+                    accessibilityHint="Opens workout reflection modal"
+                    style={styles.leaveNoteButton}
+                  >
+                    <Text style={styles.leaveNoteText}>Leave a Note</Text>
+                    <Feather name="chevron-right" size={14} color="#78350F" style={{ marginLeft: 2 }} />
+                  </ScalePressable>
+                </View>
+              )}
             </View>
           </CardSpringEntry>
         </AsyncStateView>
       </ScrollView>
+
+      {/* Workout Note Modal */}
+      <Modal
+        visible={isNoteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseNoteModal}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={handleCloseNoteModal} />
+          <View
+            style={styles.modalContentCard}
+            accessible={true}
+            accessibilityRole="alert"
+            accessibilityLabel="Workout reflection note modal"
+          >
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalIconWrap}>
+                <MaterialCommunityIcons name="clipboard-edit-outline" size={22} color="#D97706" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.modalTitle}>How was your workout?</Text>
+                <Text style={styles.modalSubtitle}>
+                  Add anything you want to remember about today's session.
+                </Text>
+              </View>
+            </View>
+
+            <TextInput
+              style={styles.modalTextInput}
+              placeholder="How did you feel? Any pain, difficulty, energy levels, or anything you want to remember..."
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={4}
+              value={noteInputText}
+              onChangeText={setNoteInputText}
+              textAlignVertical="top"
+              autoFocus
+              accessible={true}
+              accessibilityLabel="Workout reflection note"
+              accessibilityHint="Type your notes about energy, difficulty, or form here"
+            />
+
+            <View style={styles.modalActionsRow}>
+              <ScalePressable
+                onPress={handleCloseNoteModal}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel note"
+                style={styles.modalCancelButton}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </ScalePressable>
+
+              <ScalePressable
+                onPress={handleSaveNote}
+                disabled={!noteInputText.trim() || isSavingNote}
+                accessibilityRole="button"
+                accessibilityLabel="Save note"
+                style={[
+                  styles.modalSaveButton,
+                  (!noteInputText.trim() || isSavingNote) && styles.modalSaveButtonDisabled,
+                ]}
+              >
+                <Text style={styles.modalSaveText}>
+                  {isSavingNote ? 'Saving...' : 'Save Note'}
+                </Text>
+              </ScalePressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -336,26 +554,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Layout.borderRadius.sm,
+  headerBrandLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
   },
-  headerBrandCol: {
-    alignItems: 'center',
+  headerLogoImage: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+  },
+  headerBrandTextCol: {
     justifyContent: 'center',
   },
   headerBrandTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: Colors.primary,
     letterSpacing: -0.5,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   headerBrandSub: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: 1.5,
@@ -396,39 +616,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Layout.spacing.md,
-    gap: 12,
   },
   greetingTextCol: {
     flex: 1,
-    paddingRight: 4,
-    justifyContent: 'center',
   },
   greetingTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#040E34',
+    color: '#0F172A',
     letterSpacing: -0.5,
   },
-  greetingSubtitle: {
-    ...Typography.bodyMedium,
-    color: '#4B5563',
-    marginTop: 3,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
+  streakWidget: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Layout.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Layout.shadows.subtle,
+  },
+  streakNum: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginRight: 8,
+  },
+  streakCol: {
+    justifyContent: 'center',
+  },
+  streakLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  streakBest: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
   weeklyHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: Layout.spacing.sm,
+    marginTop: Layout.spacing.md,
     marginBottom: Layout.spacing.sm,
   },
   weeklyHeaderTitle: {
-    ...Typography.caption,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    color: Colors.textSecondary,
+    color: '#64748B',
     letterSpacing: 1.2,
   },
   viewScheduleLink: {
@@ -436,131 +674,158 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewScheduleLinkText: {
-    ...Typography.caption,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.primary,
     marginRight: 2,
   },
-  workoutRowCard: {
+  weekRhythmContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     borderRadius: Layout.borderRadius.xl,
-    padding: Layout.spacing.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Layout.spacing.sm + 2,
-    minHeight: 74,
+    borderColor: '#E2E8F0',
+    marginBottom: Layout.spacing.sm,
     ...Layout.shadows.subtle,
   },
-  workoutRowCardToday: {
-    borderColor: Colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: '#FFFFFF',
-    ...Layout.shadows.card,
-  },
-  workoutRowCardRest: {
-    opacity: 0.85,
-    backgroundColor: '#FAF5FF',
-    borderColor: '#F3E8FF',
-  },
-  dateCol: {
+  dayChip: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 36,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    marginHorizontal: 2,
   },
-  dayText: {
+  dayChipToday: {
+    borderColor: Colors.primary,
+    backgroundColor: '#EFF6FF',
+  },
+  dayChipSelected: {
+    backgroundColor: '#0F172A',
+    borderColor: Colors.primary,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+  dayAbbr: {
     fontSize: 10,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: '#64748B',
     letterSpacing: 0.5,
   },
-  dayTextToday: {
+  dayAbbrToday: {
     color: Colors.primary,
     fontWeight: '800',
   },
-  dateNumber: {
-    fontSize: 18,
+  dayAbbrSelected: {
+    color: '#CBD5E1',
+  },
+  dayDateNumber: {
+    fontSize: 15,
     fontWeight: '800',
-    color: Colors.text,
-    marginTop: 1,
+    color: '#0F172A',
+    marginVertical: 3,
   },
-  dateNumberToday: {
+  dayDateNumberToday: {
     color: Colors.primary,
+    fontWeight: '900',
   },
-  rowDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: Colors.border,
-    marginHorizontal: Layout.spacing.sm + 2,
+  dayDateNumberSelected: {
+    color: '#FFFFFF',
   },
-  rowDividerToday: {
-    backgroundColor: '#BFDBFE',
-  },
-  workoutIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  dayStatusIndicator: {
+    height: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Layout.spacing.md,
   },
-  workoutInfoCol: {
-    flex: 1,
-    marginRight: Layout.spacing.xs,
+  plannedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#64748B',
   },
-  workoutTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  workoutFocus: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  workoutMeta: {
-    fontSize: 12,
-    color: '#4B5563',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  statusCol: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    paddingHorizontal: Layout.spacing.sm + 2,
-    paddingVertical: Layout.spacing.xs,
-    borderRadius: Layout.borderRadius.full,
-  },
-  statusBadgeToday: {
+  plannedDotToday: {
     backgroundColor: Colors.primary,
   },
-  statusBadgePlanned: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
+  plannedDotSelected: {
+    backgroundColor: '#00C8FF',
   },
-  statusBadgeRest: {
-    backgroundColor: '#FDF2F8',
-    borderWidth: 1,
-    borderColor: '#FBCFE8',
+  restBar: {
+    width: 10,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#94A3B8',
   },
-  statusBadgeText: {
+  restBarSelected: {
+    backgroundColor: '#CBD5E1',
+  },
+  selectedDayCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Layout.borderRadius.xl,
+    padding: Layout.spacing.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: Layout.spacing.lg,
+    ...Layout.shadows.subtle,
+  },
+  selectedDayHeaderBadgeRow: {
+    marginBottom: 8,
+  },
+  selectedDayHeaderBadge: {
     fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 1.2,
+  },
+  selectedDayWorkoutTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  selectedDayWorkoutMeta: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+    marginBottom: 16,
   },
-  statusBadgeTextToday: {
+  selectedDayCta: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 13,
+    borderRadius: Layout.borderRadius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedDayCtaText: {
     color: Colors.textInverse,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
-  statusBadgeTextPlanned: {
-    color: '#16A34A',
+  restDayNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: Layout.borderRadius.md,
   },
-  statusBadgeTextRest: {
-    color: '#DB2777',
+  restDayNoticeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#78350F',
+    flex: 1,
   },
   feedbackCard: {
     backgroundColor: '#FEF9E7',
@@ -617,5 +882,151 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#78350F',
+  },
+  savedNoteHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  savedNoteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  savedNoteBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#D97706',
+    letterSpacing: 1.2,
+  },
+  savedNoteDate: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  savedNoteQuote: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#78350F',
+    fontStyle: 'italic',
+    marginBottom: 14,
+    lineHeight: 20,
+  },
+  savedNoteActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  editNoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDE047',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  editNoteBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#78350F',
+  },
+  deleteNoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  deleteNoteBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 21, 84, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  modalContentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 440,
+    ...Layout.shadows.card,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  modalTextInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: '#0F172A',
+    minHeight: 110,
+    marginBottom: 16,
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalCancelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  modalSaveButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  modalSaveButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalSaveText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

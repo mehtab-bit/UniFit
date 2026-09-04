@@ -9,12 +9,14 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 import { useAnimationTheme } from '../../context/AnimationContext';
-import { Colors } from '../../constants/colors';
+import { Colors, SurfaceType } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
+import { useSurfaceColors } from '../../context/SurfaceContext';
 
 interface AnimatedRepPopProps {
   repCount: number;
   label?: string;
+  surface?: SurfaceType;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
@@ -23,10 +25,12 @@ interface AnimatedRepPopProps {
 export const AnimatedRepPop: React.FC<AnimatedRepPopProps> = ({
   repCount,
   label = 'Reps Counted',
+  surface,
   style,
   textStyle,
   accessibilityLabel,
 }) => {
+  const colors = useSurfaceColors(surface);
   const { performanceMode, config } = useAnimationTheme();
   const scale = useSharedValue(1);
 
@@ -59,10 +63,17 @@ export const AnimatedRepPop: React.FC<AnimatedRepPopProps> = ({
       accessibilityLiveRegion="polite"
       accessibilityLabel={fullLabel}
     >
-      <Animated.Text style={[styles.repText, textStyle, animatedStyle]}>
+      <Animated.Text
+        style={[
+          styles.repText,
+          { color: colors.number },
+          textStyle,
+          animatedStyle,
+        ]}
+      >
         {repCount}
       </Animated.Text>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text> : null}
     </View>
   );
 };
@@ -75,11 +86,9 @@ const styles = StyleSheet.create({
   repText: {
     fontSize: 32,
     fontWeight: '800',
-    color: Colors.text,
   },
   label: {
     ...Typography.caption,
-    color: Colors.textSecondary,
     marginTop: 2,
     fontWeight: '600',
   },

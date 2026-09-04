@@ -1,11 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Colors } from '../../constants/colors';
-import { Typography } from '../../constants/typography';
+import { Feather } from '@expo/vector-icons';
 import { Layout } from '../../constants/layout';
 import { WorkoutDay } from '../../types/domain';
 import { ScalePressable } from '../animations/ScalePressable';
+import { Typography } from '../../constants/typography';
 
 interface HomeTodayWorkoutCardProps {
   workout: WorkoutDay;
@@ -26,63 +25,37 @@ export const HomeTodayWorkoutCard: React.FC<HomeTodayWorkoutCardProps> = ({
 
   return (
     <View
-      style={styles.card}
+      style={styles.heroSurface}
       accessible={true}
       accessibilityRole="summary"
       accessibilityLabel={`Today's Workout: ${workout.title}. ${isRest ? 'Rest day' : `${duration} minutes, ${exercisesCount} exercises, ${category}`}.`}
     >
-      {/* Top Header Row */}
-      <View style={styles.topHeaderRow}>
-        <View style={styles.todayPill}>
-          <View style={styles.pulseDot} />
-          <Text style={styles.todayPillText}>TODAY'S WORKOUT</Text>
-        </View>
-
-        <ScalePressable
-          onPress={onViewPlan}
-          accessibilityRole="button"
-          accessibilityLabel="View week plan"
-          style={styles.viewPlanLink}
-        >
-          <Text style={styles.viewPlanLinkText}>Week Plan</Text>
-          <Feather name="chevron-right" size={12} color={Colors.primary} />
+      <View style={styles.topRow}>
+        <Text style={styles.todayText}>TODAY'S WORKOUT</Text>
+        <ScalePressable onPress={onViewPlan}>
+          <Feather name="more-horizontal" size={20} color="#94A3B8" />
         </ScalePressable>
       </View>
 
-      {/* Main Info Row */}
-      <View style={styles.workoutBodyRow}>
-        <View style={styles.iconCircle} accessible={false} importantForAccessibility="no">
-          <MaterialCommunityIcons
-            name={(workout.iconName as any) || (isRest ? 'heart' : 'dumbbell')}
-            size={22}
-            color={Colors.primary}
-          />
-        </View>
+      <Text style={styles.titleText}>{workout.title.toUpperCase()}</Text>
 
-        <View style={styles.infoCol}>
-          <Text style={styles.titleText}>{workout.title}</Text>
-          {isRest ? (
-            <Text style={styles.metadataText}>Recovery & Hydration</Text>
-          ) : (
-            <Text style={styles.metadataText}>
-              <Text style={styles.boldMetaNum}>{duration}</Text> min · <Text style={styles.boldMetaNum}>{exercisesCount}</Text> exercises · {category}
-            </Text>
-          )}
-        </View>
-      </View>
+      {isRest ? (
+        <Text style={styles.metadataText}>RECOVERY & HYDRATION</Text>
+      ) : (
+        <Text style={styles.metadataText}>
+          {category.toUpperCase()} • {duration} MIN • {exercisesCount} EXERCISES
+        </Text>
+      )}
 
-      {/* Primary CTA Button */}
       {!isRest ? (
         <ScalePressable
           activeScale={0.98}
           onPress={onStartWorkout}
           accessibilityRole="button"
-          accessibilityLabel={`Start workout: ${workout.title}`}
-          accessibilityHint="Launches exercise coach"
           style={styles.ctaButton}
         >
           <Text style={styles.ctaButtonText}>Start Workout</Text>
-          <Feather name="arrow-right" size={15} color={Colors.textInverse} style={{ marginLeft: 6 }} />
+          <Feather name="arrow-right" size={16} color="#0F172A" style={{ marginLeft: 6 }} />
         </ScalePressable>
       ) : (
         <View style={styles.restBanner}>
@@ -95,112 +68,64 @@ export const HomeTodayWorkoutCard: React.FC<HomeTodayWorkoutCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
+  heroSurface: {
+    backgroundColor: '#0F172A',
     borderRadius: Layout.borderRadius.xl,
-    padding: Layout.spacing.md,
-    borderWidth: 1.5,
-    borderColor: '#BFDBFE',
+    padding: Layout.spacing.xl,
     marginBottom: Layout.spacing.md,
     ...Layout.shadows.card,
   },
-  topHeaderRow: {
+  topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Layout.spacing.sm,
-  },
-  todayPill: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Layout.borderRadius.full,
+    marginBottom: Layout.spacing.md,
   },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-    marginRight: 6,
-  },
-  todayPillText: {
-    fontSize: 10,
+  todayText: {
+    fontSize: 12,
     fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: 0.6,
-  },
-  viewPlanLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-  },
-  viewPlanLinkText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginRight: 2,
-  },
-  workoutBodyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Layout.spacing.sm + 2,
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  infoCol: {
-    flex: 1,
+    color: '#38BDF8',
+    letterSpacing: 1.2,
   },
   titleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#040E34',
-    letterSpacing: -0.3,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   metadataText: {
-    color: '#4B5563',
-    fontSize: 12.5,
-    marginTop: 2,
-  },
-  boldMetaNum: {
-    fontWeight: '800',
-    color: '#040E34',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    marginBottom: Layout.spacing.xl,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 10,
-    borderRadius: Layout.borderRadius.lg,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: Layout.borderRadius.full,
   },
   ctaButtonText: {
-    ...Typography.button,
-    color: Colors.textInverse,
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '800',
   },
   restBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: Layout.borderRadius.md,
   },
   restBannerText: {
     ...Typography.caption,
-    color: '#065F46',
+    color: '#10B981',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 13,
   },
 });

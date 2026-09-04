@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Text, TextStyle, StyleSheet, StyleProp } from 'react-native';
 import { useAnimationTheme } from '../../context/AnimationContext';
-import { Colors } from '../../constants/colors';
+import { Colors, SurfaceType } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
+import { useSurfaceColors } from '../../context/SurfaceContext';
 
 interface AnimatedNumberCounterProps {
   value: number;
   duration?: number;
   prefix?: string;
   suffix?: string;
+  surface?: SurfaceType;
   style?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
   formatter?: (n: number) => string;
@@ -19,10 +21,12 @@ export const AnimatedNumberCounter: React.FC<AnimatedNumberCounterProps> = ({
   duration = 800,
   prefix = '',
   suffix = '',
+  surface,
   style,
   accessibilityLabel,
   formatter,
 }) => {
+  const colors = useSurfaceColors(surface);
   const { performanceMode, config } = useAnimationTheme();
   const [displayValue, setDisplayValue] = useState(performanceMode === 'low_end' ? value : 0);
   const prevValueRef = useRef(0);
@@ -76,7 +80,7 @@ export const AnimatedNumberCounter: React.FC<AnimatedNumberCounterProps> = ({
 
   return (
     <Text
-      style={[styles.defaultText, style]}
+      style={[styles.defaultText, { color: colors.number }, style]}
       accessible={true}
       accessibilityRole="text"
       accessibilityLabel={fullLabel}
@@ -89,6 +93,5 @@ export const AnimatedNumberCounter: React.FC<AnimatedNumberCounterProps> = ({
 const styles = StyleSheet.create({
   defaultText: {
     ...Typography.h2,
-    color: Colors.text,
   },
 });
