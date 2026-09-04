@@ -5,18 +5,16 @@
 ## Prerequisites
 
 - **Node.js 20 or 22 LTS** + npm
-- **Expo Go** on your phone (from the Play Store / App Store) — this project targets **Expo SDK 52**; do not upgrade to SDK 53+ for this milestone
-- **Python 3.12/3.13** (3.14 may work, but the team venv uses a compatible version)
-- A **Supabase project** (live URL + keys) — optional but recommended for auth/profiles
-- Windows firewall may need an inbound rule for port 8000 to reach the backend from a phone
+- **Expo SDK 52 tooling** (`npx expo` / Expo Go app for MoveNet-only runs)
+- **Python 3.12/3.13** for the FastAPI backend
+- A **Supabase project** (optional; the app falls back to local demo mode)
 
 ## 1. Clone and install
 
 ```bash
 git clone https://github.com/mehtab-bit/UniFit.git
 cd UniFit
-git fetch origin
-git checkout merge-cv
+git checkout main
 npm install
 ```
 
@@ -32,85 +30,89 @@ EXPO_PUBLIC_API_URL=http://localhost:8000
 EXPO_PUBLIC_DEMO_MODE=false
 ```
 
-The **service-role key must never be committed**; distribute it out-of-band to teammates only.
+Leave the Supabase values as placeholders for offline demo mode with resilient
+local auth + mock data.
 
 ## 3. Start the backend
 
 ```bash
-# one-time (Windows) — use the repo's venv if present
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 source .venv/bin/activate     # macOS/Linux
 pip install -r backend/requirements.txt
-
-# run it (the --host 0.0.0.0 is what makes it reachable from a phone)
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-Health check: http://localhost:8000/api/v1/health or http://<your-LAN-IP>:8000/api/v1/health
+Health check: http://localhost:8000/api/v1/health
 
-## 4. Start Expo
+## 4. Run the app
+
+### Option A — Expo Go (MoveNet only)
 
 ```bash
 npx expo start
 ```
 
-- **Real phone:** scan the QR with Expo Go (same Wi-Fi).
-- **Emulator:** press `a` (Android) or `i` (iOS).
-- **Web:** press `w`.
+Scan the QR with Expo Go. The camera coach uses bundled MoveNet and never
+requires a native build.
 
-The first plan request after a cold backend can take ~20 s while the engine generates the week — later loads are fast (cached).
-
-## 5. Point the phone at the backend
-
-`localhost` inside Expo Go means the phone itself. If API calls time out, edit `.env`:
+### Option B — Development build (native MediaPipe)
 
 ```bash
-EXPO_PUBLIC_API_URL=http://<your-PC-LAN-IP>:8000
+npx expo run:android
 ```
 
-Find your LAN IP with `ipconfig` (Windows) / `ifconfig` (macOS). Restart `npx expo start` after editing. If the phone still can't reach it, allow port 8000 inbound in Windows Firewall.
+MediaPipe runs through Vision Camera's frame-processor plugin
+(`plugins/withPoseLandmarker.js`). Choose **Profile → Camera Engine →
+MediaPipe**; if the native plugin is missing the app falls back to MoveNet.
+
+### Web
+
+```bash
+npm run web
+# or for a production bundle
+npx expo export -p web
+```
+
+## 5. Camera Engine preference
+
+Profile → Camera Engine offers **Auto**, **MediaPipe**, and **MoveNet**. The
+choice is stored per device and applies to the next camera session:
+
+- **Auto** — MediaPipe when available, otherwise MoveNet.
+- **MediaPipe** — Android development builds only.
+- **MoveNet** — every build, including Expo Go and web.
 
 ## 6. Supabase (one-time setup)
-
-With the Supabase CLI linked to the project:
 
 ```bash
 supabase db push
 ```
 
-This applies `supabase/migrations/*.sql` (schema + seed). The demo account `demo@unifit.app` is created through the dashboard/admin API (one-time).
-
-For local-only testing without Supabase, the app falls back to local storage + mock services.
+This applies `supabase/migrations/*.sql`. The demo account `demo@unifit.app`
+is created through the Supabase dashboard/admin API (one-time). Without
+Supabase configured, the app uses local auth + mock services.
 
 ## Running tests
 
 ```bash
-npm test            # Vitest — CV logic, quality, side selection
+npm test            # Vitest — CV logic, quality, pose source, progression helpers
 npx tsc --noEmit    # typecheck
 pytest backend/tests/test_engine_api.py   # engine integration (in venv)
 ```
-
-## Teammate checklist
-
-1. Clone + `npm install`.
-2. Copy `.env.example` → `.env`; set your own Supabase keys + `EXPO_PUBLIC_API_URL`.
-3. Start backend (venv, `--host 0.0.0.0`) — or skip it; the app falls back to mocks.
-4. `npx expo start`, scan QR.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| API timeouts on phone | `.env` API URL must be the PC's LAN IP; backend must bind `0.0.0.0`; allow port 8000 in firewall |
-| "Maximum update depth" warnings in CV | Already fixed in code — reload Expo Go with a fresh bundle; restart with `npx expo start -c` if stale |
-| EPERM `.pytest_cache` Metro warning | Already ignored in `metro.config.js`; restart Metro |
-| CV shows no dots | Model loads once per session (~seconds). Use side view, whole body in frame; see `docs/cv-coach.md` |
-| `supabase db push` Docker errors | Docker Desktop must be running, or use `supabase db push --linked` |
+| API timeouts on phone | `.env` API URL must be the PC's LAN IP; backend must bind `0.0.0.0`; allow port 8000 in the firewall |
+| Camera shows no skeleton | Model loads once per session; use a side view with the whole body in frame; see `docs/cv-coach.md` |
+| MediaPipe option falls back | You're on Expo Go or a build without the native plugin; use `expo run:android` and Profile → Camera Engine → MediaPipe |
+| Calibration seems off after switching engines | Calibrations are scoped per engine — recalibrate once under the newly selected engine |
+| Web demo has no camera | The camera coach targets mobile; the web export serves the rest of the app |
 
 ## Architecture & deeper docs
 
-- `docs/architecture.md` — full system map.
-- `docs/engine.md` — the Python fitness engine.
-- `docs/cv-coach.md` — camera pose tracking and calibration.
-- `graphify-out/` — an auto-built knowledge graph of the codebase.
+- `docs/architecture.md` — full system map
+- `docs/engine.md` — the Python fitness engine
+- `docs/cv-coach.md` — camera pose tracking, calibration, rep counting
