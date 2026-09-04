@@ -36,7 +36,24 @@
       "favicon": "./assets/images/unifit-logo.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "UniFit uses the camera to count repetitions and measure your movement range."
+        }
+      ],
+      [
+        "expo-vision-camera-v4-mediapipe/plugin",
+        {
+          "numHands": 1,
+          "minDetectionConfidence": 0.5,
+          "minPresenceConfidence": 0.5,
+          "minTrackingConfidence": 0.5,
+          "enablePose": true,
+          "enableFace": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

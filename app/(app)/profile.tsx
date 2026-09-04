@@ -325,6 +325,23 @@ export default function ProfileScreen() {
 
             {typeof __DEV__ !== 'undefined' && __DEV__ ? (
               <>
+                <ScalePressable
+                  activeScale={0.98}
+                  onPress={() => router.push('/(app)/cv-native-test' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open MediaPipe pose test"
+                  accessibilityHint="Runs native MediaPipe pose tracking from Vision Camera"
+                  style={styles.stressTestBtn}
+                >
+                  <Feather name="activity" size={18} color={Colors.primary} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stressTestTitle}>MediaPipe Pose Test</Text>
+                    <Text style={styles.stressTestSub}>
+                      Native pose landmarks, frame rate, and overlay stability
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={Colors.primary} />
+                </ScalePressable>
                 {/* Performance Test Screen Launcher — developer tooling only */}
                 <ScalePressable
                   activeScale={0.98}

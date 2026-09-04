@@ -16,6 +16,8 @@ __pycache__/
 .expo/
 dist/
 web-build/
+android/
+ios/
 
 # IDE / System
 .DS_Store
