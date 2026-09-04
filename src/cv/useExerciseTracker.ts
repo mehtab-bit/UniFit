@@ -6,6 +6,7 @@ import { getVisibleKeypoints } from './keypoints';
 import { smoothAngle } from './math';
 import { createRepCounterState, updateRepCounter } from './repCounter';
 import { AngleCalibration, CalibrationPhase, CvKeypoint, ExerciseId, FeedbackState, Side } from './types';
+import { trackEffectBurst } from './debugRenderCount';
 
 export function useExerciseTracker(
   exerciseId: ExerciseId,
@@ -27,6 +28,7 @@ export function useExerciseTracker(
   // when it is clearly better (hysteresis lives in chooseVisibleSide). This
   // runs as a side-effect on keypoint updates, never during render.
   useEffect(() => {
+    trackEffectBurst('tracker.sidePick');
     if (sideOverride) {
       return;
     }
@@ -53,10 +55,12 @@ export function useExerciseTracker(
   const calibrationPhaseRef = useRef<CalibrationPhase>(calibrationPhase);
 
   useEffect(() => {
+    trackEffectBurst('tracker.phaseRef');
     calibrationPhaseRef.current = calibrationPhase;
   }, [calibrationPhase]);
 
   useEffect(() => {
+    trackEffectBurst('tracker.reset');
     recentAnglesRef.current = [];
     setSmoothedAngle(null);
     setCalibrationPhase('idle');
@@ -67,6 +71,7 @@ export function useExerciseTracker(
   }, [exerciseId, sideOverride]);
 
   useEffect(() => {
+    trackEffectBurst('tracker.smoothAngle');
     const nextAngle = definition.getAngle(keypoints, activeSide);
     recentAnglesRef.current = [...recentAnglesRef.current, nextAngle].slice(-5);
     const smoothed = smoothAngle(recentAnglesRef.current);
@@ -79,6 +84,7 @@ export function useExerciseTracker(
   }, [activeSide, definition, keypoints]);
 
   useEffect(() => {
+    trackEffectBurst('tracker.calSamples');
     if (calibrationPhase === 'start' || calibrationPhase === 'end') {
       if (smoothedAngle !== null) {
         calibrationSamplesRef.current = [...calibrationSamplesRef.current, smoothedAngle].slice(-25);
@@ -94,6 +100,7 @@ export function useExerciseTracker(
   // counter genuinely transitions. The reducer is idempotent for identical
   // state, but the dispatch call itself is avoided unless reps/phase change.
   useEffect(() => {
+    trackEffectBurst('tracker.repTick');
     if (
       paused ||
       calibration === null ||

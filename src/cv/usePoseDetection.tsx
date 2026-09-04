@@ -15,6 +15,7 @@ import { createBundledModelIO } from './modelAssets';
 import { nativePoseToCvKeypoints, NativePoseFrame } from './nativePose';
 import { keypointsMoved, smoothWithHold } from './landmarkSmoothing';
 import { PoseSourceMode } from './native/runtime';
+import { trackEffectBurst } from './debugRenderCount';
 
 // Bundled model keeps CV usable offline and avoids a long first-load fetch.
 const movenetModelJson = require('../../assets/models/movenet-lightning/model.json');
@@ -83,6 +84,7 @@ export function usePoseDetection(
   // mid-rep keeps the previous WebGL/camera frame alive and the overlay shows
   // frozen dots.
   useEffect(() => {
+    trackEffectBurst('pose.reset');
     isActiveRef.current = true;
     lastKeypointsRef.current = [];
     smoothedKeypointsRef.current = [];

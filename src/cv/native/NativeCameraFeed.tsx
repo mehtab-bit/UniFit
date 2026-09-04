@@ -10,7 +10,7 @@ import {
 import { Worklets } from 'react-native-worklets-core';
 import { CameraType } from 'expo-camera';
 import { NativePoseFrame } from '../nativePose';
-import { trackRenderBurst } from '../debugRenderCount';
+import { trackEffectBurst, trackRenderBurst } from '../debugRenderCount';
 
 type NativeCameraFeedProps = {
   facing: CameraType;
@@ -33,6 +33,7 @@ export function NativeCameraFeed({
   const { hasPermission, requestPermission } = useCameraPermission();
 
   useEffect(() => {
+    trackEffectBurst('feed.permission');
     if (!hasPermission) {
       void requestPermission();
     }
@@ -44,6 +45,7 @@ export function NativeCameraFeed({
   );
 
   useEffect(() => {
+    trackEffectBurst('feed.error');
     if (!plugin) {
       onError(new Error('Native MediaPipe plugin is unavailable in this build.'));
     }

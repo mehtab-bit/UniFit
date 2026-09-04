@@ -13,7 +13,7 @@ import { KEYPOINT_MIN_SCORE } from './cv/confidence';
 import { loadSavedCalibration, saveCalibration } from './cv/calibrationStore';
 import { resolvePoseSourceMode } from './cv/native/runtime';
 import { keypointToViewPx } from './cv/overlayGeometry';
-import { trackRenderBurst } from './cv/debugRenderCount';
+import { trackEffectBurst, trackRenderBurst } from './cv/debugRenderCount';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 type CalibrationStage = 'idle' | 'start_hold' | 'end_move' | 'end_hold' | 'complete' | 'failed';
@@ -227,6 +227,7 @@ export function CvDemoScreen({
   const colorVotesRef = useRef(0);
   const [isGoodForm, setIsGoodForm] = useState(false);
   useEffect(() => {
+    trackEffectBurst('cv.colorVotes');
     if (rawGood) {
       // Require several consecutive good frames before showing green, so
       // keypoint jitter can't make the skeleton flicker.
@@ -247,6 +248,7 @@ export function CvDemoScreen({
   }, [rawGood, isGoodForm]);
 
   useEffect(() => {
+    trackEffectBurst('cv.resetStage');
     setCalibrationStage('idle');
     setCountdown(0);
     setShowDebug(false);
@@ -259,12 +261,14 @@ export function CvDemoScreen({
   }, [exerciseId, sideOverride]);
 
   useEffect(() => {
+    trackEffectBurst('cv.cameraFacing');
     if (cameraFacing !== facing) {
       setCameraFacing(facing);
     }
   }, [facing]);
 
   useEffect(() => {
+    trackEffectBurst('cv.repEffect');
     // Calibration drives its own announcements; never rep-announce mid-calibration.
     if (calibrationStage !== 'complete') {
       return;
@@ -324,6 +328,7 @@ export function CvDemoScreen({
   // Rest-countdown timer between sets. Rep counting pauses while active and
   // resumes automatically when it reaches zero.
   useEffect(() => {
+    trackEffectBurst('cv.restTimer');
     if (restRemaining <= 0) {
       return;
     }
@@ -334,6 +339,7 @@ export function CvDemoScreen({
   }, [restRemaining]);
 
   useEffect(() => {
+    trackEffectBurst('cv.restAnnounce');
     if (restRemaining > 0 || !restAnnouncePending) return;
     accessibilityRef.current({
       text: 'Rest complete. Begin your next set.',
@@ -346,6 +352,7 @@ export function CvDemoScreen({
   // Reuses a saved calibration when one exists for this exercise/side, so
   // repeat sessions skip the two holds. Recalibrating replaces it.
   useEffect(() => {
+    trackEffectBurst('cv.loadSavedCal');
     if (
       calibrationStage !== 'idle' ||
       pose.modelStatus !== 'ready' ||
@@ -377,6 +384,7 @@ export function CvDemoScreen({
 
   // Persist a freshly captured calibration for next time.
   useEffect(() => {
+    trackEffectBurst('cv.saveCal');
     if (calibrationStage !== 'complete' || tracker.calibration === null) {
       return;
     }
@@ -387,6 +395,7 @@ export function CvDemoScreen({
   }, [calibrationStage, exerciseId, tracker.calibration, tracker.side]);
 
   useEffect(() => {
+    trackEffectBurst('cv.calAnnounce');
     if (calibrationStage === 'start_hold') {
       accessibilityRef.current({
         text: tracker.definition.startCalibrationLabel,
@@ -411,6 +420,7 @@ export function CvDemoScreen({
   //   end_hold:   once stable again for ~2.5s, capture the END angle.
   // The user moves at their own pace; we never demand they beat a timer.
   useEffect(() => {
+    trackEffectBurst('cv.calWatch');
     if (
       calibrationStage !== 'start_hold' &&
       calibrationStage !== 'end_move' &&
