@@ -7,6 +7,31 @@ import { AnimationProvider } from '../context/AnimationContext';
 import { CaptionOverlay } from '../components/common/CaptionOverlay';
 import { Colors } from '../constants/colors';
 
+if (typeof __DEV__ !== 'undefined' && __DEV__) {
+  const originalError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    try {
+      const text = args
+        .map((arg) => {
+          if (typeof arg === 'string') return arg;
+          if (arg instanceof Error) return arg.stack || arg.message;
+          try {
+            return JSON.stringify(arg);
+          } catch {
+            return String(arg);
+          }
+        })
+        .join('\n');
+      if (text.includes('Maximum update depth')) {
+        originalError('[UniFit-depth] FULL WARNING PAYLOAD:\n' + text);
+      }
+    } catch {
+      // Never let the diagnostic itself break the app.
+    }
+    originalError(...args);
+  };
+}
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
