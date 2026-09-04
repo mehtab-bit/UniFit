@@ -7,6 +7,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build:web": "expo export -p web && node scripts/deploy/write-web-redirect.cjs",
+    "deploy:space:assemble": "node scripts/deploy/assemble-hf-space.cjs",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

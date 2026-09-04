@@ -15,6 +15,7 @@ __pycache__/
 # Expo / Builds
 .expo/
 dist/
+dist-hf/
 dist/
 web-build/
 android/
