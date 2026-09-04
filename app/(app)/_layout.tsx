@@ -90,8 +90,17 @@ export default function AppTabsLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+          tabBarAccessibilityLabel: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon name="user" focused={focused} />,
+        }}
+      />
+
       {/* Hidden Screens (accessible via router.push) */}
-      <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="streak-plan" options={{ href: null }} />
       <Tabs.Screen name="workout" options={{ href: null }} />
       <Tabs.Screen
