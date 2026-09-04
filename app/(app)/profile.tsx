@@ -20,6 +20,7 @@ import { useScreenAnnouncement } from '../../hooks/useScreenAnnouncement';
 import { CardSpringEntry } from '../../components/animations/CardSpringEntry';
 import {
   PoseSourceOverride,
+  isNativePoseAvailable,
   loadPoseSourceOverride,
   savePoseSourceOverride
 } from '../../src/cv/native/runtime';
@@ -102,7 +103,7 @@ export default function ProfileScreen() {
   const { performanceMode, setPerformanceMode } = useAnimationTheme();
   
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [poseSource, setPoseSource] = useState<PoseSourceOverride>('auto');
+  const [poseSource, setPoseSource] = useState<PoseSourceOverride | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -115,6 +116,16 @@ export default function ProfileScreen() {
   }, []);
 
   const handlePoseSourceChange = async (next: PoseSourceOverride) => {
+    if (next === 'mediapipe' && !isNativePoseAvailable()) {
+      setPoseSource('auto');
+      await savePoseSourceOverride('auto');
+      provideFeedback({
+        text: 'MediaPipe is unavailable on this build, so MoveNet will be used. Choose Auto to keep the best available engine.',
+        priority: 'high',
+        haptic: 'warning'
+      });
+      return;
+    }
     setPoseSource(next);
     await savePoseSourceOverride(next);
     const label =
@@ -214,39 +225,40 @@ export default function ProfileScreen() {
           <SectionHeader title="Preferences" />
           <View style={styles.sectionGroup}>
             <RowItem icon="smartphone" title="Performance Mode" value={performanceMode === 'battery_saver' ? 'Battery Saver' : 'Standard'} onPress={() => setPerformanceMode(performanceMode === 'standard' ? 'battery_saver' : 'standard')} />
-            <RowItem icon="bell" title="Notifications" value="Enabled" onPress={() => {}} isLast />
           </View>
         </CardSpringEntry>
 
-        <CardSpringEntry index={3}>
-          <SectionHeader title="Camera Engine" />
-          <View style={styles.sectionGroup}>
-            {POSE_ENGINE_OPTIONS.map((option, index) => {
-              const isSelected = poseSource === option.value;
-              return (
-                <View key={option.value}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${option.label}. ${option.hint}`}
-                    onPress={() => void handlePoseSourceChange(option.value)}
-                    style={[styles.engineOptionRow, index > 0 && styles.rowBorder]}
-                  >
-                    <View style={styles.engineOptionCopy}>
-                      <Text style={styles.rowTitle}>{option.label}</Text>
-                      <Text style={styles.engineOptionHint}>{option.hint}</Text>
-                    </View>
-                    <Feather
-                      name={isSelected ? 'check-circle' : 'circle'}
-                      size={20}
-                      color={isSelected ? '#040E34' : '#CBD5E1'}
-                    />
-                  </Pressable>
-                </View>
-              );
-            })}
-          </View>
-        </CardSpringEntry>
+        {poseSource !== null ? (
+          <CardSpringEntry index={3}>
+            <SectionHeader title="Camera Engine" />
+            <View style={styles.sectionGroup}>
+              {POSE_ENGINE_OPTIONS.map((option, index) => {
+                const isSelected = poseSource === option.value;
+                return (
+                  <View key={option.value}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={`${option.label}. ${option.hint}`}
+                      onPress={() => void handlePoseSourceChange(option.value)}
+                      style={[styles.engineOptionRow, index > 0 && styles.rowBorder]}
+                    >
+                      <View style={styles.engineOptionCopy}>
+                        <Text style={styles.rowTitle}>{option.label}</Text>
+                        <Text style={styles.engineOptionHint}>{option.hint}</Text>
+                      </View>
+                      <Feather
+                        name={isSelected ? 'check-circle' : 'circle'}
+                        size={20}
+                        color={isSelected ? '#040E34' : '#CBD5E1'}
+                      />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          </CardSpringEntry>
+        ) : null}
 
         <CardSpringEntry index={4}>
           <SectionHeader title="Accessibility" />
@@ -260,8 +272,6 @@ export default function ProfileScreen() {
         <CardSpringEntry index={5}>
           <SectionHeader title="Settings" />
           <View style={styles.sectionGroup}>
-            <RowItem icon="shield" title="Privacy Policy" onPress={() => {}} />
-            <RowItem icon="help-circle" title="Support" onPress={() => {}} />
             <RowItem icon="log-out" title="Sign Out" onPress={handleSignOut} isLast />
           </View>
         </CardSpringEntry>

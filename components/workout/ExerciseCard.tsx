@@ -21,8 +21,10 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
   index = 0,
 }) => {
   const displayIndex = (index + 1).toString().padStart(2, '0');
-  const repsText = `${exercise.sets || 2}×${exercise.reps || 8}`;
-  const restText = `${exercise.restSeconds || 70}sec`;
+  const repsText =
+    exercise.sets && exercise.reps ? `${exercise.sets}×${exercise.reps}` : '—';
+  const restText =
+    exercise.restSeconds != null ? `${exercise.restSeconds}sec` : '';
 
   return (
     <ScalePressable

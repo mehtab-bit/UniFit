@@ -15,6 +15,7 @@ import { AsyncStateView } from '../../components/common/AsyncStateView';
 import { progressService } from '../../services';
 import { ProgressSummary } from '../../types/domain';
 import { Surface } from '../../context/SurfaceContext';
+import { resolveProgressionWeek } from '../../utils/progressionWeek';
 
 const JOURNEY_PHASES = ['CALIBRATION', 'FOUNDATION', 'BUILD', 'PROGRESS'];
 
@@ -48,13 +49,7 @@ export default function ProgressScreen() {
   const workoutsCompleted = summary?.workoutsCompleted ?? 0;
   const totalActiveMinutes = summary?.totalActiveMinutes ?? 0;
   const phaseTitle = summary?.phaseTitle ?? 'Week 1 • Phase 1 Calibration';
-  const progressionWeek =
-    typeof summary?.activity_rule_week === 'number'
-      ? summary.activity_rule_week
-      : summary?.activity_rule_week
-        ? summary.activity_rule_week.strength ??
-          Math.max(...Object.values(summary.activity_rule_week))
-        : undefined;
+  const progressionWeek = resolveProgressionWeek(summary?.activity_rule_week);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>

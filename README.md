@@ -17,7 +17,9 @@ This repo is a **full-stack app**: the Expo frontend, a FastAPI backend wrapping
 - [docs/performance.md](docs/performance.md) — measured timings and what to profile next
 - [docs/audit.md](docs/audit.md) — over-engineering audit findings
 
-`graphify-out/` also contains an auto-built code map (`graph.html`, `GRAPH_REPORT.md`) generated from this repo.
+> Note: `graphify-out/` is a locally generated code-map produced by the
+> graphify tool. It is not part of the repository and is not required to
+> build or run UniFit.
 
 ---
 
@@ -29,6 +31,17 @@ This repo is a **full-stack app**: the Expo frontend, a FastAPI backend wrapping
 4. **Adaptive Progression** — Weekly plans automatically adjust based on your performance, consistency, and form.
 5. **Inclusive & Accessible Fitness** — Audio guidance for visually impaired users and captions/visual feedback for deaf or hard-of-hearing users.
 6. **Multi-Activity Tracking** — Track walking, running, cycling, swimming, and strength workouts with personalized progress insights.
+7. **Pose Engine Selection** — Profile → Camera Engine lets users pick Auto, MediaPipe (development builds), or MoveNet (Expo Go / fallback), persisted per device.
+
+## Demo / Staging Deployment
+
+This repository is intended for **staging/demo deployment, not production**.
+Keep the existing development configuration: placeholder Supabase values enable
+the resilient local auth + offline demo mode, and demo credentials
+(`demo@unifit.app`) are intentionally part of the app. For a hosted demo,
+point `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` at a real
+Supabase project and `EXPO_PUBLIC_API_URL` at the deployed FastAPI backend,
+then export the web app with `npx expo export -p web`.
 
 ---
 

@@ -35,6 +35,15 @@ import { Typography } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
 
 export default function PerformanceTestScreen() {
+  if (typeof __DEV__ !== 'undefined' && !__DEV__) {
+    return (
+      <View style={styles.devOnlyWrap}>
+        <Text style={styles.devOnlyText}>
+          Performance benchmark is available in development builds only.
+        </Text>
+      </View>
+    );
+  }
   useScreenAnnouncement('Performance Benchmark and Stress Test Screen. 20 animated cards, progress rings, and motion engine.');
 
   const router = useRouter();
@@ -335,6 +344,18 @@ export default function PerformanceTestScreen() {
 }
 
 const styles = StyleSheet.create({
+  devOnlyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+  },
+  devOnlyText: {
+    textAlign: 'center',
+    color: '#64748B',
+    fontSize: 15,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.surfaceSecondary,

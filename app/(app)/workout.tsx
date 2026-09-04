@@ -54,6 +54,10 @@ function manualExerciseFromRequest(request: ManualSessionRequest): Exercise {
   };
 }
 
+function metricText(value: number | undefined, suffix: string): string {
+  return value == null ? '—' : `${value} ${suffix}`;
+}
+
 export default function WorkoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ date?: string; dayId?: string }>();
@@ -73,7 +77,9 @@ export default function WorkoutScreen() {
   const [completedExerciseIds, setCompletedExerciseIds] = useState<string[]>([]);
   const [repCount, setRepCount] = useState(0);
   const [cameraScore, setCameraScore] = useState<number | null>(null);
-  const [badgeSource, setBadgeSource] = useState<'camera' | 'manual'>('camera');
+  const [badgeSource, setBadgeSource] = useState<
+    'camera' | 'manual' | 'activity'
+  >('camera');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const cvSessionNonceRef = useRef(0);
   const manualProgressRef = useRef({ done: 0, target: 0 });
@@ -158,10 +164,14 @@ export default function WorkoutScreen() {
         setBadgeSource('camera');
         setShowCompleteModal(true);
         if (matched) {
-          void logFamilyCompletion(matched, result.reps, 100, 'camera');
+          // cv-session already logs the camera completion; only reflect the
+          // result in this screen's state so sessions are never double-logged.
+          setCompletedExerciseIds((previous) =>
+            Array.from(new Set([...previous, matched.id]))
+          );
         }
       }),
-    [logFamilyCompletion, workout]
+    [workout]
   );
 
   // Manual fallback requested from a camera session (denied/failed camera).
@@ -236,6 +246,38 @@ export default function WorkoutScreen() {
     [router, startManualSession, workout]
   );
 
+  const logActivityCompletion = useCallback(async () => {
+    if (!workout) return;
+    const duration = workout.durationMinutes ?? 25;
+    const payload: WorkoutCompletionPayload = {
+      user_id: user?.id || 'user_default',
+      activity_id: workout.activity_id || workout.activity || 'strength',
+      requested_activity_id:
+        workout.activity_id || workout.activity || 'strength',
+      progression_key:
+        workout.progression_key || workout.activity || 'strength',
+      session_type: workout.session_type,
+      completion_pct: 100,
+      source: 'activity',
+      reps_completed: 0
+    };
+    await workoutService.logWorkoutCompletion(
+      payload,
+      duration,
+      0,
+      user?.id
+    );
+    setRepCount(duration);
+    setCameraScore(null);
+    setBadgeSource('activity');
+    setShowCompleteModal(true);
+    provideFeedback({
+      text: `${workout.title} recorded as complete.`,
+      priority: 'high',
+      haptic: 'success'
+    });
+  }, [user?.id, workout, provideFeedback]);
+
   const handleStartWorkout = useCallback(() => {
     const nextExercise =
       workout?.exercises?.find(
@@ -243,14 +285,26 @@ export default function WorkoutScreen() {
       ) || workout?.exercises?.[0];
 
     if (!nextExercise) {
-      // Cardio/interval days have no exercise list; real tracking lives on
-      // the Activity screen. The protocol cards above stay as the coach
-      // reference, never a fake timer.
-      router.replace('/(app)/activity');
+      if (!workout || workout.activity === 'rest') {
+        return;
+      }
+      // Cardio/interval days have no camera-tracked reps, so the demo flow
+      // records the prescribed session as completed from this screen.
+      Alert.alert(
+        'Start activity?',
+        `Record ${workout.title} as a completed ${workout.durationMinutes ?? 25}-minute session?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Record session',
+            onPress: () => void logActivityCompletion()
+          }
+        ]
+      );
       return;
     }
     handleStartSession(nextExercise);
-  }, [completedExerciseIds, handleStartSession, router, workout]);
+  }, [completedExerciseIds, handleStartSession, logActivityCompletion, workout]);
 
   const handleManualComplete = useCallback(
     async (result: { reps: number }) => {
@@ -397,15 +451,21 @@ export default function WorkoutScreen() {
 
                     <View style={styles.activityMetricsGrid}>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{workout.distanceKm || 2.0} km</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {metricText(workout.distanceKm, 'km')}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>DISTANCE</Text>
                       </View>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{workout.durationMinutes || 20} min</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {metricText(workout.durationMinutes, 'min')}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>DURATION</Text>
                       </View>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{(workout.intensity || 'moderate').toUpperCase()}</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {workout.intensity ? workout.intensity.toUpperCase() : '—'}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>INTENSITY</Text>
                       </View>
                     </View>
@@ -413,16 +473,18 @@ export default function WorkoutScreen() {
                     <View style={styles.intervalBox}>
                       <View style={styles.intervalRow}>
                         <Feather name="zap" size={14} color="#D97706" style={{ marginRight: 6 }} />
-                        <Text style={styles.intervalLabel}>Structure: {workout.intervalCount || 6} Alternating Intervals</Text>
+                        <Text style={styles.intervalLabel}>
+                          Structure: {workout.intervalCount ?? '—'} Alternating Intervals
+                        </Text>
                       </View>
                       <View style={styles.intervalPillRow}>
                         <View style={styles.intervalWorkPill}>
                           <Text style={styles.intervalPillLabel}>WORK</Text>
-                          <Text style={styles.intervalPillValue}>{workout.workInterval || '60 sec run / brisk march'}</Text>
+                          <Text style={styles.intervalPillValue}>{workout.workInterval ?? '—'}</Text>
                         </View>
                         <View style={styles.intervalRecPill}>
                           <Text style={styles.intervalPillLabel}>RECOVERY</Text>
-                          <Text style={styles.intervalPillValue}>{workout.recoveryInterval || '90 sec walk recovery'}</Text>
+                          <Text style={styles.intervalPillValue}>{workout.recoveryInterval ?? '—'}</Text>
                         </View>
                       </View>
                     </View>
@@ -452,15 +514,21 @@ export default function WorkoutScreen() {
 
                     <View style={styles.activityMetricsGrid}>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{workout.distanceKm || 8.0} km</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {metricText(workout.distanceKm, 'km')}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>DISTANCE</Text>
                       </View>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{workout.durationMinutes || 30} min</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {metricText(workout.durationMinutes, 'min')}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>DURATION</Text>
                       </View>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{(workout.intensity || 'zone2').toUpperCase()}</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {workout.intensity ? workout.intensity.toUpperCase() : '—'}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>INTENSITY</Text>
                       </View>
                     </View>
@@ -489,17 +557,23 @@ export default function WorkoutScreen() {
 
                     <View style={styles.activityMetricsGrid}>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{workout.durationMinutes || 30} min</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {metricText(workout.durationMinutes, 'min')}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>DURATION</Text>
                       </View>
                       {workout.distanceKm ? (
                         <View style={styles.activityMetricItem}>
-                          <Text style={styles.activityMetricNum}>{workout.distanceKm} km</Text>
+                          <Text style={styles.activityMetricNum}>
+                            {metricText(workout.distanceKm, 'km')}
+                          </Text>
                           <Text style={styles.activityMetricLabel}>DISTANCE</Text>
                         </View>
                       ) : null}
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{(workout.intensity || 'easy').toUpperCase()}</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {workout.intensity ? workout.intensity.toUpperCase() : '—'}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>INTENSITY</Text>
                       </View>
                     </View>
@@ -528,17 +602,23 @@ export default function WorkoutScreen() {
 
                     <View style={styles.activityMetricsGrid}>
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{workout.durationMinutes || 30} min</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {metricText(workout.durationMinutes, 'min')}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>DURATION</Text>
                       </View>
                       {workout.distanceKm ? (
                         <View style={styles.activityMetricItem}>
-                          <Text style={styles.activityMetricNum}>{workout.distanceKm} km</Text>
+                          <Text style={styles.activityMetricNum}>
+                            {metricText(workout.distanceKm, 'km')}
+                          </Text>
                           <Text style={styles.activityMetricLabel}>DISTANCE</Text>
                         </View>
                       ) : null}
                       <View style={styles.activityMetricItem}>
-                        <Text style={styles.activityMetricNum}>{(workout.intensity || 'moderate').toUpperCase()}</Text>
+                        <Text style={styles.activityMetricNum}>
+                          {workout.intensity ? workout.intensity.toUpperCase() : '—'}
+                        </Text>
                         <Text style={styles.activityMetricLabel}>INTENSITY</Text>
                       </View>
                     </View>

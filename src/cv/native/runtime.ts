@@ -1,8 +1,13 @@
 import { Platform } from 'react-native';
 import { SafeStorage } from '../../../lib/supabase';
+import {
+  normalizePoseSourceOverride,
+  resolvePoseSourceMode as resolvePoseMode,
+  PoseSourceMode,
+  PoseSourceOverride
+} from '../poseSource';
 
-export type PoseSourceMode = 'movenet' | 'mediapipe';
-export type PoseSourceOverride = 'auto' | PoseSourceMode;
+export type { PoseSourceMode, PoseSourceOverride } from '../poseSource';
 
 const POSE_SOURCE_STORAGE_KEY = '@unifit_pose_source_v1';
 
@@ -59,14 +64,9 @@ export async function savePoseSourceOverride(
 export async function loadPoseSourceOverride(): Promise<PoseSourceOverride> {
   try {
     const raw = await SafeStorage.getItem(POSE_SOURCE_STORAGE_KEY);
-    if (
-      raw === 'auto' ||
-      raw === 'movenet' ||
-      raw === 'mediapipe'
-    ) {
-      sourceOverride = raw;
-      return raw;
-    }
+    const normalized = normalizePoseSourceOverride(raw);
+    sourceOverride = normalized;
+    return normalized;
   } catch {
     // Ignore storage failures and fall back to auto.
   }
@@ -75,14 +75,5 @@ export async function loadPoseSourceOverride(): Promise<PoseSourceOverride> {
 }
 
 export function resolvePoseSourceMode(): PoseSourceMode {
-  if (sourceOverride === 'mediapipe' && isNativePoseAvailable()) {
-    return 'mediapipe';
-  }
-  if (sourceOverride === 'movenet') {
-    return 'movenet';
-  }
-  // Auto (and a MediaPipe override on builds without the native plugin):
-  // fall back to MoveNet so Expo Go never crashes trying to load the
-  // Vision Camera feed.
-  return isNativePoseAvailable() ? 'mediapipe' : 'movenet';
+  return resolvePoseMode(sourceOverride, isNativePoseAvailable());
 }

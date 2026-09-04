@@ -20,7 +20,7 @@ interface WorkoutCompleteBadgeProps {
   exerciseName: string;
   reps: number;
   formScore?: number | null;
-  source?: 'camera' | 'manual';
+  source?: 'camera' | 'manual' | 'activity';
   onClose: () => void;
 }
 
@@ -91,7 +91,9 @@ export const WorkoutCompleteBadge: React.FC<WorkoutCompleteBadgeProps> = ({
           accessibilityLabel={
             source === 'camera'
               ? `Workout Complete! ${exerciseName}. Completed ${reps} repetitions with ${formScore} percent range score.`
-              : `Exercise complete. ${exerciseName}. Completed ${reps} repetitions manually.`
+              : source === 'activity'
+                ? `Workout Complete! ${exerciseName}. ${reps} minute session recorded.`
+                : `Exercise complete. ${exerciseName}. Completed ${reps} repetitions manually.`
           }
         >
           {/* Checkmark badge */}
@@ -104,15 +106,24 @@ export const WorkoutCompleteBadge: React.FC<WorkoutCompleteBadgeProps> = ({
 
           {/* Stats Box */}
           <View style={styles.statsContainer}>
-            <View style={styles.statBox}>
+          <View style={styles.statBox}>
               <Text style={styles.statNumber}>{reps}</Text>
-              <Text style={styles.statLabel}>REPS</Text>
+              <Text style={styles.statLabel}>
+                {source === 'activity' ? 'MINUTES' : 'REPS'}
+              </Text>
             </View>
 
             <View style={styles.statDivider} />
 
             <View style={styles.statBox}>
-              {source === 'camera' && typeof formScore === 'number' ? (
+              {source === 'activity' ? (
+                <>
+                  <Text style={[styles.statNumber, { color: Colors.success }]}>
+                    DONE
+                  </Text>
+                  <Text style={styles.statLabel}>SESSION</Text>
+                </>
+              ) : source === 'camera' && typeof formScore === 'number' ? (
                 <>
                   <Text style={[styles.statNumber, { color: Colors.primary }]}>
                     {formScore}%
@@ -133,7 +144,9 @@ export const WorkoutCompleteBadge: React.FC<WorkoutCompleteBadgeProps> = ({
           <View style={styles.qualityPill}>
             <Feather name="award" size={14} color={Colors.success} style={{ marginRight: 4 }} />
             <Text style={styles.qualityText}>
-              {source === 'camera'
+              {source === 'activity'
+                ? 'Activity session recorded'
+                : source === 'camera'
                 ? 'Range calibrated & saved'
                 : 'Manual reps recorded — no camera used'}
             </Text>

@@ -20,7 +20,7 @@ export const HomeTodayWorkoutCard: React.FC<HomeTodayWorkoutCardProps> = ({
   const isRest = workout.category?.toLowerCase() === 'rest' || workout.activity === 'rest';
 
   const exercisesCount = workout.exercises?.length || (workout.sets ? Math.round(workout.sets / 2) : 5);
-  const duration = workout.durationMinutes || 25;
+  const duration = workout.durationMinutes ?? 0;
   const category = workout.category || 'Strength';
 
   return (

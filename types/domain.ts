@@ -191,7 +191,7 @@ export interface WorkoutCompletionPayload {
   session_type?: string;
   completion_pct: number;
   exercise_completion_pct?: Record<string, number>;
-  source?: 'camera' | 'manual';
+  source?: 'camera' | 'manual' | 'activity';
   reps_completed?: number;
   range_score?: number | null;
   issue_codes?: string[];
