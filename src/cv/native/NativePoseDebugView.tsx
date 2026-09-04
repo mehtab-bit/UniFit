@@ -13,6 +13,7 @@ import { Worklets } from 'react-native-worklets-core';
 import type { HandDetectionResult } from 'expo-vision-camera-v4-mediapipe';
 import { nativePoseToCvKeypoints } from '../nativePose';
 import { CvKeypoint } from '../types';
+import { smoothLandmarks } from '../landmarkSmoothing';
 
 /**
  * Standalone native pose debug screen. Kept behind a lazy route so Expo Go /
@@ -34,7 +35,8 @@ export default function NativePoseDebugView() {
     poseCount: 0,
     frameCount: 0,
     secondStart: Date.now(),
-    lastPoseUpdate: 0
+    lastPoseUpdate: 0,
+    smoothed: [] as CvKeypoint[]
   });
 
   const handLandmarkerPlugin = useMemo(
@@ -66,7 +68,13 @@ export default function NativePoseDebugView() {
           snapshot.poseCount += 1;
           if (now - snapshot.lastPoseUpdate >= 120) {
             snapshot.lastPoseUpdate = now;
-            setKeypoints(nativePoseToCvKeypoints(result.pose));
+            const mapped = nativePoseToCvKeypoints(result.pose);
+            snapshot.smoothed = smoothLandmarks(
+              snapshot.smoothed,
+              mapped,
+              0.6
+            );
+            setKeypoints(snapshot.smoothed);
             setImageSize({
               width: result.imageWidth ?? 0,
               height: result.imageHeight ?? 0
