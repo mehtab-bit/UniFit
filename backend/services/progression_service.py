@@ -101,6 +101,8 @@ class ProgressionService:
         requested_activity_id: Optional[str] = None,
         session_type: Optional[str] = None,
         exercise_completion_pct: Optional[dict[str, float]] = None,
+        source: str = "camera",
+        reps_completed: Optional[int] = None,
     ) -> dict[str, Any]:
         """
         Records a completed workout session log and recomputes progression metrics.
@@ -115,6 +117,8 @@ class ProgressionService:
             "session_type": session_type,
             "completion_pct": float(completion_pct),
             "exercise_completion_pct": exercise_completion_pct or {},
+            "source": source,
+            "reps_completed": reps_completed,
         }
 
         record.session_logs.append(session_log)
@@ -130,6 +134,8 @@ class ProgressionService:
                 "session_type": session_log["session_type"],
                 "completion_pct": session_log["completion_pct"],
                 "exercise_completion_pct": session_log["exercise_completion_pct"],
+                "source": session_log["source"],
+                "reps_completed": session_log["reps_completed"],
                 "created_at": session_log["created_at"],
             }
         )

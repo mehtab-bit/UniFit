@@ -104,6 +104,7 @@ export interface Exercise {
   name: string;
   target: string;
   family?: StrengthFamily;
+  repMode?: 'total_reps' | 'reps_each_side' | 'reps_each_arm';
   variationLevel?: string | number; // e.g. 'chair', 'bodyweight', 'loaded'
   sets?: number;
   reps?: number;
@@ -190,6 +191,8 @@ export interface WorkoutCompletionPayload {
   session_type?: string;
   completion_pct: number;
   exercise_completion_pct?: Record<string, number>;
+  source?: 'camera' | 'manual';
+  reps_completed?: number;
 }
 
 // -------------------------------------------------------------

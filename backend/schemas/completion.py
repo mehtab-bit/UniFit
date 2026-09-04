@@ -21,6 +21,13 @@ class WorkoutCompletionRequest(BaseModel):
         default_factory=dict,
         description="Individual strength family completion % (squat, lunge, pushup, bicep_curl, supported_row)",
     )
+    source: str = Field(
+        default="camera",
+        description="How the session was recorded: camera-detected or manual counting.",
+    )
+    reps_completed: Optional[int] = Field(
+        None, description="Total repetitions actually completed in the session."
+    )
 
 
 class WorkoutCompletionResponse(BaseModel):

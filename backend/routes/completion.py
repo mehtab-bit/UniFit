@@ -23,6 +23,8 @@ def complete_workout(payload: WorkoutCompletionRequest):
             requested_activity_id=payload.requested_activity_id,
             session_type=payload.session_type,
             exercise_completion_pct=payload.exercise_completion_pct,
+            source=payload.source,
+            reps_completed=payload.reps_completed,
         )
 
         return WorkoutCompletionResponse(

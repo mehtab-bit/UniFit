@@ -94,6 +94,7 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
     name: ex.name || ex.exercise_name || 'Exercise',
     target: ex.target || 'General Movement',
     family: ex.family || ex.exercise_family,
+    repMode: ex.rep_mode || ex.repMode,
     variationLevel: ex.variation_level || ex.difficulty_level,
     sets: ex.sets || 2,
     reps: ex.reps || 8,
