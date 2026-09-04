@@ -353,7 +353,7 @@ export interface ProgressSummary {
   phaseTitle: string;
   milestones: ProgressMilestone[];
   // Backend progression state (never calculated in frontend)
-  activity_rule_week?: number;
+  activity_rule_week?: number | Record<string, number>;
   exercise_rule_week?: Record<string, number>;
   strength_variation_levels?: Record<string, string>;
 }

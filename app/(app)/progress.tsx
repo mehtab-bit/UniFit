@@ -48,6 +48,13 @@ export default function ProgressScreen() {
   const workoutsCompleted = summary?.workoutsCompleted ?? 0;
   const totalActiveMinutes = summary?.totalActiveMinutes ?? 0;
   const phaseTitle = summary?.phaseTitle ?? 'Week 1 • Phase 1 Calibration';
+  const progressionWeek =
+    typeof summary?.activity_rule_week === 'number'
+      ? summary.activity_rule_week
+      : summary?.activity_rule_week
+        ? summary.activity_rule_week.strength ??
+          Math.max(...Object.values(summary.activity_rule_week))
+        : undefined;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -86,10 +93,10 @@ export default function ProgressScreen() {
                       />
                     </View>
                     <Text style={styles.heroPhaseText}>MONTHLY SCORE</Text>
-                    {summary?.activity_rule_week ? (
+                    {typeof progressionWeek === 'number' ? (
                        <View style={styles.progWeekPill}>
                          <Text style={styles.progWeekText}>
-                           Progression Week {summary.activity_rule_week} Active
+                           Progression Week {progressionWeek} Active
                          </Text>
                        </View>
                      ) : null}

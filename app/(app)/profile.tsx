@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  Image,
+  Pressable,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -9,6 +18,33 @@ import { useAccessibility } from '../../context/AccessibilityContext';
 import { useAnimationTheme } from '../../context/AnimationContext';
 import { useScreenAnnouncement } from '../../hooks/useScreenAnnouncement';
 import { CardSpringEntry } from '../../components/animations/CardSpringEntry';
+import {
+  PoseSourceOverride,
+  loadPoseSourceOverride,
+  savePoseSourceOverride
+} from '../../src/cv/native/runtime';
+
+const POSE_ENGINE_OPTIONS: Array<{
+  value: PoseSourceOverride;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: 'auto',
+    label: 'Auto',
+    hint: 'MediaPipe on dev builds, MoveNet otherwise'
+  },
+  {
+    value: 'mediapipe',
+    label: 'MediaPipe',
+    hint: 'Native speed — requires a development build'
+  },
+  {
+    value: 'movenet',
+    label: 'MoveNet',
+    hint: 'Works in Expo Go and every build'
+  }
+];
 
 const SectionHeader = ({ title }: { title: string }) => (
   <Text style={styles.sectionHeader} accessible={true} accessibilityRole="header">
@@ -61,10 +97,35 @@ export default function ProfileScreen() {
   const {
     audioGuidance, captionsEnabled, vibrationFeedback,
     setAudioGuidance, setCaptionsEnabled, setVibrationFeedback,
+    provideFeedback,
   } = useAccessibility();
   const { performanceMode, setPerformanceMode } = useAnimationTheme();
   
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [poseSource, setPoseSource] = useState<PoseSourceOverride>('auto');
+
+  useEffect(() => {
+    let active = true;
+    loadPoseSourceOverride().then((saved) => {
+      if (active) setPoseSource(saved);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handlePoseSourceChange = async (next: PoseSourceOverride) => {
+    setPoseSource(next);
+    await savePoseSourceOverride(next);
+    const label =
+      POSE_ENGINE_OPTIONS.find((option) => option.value === next)?.label ??
+      'Auto';
+    provideFeedback({
+      text: `Camera engine set to ${label}. It applies the next time you start a camera session.`,
+      priority: 'high',
+      haptic: 'success'
+    });
+  };
 
   const handleSignOut = async () => {
     setIsLoggingOut(true);
@@ -158,6 +219,36 @@ export default function ProfileScreen() {
         </CardSpringEntry>
 
         <CardSpringEntry index={3}>
+          <SectionHeader title="Camera Engine" />
+          <View style={styles.sectionGroup}>
+            {POSE_ENGINE_OPTIONS.map((option, index) => {
+              const isSelected = poseSource === option.value;
+              return (
+                <View key={option.value}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${option.label}. ${option.hint}`}
+                    onPress={() => void handlePoseSourceChange(option.value)}
+                    style={[styles.engineOptionRow, index > 0 && styles.rowBorder]}
+                  >
+                    <View style={styles.engineOptionCopy}>
+                      <Text style={styles.rowTitle}>{option.label}</Text>
+                      <Text style={styles.engineOptionHint}>{option.hint}</Text>
+                    </View>
+                    <Feather
+                      name={isSelected ? 'check-circle' : 'circle'}
+                      size={20}
+                      color={isSelected ? '#040E34' : '#CBD5E1'}
+                    />
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </CardSpringEntry>
+
+        <CardSpringEntry index={4}>
           <SectionHeader title="Accessibility" />
           <View style={styles.sectionGroup}>
             <RowItem icon="volume-2" title="Audio Guidance" hasSwitch switchValue={audioGuidance} onSwitchChange={setAudioGuidance} />
@@ -166,7 +257,7 @@ export default function ProfileScreen() {
           </View>
         </CardSpringEntry>
 
-        <CardSpringEntry index={4}>
+        <CardSpringEntry index={5}>
           <SectionHeader title="Settings" />
           <View style={styles.sectionGroup}>
             <RowItem icon="shield" title="Privacy Policy" onPress={() => {}} />
@@ -278,6 +369,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748B',
     marginRight: 8,
+  },
+  engineOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+  },
+  engineOptionCopy: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  engineOptionHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
   },
   footerSpacer: { height: 40 },
 });

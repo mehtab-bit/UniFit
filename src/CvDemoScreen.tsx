@@ -11,7 +11,12 @@ import { isRepTooFast } from './cv/tempo';
 import { SkeletonOverlay } from './cv/SkeletonOverlay';
 import { KEYPOINT_MIN_SCORE } from './cv/confidence';
 import { loadSavedCalibration, saveCalibration } from './cv/calibrationStore';
-import { resolvePoseSourceMode } from './cv/native/runtime';
+import {
+  loadPoseSourceOverride,
+  PoseSourceMode,
+  resolvePoseSourceMode,
+  setPoseSourceOverride
+} from './cv/native/runtime';
 import { keypointToViewPx } from './cv/overlayGeometry';
 import { trackEffectBurst, trackRenderBurst } from './cv/debugRenderCount';
 import { useAccessibility } from '../context/AccessibilityContext';
@@ -107,7 +112,38 @@ type CvDemoScreenProps = {
   }) => void;
 };
 
-export function CvDemoScreen({
+export function CvDemoScreen(props: CvDemoScreenProps) {
+  const [poseMode, setPoseMode] = useState<PoseSourceMode | null>(null);
+
+  // Apply the user's saved engine preference (Auto / MediaPipe / MoveNet)
+  // before the pose pipeline resolves, so a Profile change takes effect on
+  // the next camera session.
+  useEffect(() => {
+    let active = true;
+    loadPoseSourceOverride().then((saved) => {
+      setPoseSourceOverride(saved);
+      if (active) {
+        setPoseMode(resolvePoseSourceMode());
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (poseMode === null) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.centerTitle}>Preparing pose engine</Text>
+      </View>
+    );
+  }
+
+  return <CvDemoScreenReady poseMode={poseMode} {...props} />;
+}
+
+function CvDemoScreenReady({
+  poseMode,
   exerciseId,
   sessionKey,
   exerciseName,
@@ -123,7 +159,7 @@ export function CvDemoScreen({
   onManualRequest,
   onProgress,
   onSessionComplete
-}: CvDemoScreenProps) {
+}: CvDemoScreenProps & { poseMode: PoseSourceMode }) {
   trackRenderBurst('CvDemoScreen');
   const [calibrationStage, setCalibrationStage] = useState<CalibrationStage>('idle');
   const [countdown, setCountdown] = useState(0);
@@ -134,7 +170,6 @@ export function CvDemoScreen({
   const [retryKey, setRetryKey] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
   const { provideFeedback } = useAccessibility();
-  const poseMode = useMemo(() => resolvePoseSourceMode(), []);
 
   const cameraSize = {
     width: windowWidth,
