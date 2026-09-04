@@ -6,19 +6,13 @@ import {
   Camera,
   useCameraDevice,
   useCameraPermission,
-  useFrameProcessor
+  useFrameProcessor,
+  VisionCameraProxy
 } from 'react-native-vision-camera';
 import { Worklets } from 'react-native-worklets-core';
-import type { Frame } from 'react-native-vision-camera';
 import type { HandDetectionResult } from 'expo-vision-camera-v4-mediapipe';
 import { nativePoseToCvKeypoints } from '../../src/cv/nativePose';
 import { CvKeypoint } from '../../src/cv/types';
-
-// detectHandLandmarks is injected by the native config plugin as a global
-// available inside frame-processor worklets.
-declare global {
-  function detectHandLandmarks(frame: Frame): HandDetectionResult;
-}
 
 export default function NativePoseTestScreen() {
   const router = useRouter();
@@ -26,6 +20,9 @@ export default function NativePoseTestScreen() {
   const { hasPermission, requestPermission } = useCameraPermission();
 
   const [keypoints, setKeypoints] = useState<CvKeypoint[]>([]);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [cameraLayout, setCameraLayout] = useState({ width: 0, height: 0 });
+  const [mirrorPreview, setMirrorPreview] = useState(true);
   const [poseFps, setPoseFps] = useState(0);
   const [frameFps, setFrameFps] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -35,6 +32,25 @@ export default function NativePoseTestScreen() {
     secondStart: Date.now(),
     lastPoseUpdate: 0
   });
+
+  // Vision Camera v4 exposes native Frame Processor Plugins through the proxy,
+  // not as global functions (the wrapper README's global-style example is v3
+  // API). The config plugin registers ours under the name "handLandmarker".
+  const handLandmarkerPlugin = useMemo(
+    () => VisionCameraProxy.initFrameProcessorPlugin('handLandmarker', {}),
+    []
+  );
+
+  if (handLandmarkerPlugin == null) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.centerTitle}>handLandmarker plugin not found</Text>
+        <Text style={styles.error}>
+          Check that the native build registered the frame processor plugin.
+        </Text>
+      </View>
+    );
+  }
 
   const onDetected = useMemo(
     () =>
@@ -50,6 +66,10 @@ export default function NativePoseTestScreen() {
           if (now - snapshot.lastPoseUpdate >= 120) {
             snapshot.lastPoseUpdate = now;
             setKeypoints(nativePoseToCvKeypoints(result.pose));
+            setImageSize({
+              width: result.imageWidth ?? 0,
+              height: result.imageHeight ?? 0
+            });
           }
         }
         if (now - snapshot.secondStart >= 1000) {
@@ -67,13 +87,49 @@ export default function NativePoseTestScreen() {
   const frameProcessor = useFrameProcessor(
     (frame) => {
       'worklet';
-      const result = detectHandLandmarks(frame);
+      const result = handLandmarkerPlugin.call(frame) as
+        | HandDetectionResult
+        | undefined;
       if (result) {
         onDetected(result);
       }
     },
-    [onDetected]
+    [handLandmarkerPlugin, onDetected]
   );
+
+  const overlayPoints = useMemo(() => {
+    if (
+      keypoints.length === 0 ||
+      cameraLayout.width === 0 ||
+      cameraLayout.height === 0 ||
+      imageSize.width === 0 ||
+      imageSize.height === 0
+    ) {
+      return [];
+    }
+    // The camera preview is "cover"-cropped, but landmark coordinates are
+    // relative to the full upright frame (imageWidth/imageHeight returned by
+    // the native plugin). Scale the full frame onto the view, then center the
+    // crop so the dots land where the preview actually shows the body.
+    const scale = Math.max(
+      cameraLayout.width / imageSize.width,
+      cameraLayout.height / imageSize.height
+    );
+    const drawWidth = imageSize.width * scale;
+    const drawHeight = imageSize.height * scale;
+    const offsetX = (cameraLayout.width - drawWidth) / 2;
+    const offsetY = (cameraLayout.height - drawHeight) / 2;
+    const DOT = 12;
+
+    return keypoints.map((point) => {
+      const xFraction = mirrorPreview ? 1 - point.x : point.x;
+      return {
+        key: point.name,
+        left: offsetX + xFraction * drawWidth - DOT / 2,
+        top: offsetY + point.y * drawHeight - DOT / 2
+      };
+    });
+  }, [cameraLayout, imageSize, keypoints, mirrorPreview]);
 
   if (!hasPermission) {
     return (
@@ -106,7 +162,13 @@ export default function NativePoseTestScreen() {
         <Text style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.cameraWrap}>
+      <View
+        style={styles.cameraWrap}
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setCameraLayout({ width, height });
+        }}
+      >
         <Camera
           style={StyleSheet.absoluteFill}
           device={device}
@@ -114,24 +176,23 @@ export default function NativePoseTestScreen() {
           pixelFormat="rgb"
           frameProcessor={frameProcessor}
         />
-        {keypoints.map((point) => (
+        {overlayPoints.map((point) => (
           <View
-            key={point.name}
+            key={point.key}
             pointerEvents="none"
-            style={[
-              styles.dot,
-              {
-                left: `${point.x * 100}%`,
-                top: `${point.y * 100}%`
-              }
-            ]}
+            style={[styles.dot, { left: point.left, top: point.top }]}
           />
         ))}
       </View>
 
       <View style={styles.panel}>
+        <Text style={styles.stat} onPress={() => setMirrorPreview((v) => !v)}>
+          Mirror overlay: {mirrorPreview ? 'ON (front cam)' : 'OFF'} — tap to
+          flip
+        </Text>
         <Text style={styles.stat}>
-          Tracked joints: {visibleCount}
+          Tracked joints: {visibleCount} · Frame {imageSize.width}×
+          {imageSize.height}
         </Text>
         <Text style={styles.stat}>Pose detections: {poseFps} fps</Text>
         <Text style={styles.stat}>Frame callbacks: {frameFps} fps</Text>
