@@ -1,15 +1,26 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
 import { CvDemoScreen } from '../../src/CvDemoScreen';
 import { ExerciseId, Side } from '../../src/cv/types';
-import { emitCvSessionResult } from '../../src/cv/sessionEvents';
+import { buildSessionPlan } from '../../src/cv/sessionPlan';
+import {
+  emitCvSessionResult,
+  ManualSessionRequest,
+  requestManualSession
+} from '../../src/cv/sessionEvents';
 import { workoutService } from '../../services';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { WorkoutCompletionPayload } from '../../types/domain';
 import { useAuth } from '../../context/AuthContext';
 
 const BILATERAL_FAMILIES: ExerciseId[] = ['lunge', 'bicep_curl', 'supported_row'];
+
+type SessionProgress = {
+  side: Side;
+  sideReps: number;
+  sideTarget: number;
+};
 
 export default function CvSessionScreen() {
   const router = useRouter();
@@ -19,7 +30,8 @@ export default function CvSessionScreen() {
     name?: string;
     sets?: string;
     reps?: string;
-    target?: string;
+    restSeconds?: string;
+    repMode?: string;
     activityId?: string;
     progressionKey?: string;
     sessionType?: string;
@@ -31,92 +43,227 @@ export default function CvSessionScreen() {
   const family = (params.family ?? 'squat') as ExerciseId;
   const sessionKey = params.nonce ?? family;
   const exerciseId = params.exerciseId ?? `ex-${family}`;
-  const totalReps = Number(params.target ?? (Number(params.sets || 2) * Number(params.reps || 8)));
-  const bilateral = BILATERAL_FAMILIES.includes(family);
-  const perSideReps = Math.ceil(totalReps / 2);
+  const exerciseName = params.name ?? family;
+
+  const plan = useMemo(
+    () =>
+      buildSessionPlan({
+        family,
+        sets: params.sets,
+        reps: params.reps,
+        repMode: params.repMode
+      }),
+    [family, params.repMode, params.reps, params.sets]
+  );
+  const restSeconds = Math.max(0, Math.round(Number(params.restSeconds ?? 70) || 70));
+  const isBilateral = plan.bilateral && BILATERAL_FAMILIES.includes(family);
+
   const [activeSide, setActiveSide] = useState<Side>('right');
-  const [finishedSides, setFinishedSides] = useState<Side[]>([]);
   const [completed, setCompleted] = useState(false);
+  const activeSideRef = useRef<Side>('right');
+  const finishedSidesRef = useRef<Side[]>([]);
+  const accumulatedRepsRef = useRef(0);
+  const scoreSumRef = useRef(0);
+  const scoreCountRef = useRef(0);
   const completedRef = useRef(false);
-  const stateRef = useRef({ activeSide, finishedSides });
-  stateRef.current = { activeSide, finishedSides };
+  const progressRef = useRef<SessionProgress>({
+    side: 'right',
+    sideReps: 0,
+    sideTarget: plan.repsPerSide
+  });
 
-  async function finalizeSession(result: { reps: number; score: number }) {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    setCompleted(true);
-
-    emitCvSessionResult({
-      exerciseId,
-      family,
-      reps: result.reps,
-      score: result.score
-    });
-
-    const payload: WorkoutCompletionPayload = {
+  const makePayload = useCallback(
+    (
+      completionPct: number,
+      repsCompleted: number,
+      source: 'camera' | 'manual'
+    ): WorkoutCompletionPayload => ({
       user_id: user?.id || 'user_default',
       activity_id: params.activityId || 'strength',
       requested_activity_id: params.activityId || 'strength',
       progression_key: params.progressionKey || params.activityId || 'strength',
       session_type: params.sessionType,
-      completion_pct: 100,
+      completion_pct: Math.max(0, Math.min(100, completionPct)),
       exercise_completion_pct: {
-        [family]: result.score
-      }
-    };
+        [family]: Math.max(0, Math.min(100, completionPct))
+      },
+      source,
+      reps_completed: repsCompleted
+    }),
+    [family, params.activityId, params.progressionKey, params.sessionType, user?.id]
+  );
 
-    await workoutService.logWorkoutCompletion(payload, 25, result.reps, user?.id);
-    router.back();
-  }
+  const logCompletion = useCallback(
+    async (payload: WorkoutCompletionPayload, repsCompleted: number) => {
+      await workoutService.logWorkoutCompletion(
+        payload,
+        25,
+        repsCompleted,
+        user?.id
+      );
+    },
+    [user?.id]
+  );
+
+  const savePartialAndExit = useCallback(
+    (totalDone: number) => {
+      if (completedRef.current || totalDone <= 0) {
+        router.back();
+        return;
+      }
+      completedRef.current = true;
+      const fraction = Math.round((totalDone / Math.max(1, plan.totalReps)) * 100);
+      setCompleted(true);
+      provideFeedback({
+        text: `Partial session saved. ${totalDone} of ${plan.totalReps} reps recorded.`,
+        priority: 'high',
+        haptic: 'success'
+      });
+      void logCompletion(makePayload(fraction, totalDone, 'camera'), totalDone).finally(
+        () => router.back()
+      );
+    },
+    [logCompletion, makePayload, plan.totalReps, provideFeedback, router]
+  );
+
+  const handleExitRequest = useCallback(() => {
+    if (completedRef.current) {
+      router.back();
+      return;
+    }
+    const finishedReps = finishedSidesRef.current.length * plan.repsPerSide;
+    const totalDone = finishedReps + progressRef.current.sideReps;
+
+    if (totalDone === 0) {
+      Alert.alert('Leave session?', 'No reps have been counted yet.', [
+        { text: 'Keep going', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: () => router.back() }
+      ]);
+      return;
+    }
+
+    Alert.alert(
+      'Save your progress?',
+      `You've completed ${totalDone} of ${plan.totalReps} reps. Save it as a partial session?`,
+      [
+        {
+          text: 'Save progress',
+          onPress: () => savePartialAndExit(totalDone)
+        },
+        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+        { text: 'Keep going', style: 'cancel' }
+      ]
+    );
+  }, [plan.repsPerSide, plan.totalReps, router, savePartialAndExit]);
+
+  const finalizeSession = useCallback(
+    (score: number) => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      setCompleted(true);
+      const reps = accumulatedRepsRef.current;
+      const averageScore =
+        scoreCountRef.current > 0
+          ? Math.round(scoreSumRef.current / scoreCountRef.current)
+          : score;
+
+      emitCvSessionResult({
+        exerciseId,
+        family,
+        reps,
+        score: averageScore
+      });
+
+      const payload = makePayload(100, reps, 'camera');
+      void logCompletion(payload, reps).finally(() => router.back());
+    },
+    [exerciseId, family, logCompletion, makePayload, router]
+  );
 
   const handleSessionComplete = useCallback(
     (result: { reps: number; score: number }) => {
       if (completedRef.current) return;
 
-      const { activeSide: currentSide, finishedSides: done } = stateRef.current;
+      const currentSide = activeSideRef.current;
+      accumulatedRepsRef.current += result.reps;
+      scoreSumRef.current += result.score;
+      scoreCountRef.current += 1;
+      progressRef.current.sideReps = 0;
 
-      if (bilateral && !done.includes(currentSide)) {
-        const nextSide: Side = currentSide === 'right' ? 'left' : 'right';
-        const newFinished = [...done, currentSide];
-        setFinishedSides(newFinished);
+      if (isBilateral && !finishedSidesRef.current.includes(currentSide)) {
+        const nextFinished = [...finishedSidesRef.current, currentSide];
+        finishedSidesRef.current = nextFinished;
 
-        if (newFinished.length === 2) {
-          finalizeSession(result);
+        if (nextFinished.length === 2) {
+          finalizeSession(result.score);
           return;
         }
 
+        const nextSide: Side = currentSide === 'right' ? 'left' : 'right';
+        const finishedLabel = currentSide === 'right' ? 'Right' : 'Left';
+        activeSideRef.current = nextSide;
         setActiveSide(nextSide);
         provideFeedback({
-          text: `Switch to your ${nextSide} side. Calibrate and complete ${perSideReps} repetitions.`,
+          text: `${finishedLabel} side complete. Switch to your ${nextSide} side. Calibrate and complete ${plan.repsPerSide} repetitions.`,
           priority: 'high',
           haptic: 'success'
         });
         return;
       }
 
-      finalizeSession(result);
+      finalizeSession(result.score);
     },
-    // Stays stable across renders; reads the latest side/finished via ref.
-    [bilateral, perSideReps, provideFeedback]
+    [finalizeSession, isBilateral, plan.repsPerSide, provideFeedback]
   );
+
+  const handleManualRequest = useCallback(() => {
+    requestManualSession({
+      exerciseId,
+      family,
+      name: exerciseName,
+      sets: plan.setsPerSide,
+      reps: plan.repsPerSet,
+      restSeconds,
+      repMode: params.repMode as ManualSessionRequest['repMode'] | undefined
+    });
+    router.back();
+  }, [
+    exerciseId,
+    exerciseName,
+    family,
+    params.repMode,
+    plan.repsPerSet,
+    plan.setsPerSide,
+    restSeconds,
+    router
+  ]);
+
+  const handleProgress = useCallback((progress: SessionProgress) => {
+    progressRef.current = progress;
+  }, []);
 
   return (
     <View style={styles.screen}>
       <CvDemoScreen
         key={sessionKey}
         exerciseId={family}
+        exerciseName={exerciseName}
         sessionKey={sessionKey}
-        onExit={() => router.back()}
+        onExit={handleExitRequest}
         facing="front"
         showExerciseSwitcher={false}
-        targetReps={bilateral ? perSideReps : totalReps}
-        bilateral={bilateral}
+        targetReps={plan.repsPerSide}
+        repsPerSet={plan.repsPerSet}
+        restSeconds={restSeconds}
+        bilateral={isBilateral}
         sideOverride={activeSide}
+        onManualRequest={handleManualRequest}
+        onProgress={handleProgress}
         onSessionComplete={handleSessionComplete}
       />
       {completed ? (
         <View style={styles.donePill} pointerEvents="none">
-          <Text style={styles.doneText}>Session complete</Text>
+          <Text style={styles.doneText}>Session recorded</Text>
         </View>
       ) : null}
     </View>

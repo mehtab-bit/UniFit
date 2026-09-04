@@ -10,7 +10,8 @@ import { AngleCalibration, CalibrationPhase, CvKeypoint, ExerciseId, FeedbackSta
 export function useExerciseTracker(
   exerciseId: ExerciseId,
   keypoints: CvKeypoint[],
-  sideOverride?: Side
+  sideOverride?: Side,
+  paused = false
 ) {
   const definition = exerciseDefinitions[exerciseId];
 
@@ -94,6 +95,7 @@ export function useExerciseTracker(
   // state, but the dispatch call itself is avoided unless reps/phase change.
   useEffect(() => {
     if (
+      paused ||
       calibration === null ||
       smoothedAngle === null ||
       calibrationPhase !== 'complete'
@@ -109,7 +111,7 @@ export function useExerciseTracker(
       repStateRef.current = next;
       dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
     }
-  }, [calibration, calibrationPhase, smoothedAngle]);
+  }, [calibration, calibrationPhase, paused, smoothedAngle]);
 
   // Calibration is canonicalized so START = the straight/standing pose
   // (larger joint angle) and END = the bent/contracted pose (smaller angle).
@@ -173,6 +175,20 @@ export function useExerciseTracker(
     calibrationSamplesRef.current = [];
   }, []);
 
+  /**
+   * Applies a previously saved calibration (per user/exercise/side) so users
+   * skip the two holds on repeat sessions. Recalibrating replaces it.
+   */
+  const applySavedCalibration = useCallback((saved: AngleCalibration) => {
+    recentAnglesRef.current = [];
+    setSmoothedAngle(null);
+    setCalibration(normalizeCalibration(saved.startAngle, saved.endAngle));
+    setCalibrationPhase('complete');
+    dispatchRep({ type: 'reset' });
+    repStateRef.current = createRepCounterState();
+    calibrationSamplesRef.current = [];
+  }, []);
+
   return {
     definition,
     side: activeSide,
@@ -187,7 +203,8 @@ export function useExerciseTracker(
     beginStartCalibration,
     beginEndCalibration,
     captureCalibrationPhase,
-    resetTracker
+    resetTracker,
+    applySavedCalibration
   };
 }
 

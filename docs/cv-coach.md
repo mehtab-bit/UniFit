@@ -29,7 +29,10 @@ expo-camera CameraView
 | `src/cv/repCounter.ts` | State machine that turns angle travel into reps |
 | `src/cv/feedback.ts` | Movement-depth helpers for cues |
 | `src/cv/quality.ts` | Calibration-based form score |
+| `src/cv/sessionPlan.ts` | Engine-accurate sets/reps/sides targets |
+| `src/cv/calibrationStore.ts` | Persists and reuses per-side calibration |
 | `src/cv/SkeletonOverlay.tsx` | Draws bones over the body; green/amber color by form |
+| `components/workout/ManualSessionCard.tsx` | Manual-counting session UI (camera-free) |
 | `src/CvDemoScreen.tsx` | Orchestrates camera, tracking, calibration UI, countdown, announcements |
 | `app/(app)/cv-session.tsx` | Route that launches a session for a prescribed exercise (family, reps, side) |
 
@@ -57,6 +60,15 @@ There are no fixed "beat the timer" countdowns — you move when ready and hold 
 
 Calibration is **canonicalized**: all five movements go from *straight/extended (larger angle)* to *bent/contracted (smaller angle)*, so the two captured holds are ordered automatically regardless of which pose you held first.
 
+Calibration is also **persisted per exercise and side** (`src/cv/calibrationStore.ts`). Repeat sessions reuse the saved angles automatically; Recalibrate captures and replaces them.
+
+Sessions follow the engine prescription: sets are separated by a rest timer
+(`repsPerSet`/`restSeconds`), and bilateral families (lunges, curls, rows) run
+the full `sets x reps` on each side before switching. When the camera can't be
+used, an honest manual-counting mode
+(`components/workout/ManualSessionCard.tsx`) records reps with audio/haptic
+confirmation and never fabricates a score.
+
 ## Rep counting
 
 `repCounter.ts` tracks a small state machine over `progress`, where:
@@ -72,14 +84,14 @@ progress = how far the current angle is from the calibrated start toward the cal
 
 The tracker only re-renders React when a rep/phase genuinely changes — per-frame angles update refs, not component state — which eliminates the render-burst warnings seen earlier.
 
-## Form score and skeleton color
+## Range score and skeleton color
 
 The skeleton is the visual form indicator:
 
 - **Green** — the tracked limb is inside the calibrated movement range and the rep counter agrees you're mid-movement with good depth.
 - **Amber** — between reps, at the edges of the range, or when a form issue is flagged.
 
-The score (`quality.ts`) is **calibration-based**, not pixel-heuristic-based: it measures how much of the calibrated range the joint is actually using. This was a deliberate change from pixel-space "elbow drift" checks, which cannot work reliably from a phone's side/front view and made the skeleton amber even for correct reps.
+The score (`quality.ts`) is **calibration-based**, not pixel-heuristic-based: it measures how much of the calibrated range the joint is actually using. The UI presents it honestly as a **range score**, not a claim of full biomechanical form analysis. This was a deliberate change from pixel-space "elbow drift" checks, which cannot work reliably from a phone's side/front view and made the skeleton amber even for correct reps.
 
 Color has hysteresis (several good frames required before green; several weak frames before dropping back) so a single noisy frame doesn't make it flicker.
 

@@ -84,6 +84,21 @@ export default function HomeScreen() {
   };
 
   const handleStartWorkout = () => {
+    const activity = todayWorkout?.activity;
+    if (activity && activity !== 'strength' && activity !== 'rest') {
+      // Running/cycling/walking days are logged and guided on Activity; the
+      // rep-based camera coach is strength-only.
+      router.push('/(app)/activity');
+      return;
+    }
+    router.push('/(app)/workout');
+  };
+
+  const handleOpenDayWorkout = (activity?: string) => {
+    if (activity && activity !== 'strength' && activity !== 'rest') {
+      router.push('/(app)/activity');
+      return;
+    }
     router.push('/(app)/workout');
   };
 
@@ -200,11 +215,17 @@ export default function HomeScreen() {
               <CardSpringEntry key={item.id} index={index + 3}>
                 <ScalePressable
                   activeScale={0.98}
-                  onPress={isRest ? undefined : handleStartWorkout}
+                  onPress={
+                    isRest ? undefined : () => handleOpenDayWorkout(item.activity)
+                  }
                   disabled={isRest}
                   accessibilityRole={isRest ? 'text' : 'button'}
                   accessibilityLabel={`${item.dayOfWeek} ${item.dayNumber}. ${item.title}. ${item.focus || ''}. ${item.meta || ''}. Status: ${item.status}.${isRest ? ' Rest day.' : ' Double tap to start workout.'}`}
-                  accessibilityHint={isRest ? undefined : 'Launches exercise coaching'}
+                  accessibilityHint={
+                    isRest
+                      ? undefined
+                      : 'Opens today\'s workout or activity logging'
+                  }
                   style={[
                     styles.workoutRowCard,
                     isToday && styles.workoutRowCardToday,

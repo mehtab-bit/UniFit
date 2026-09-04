@@ -323,24 +323,28 @@ export default function ProfileScreen() {
               })}
             </View>
 
-            {/* Performance Test Screen Launcher */}
-            <ScalePressable
-              activeScale={0.98}
-              onPress={() => router.push('/(app)/performance-test' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Open 60 FPS Performance Test Screen"
-              accessibilityHint="Tests 20 animated cards, progress rings, counters, and pose motion engine under stress"
-              style={styles.stressTestBtn}
-            >
-              <Feather name="activity" size={18} color={Colors.primary} style={{ marginRight: 8 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.stressTestTitle}>Launch Performance Stress Test</Text>
-                <Text style={styles.stressTestSub}>
-                  Benchmark 20 cards, SVG rings, and motion analysis engine
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={Colors.primary} />
-            </ScalePressable>
+            {typeof __DEV__ !== 'undefined' && __DEV__ ? (
+              <>
+                {/* Performance Test Screen Launcher — developer tooling only */}
+                <ScalePressable
+                  activeScale={0.98}
+                  onPress={() => router.push('/(app)/performance-test' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open 60 FPS Performance Test Screen"
+                  accessibilityHint="Tests animated cards, progress rings, counters, and motion engine under stress"
+                  style={styles.stressTestBtn}
+                >
+                  <Feather name="activity" size={18} color={Colors.primary} style={{ marginRight: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stressTestTitle}>Launch Performance Stress Test</Text>
+                    <Text style={styles.stressTestSub}>
+                      Benchmark 20 cards, SVG rings, and motion analysis engine
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={Colors.primary} />
+                </ScalePressable>
+              </>
+            ) : null}
           </View>
         </CardSpringEntry>
 

@@ -9,6 +9,7 @@ import { assessQuality } from './cv/quality';
 import { isRepTooFast } from './cv/tempo';
 import { SkeletonOverlay } from './cv/SkeletonOverlay';
 import { KEYPOINT_MIN_SCORE } from './cv/confidence';
+import { loadSavedCalibration, saveCalibration } from './cv/calibrationStore';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 type CalibrationStage = 'idle' | 'start_hold' | 'end_move' | 'end_hold' | 'complete' | 'failed';
@@ -29,7 +30,8 @@ const stageDetails: Record<
 > = {
   idle: {
     label: 'Ready',
-    hint: () => 'Tap Calibrate, then follow the prompts. No more taps needed.'
+    hint: (tracker) =>
+      `${tracker.definition.cameraGuidance} Tap Calibrate when your joints are in view.`
   },
   start_hold: {
     label: 'Hold the start position',
@@ -45,7 +47,7 @@ const stageDetails: Record<
   },
   complete: {
     label: 'Calibrated',
-    hint: () => 'Calibrated — do full reps now. The skeleton tracks your movement.'
+    hint: () => 'Calibrated — do full reps now. The skeleton tracks your range.'
   },
   failed: {
     label: 'Not steady',
@@ -59,7 +61,7 @@ const feedbackLabels: Record<string, string> = {
   get_ready: 'Get ready',
   move_up: 'Lift higher',
   move_down: 'Lower slowly',
-  good: 'Good form',
+  good: 'Good range',
   too_fast: 'Slow down'
 };
 
@@ -68,6 +70,7 @@ const feedbackLabels: Record<string, string> = {
 // feed shapes TensorFlow's example found undistorted in portrait: 16:9 iPhone,
 // 4:3 Android.
 const CAMERA_HEIGHT_RATIO = Platform.OS === 'ios' ? 16 / 9 : 4 / 3;
+const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
 
 function jointLabel(name: string) {
   return name.replace('right_', '').replace('left_', '').replace(/_/g, ' ');
@@ -76,32 +79,49 @@ function jointLabel(name: string) {
 type CvDemoScreenProps = {
   exerciseId: ExerciseId;
   sessionKey?: string;
+  exerciseName?: string;
   onExerciseChange?: (exerciseId: ExerciseId) => void;
   onExit?: () => void;
   facing?: CameraType;
   showExerciseSwitcher?: boolean;
   targetReps?: number;
+  repsPerSet?: number;
+  restSeconds?: number;
   bilateral?: boolean;
   sideOverride?: Side;
+  onManualRequest?: () => void;
+  onProgress?: (progress: {
+    side: Side;
+    sideReps: number;
+    sideTarget: number;
+  }) => void;
   onSessionComplete?: (result: { reps: number; score: number; correction?: string }) => void;
 };
 
 export function CvDemoScreen({
   exerciseId,
   sessionKey,
+  exerciseName,
   onExerciseChange,
   onExit,
   facing = 'front',
   showExerciseSwitcher = true,
   targetReps,
+  repsPerSet,
+  restSeconds,
   bilateral = false,
   sideOverride,
+  onManualRequest,
+  onProgress,
   onSessionComplete
 }: CvDemoScreenProps) {
   const [calibrationStage, setCalibrationStage] = useState<CalibrationStage>('idle');
   const [countdown, setCountdown] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<CameraType>(facing);
+  const [restRemaining, setRestRemaining] = useState(0);
+  const [restAnnouncePending, setRestAnnouncePending] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
   const { provideFeedback } = useAccessibility();
 
@@ -110,8 +130,13 @@ export function CvDemoScreen({
     height: windowWidth * CAMERA_HEIGHT_RATIO
   };
 
-  const pose = usePoseDetection(cameraFacing, sessionKey);
-  const tracker = useExerciseTracker(exerciseId, pose.keypoints, sideOverride);
+  const pose = usePoseDetection(cameraFacing, `${sessionKey ?? 'default'}-${retryKey}`);
+  const tracker = useExerciseTracker(
+    exerciseId,
+    pose.keypoints,
+    sideOverride,
+    restRemaining > 0
+  );
   const trackerRef = useRef(tracker);
   trackerRef.current = tracker;
   const previousRepsRef = useRef(0);
@@ -120,6 +145,11 @@ export function CvDemoScreen({
   const accessibilityRef = useRef(provideFeedback);
   const onCompleteRef = useRef(onSessionComplete);
   const targetRepsRef = useRef(targetReps);
+  const repsPerSetRef = useRef(repsPerSet);
+  const restSecondsRef = useRef(restSeconds);
+  const onProgressRef = useRef(onProgress);
+  const onManualRequestRef = useRef(onManualRequest);
+  const applyingSavedCalibrationRef = useRef(false);
 
   useEffect(() => {
     accessibilityRef.current = provideFeedback;
@@ -128,7 +158,11 @@ export function CvDemoScreen({
   useEffect(() => {
     onCompleteRef.current = onSessionComplete;
     targetRepsRef.current = targetReps;
-  }, [onSessionComplete, targetReps]);
+    repsPerSetRef.current = repsPerSet;
+    restSecondsRef.current = restSeconds;
+    onProgressRef.current = onProgress;
+    onManualRequestRef.current = onManualRequest;
+  }, [onSessionComplete, onManualRequest, onProgress, repsPerSet, restSeconds, targetReps]);
 
   const quality = useMemo(
     () =>
@@ -185,8 +219,12 @@ export function CvDemoScreen({
     setCalibrationStage('idle');
     setCountdown(0);
     setShowDebug(false);
+    setRestRemaining(0);
+    setRestAnnouncePending(false);
     previousRepsRef.current = 0;
     lastRepAtRef.current = 0;
+    sessionEndedRef.current = false;
+    applyingSavedCalibrationRef.current = false;
   }, [exerciseId, sideOverride]);
 
   useEffect(() => {
@@ -212,12 +250,29 @@ export function CvDemoScreen({
         : quality.correction;
 
       accessibilityRef.current({
-        text: `${tracker.reps} repetition${tracker.reps === 1 ? '' : 's'}. Form score ${quality.score} percent.`,
+        text: `${tracker.reps} repetition${tracker.reps === 1 ? '' : 's'}. Range score ${quality.score} percent.`,
         correction,
         formScore: quality.score,
         repCount: tracker.reps,
         haptic: correction ? 'warning' : 'light'
       });
+
+      onProgressRef.current?.({
+        side: tracker.side,
+        sideReps: tracker.reps,
+        sideTarget: targetRepsRef.current ?? 0
+      });
+
+      const repsPerSet = repsPerSetRef.current;
+      const perSideTarget = targetRepsRef.current;
+      const isSetBoundary =
+        repsPerSet &&
+        perSideTarget &&
+        tracker.reps % repsPerSet === 0 &&
+        tracker.reps < perSideTarget;
+      if (isSetBoundary && restRemaining === 0) {
+        startRest();
+      }
 
       if (
         targetRepsRef.current &&
@@ -232,7 +287,72 @@ export function CvDemoScreen({
         });
       }
     }
-  }, [calibrationStage, tracker.reps]);
+  }, [calibrationStage, restRemaining, tracker.reps]);
+
+  // Rest-countdown timer between sets. Rep counting pauses while active and
+  // resumes automatically when it reaches zero.
+  useEffect(() => {
+    if (restRemaining <= 0) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setRestRemaining((remaining) => remaining - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [restRemaining]);
+
+  useEffect(() => {
+    if (restRemaining > 0 || !restAnnouncePending) return;
+    accessibilityRef.current({
+      text: 'Rest complete. Begin your next set.',
+      priority: 'high',
+      haptic: 'success'
+    });
+    setRestAnnouncePending(false);
+  }, [restAnnouncePending, restRemaining]);
+
+  // Reuses a saved calibration when one exists for this exercise/side, so
+  // repeat sessions skip the two holds. Recalibrating replaces it.
+  useEffect(() => {
+    if (
+      calibrationStage !== 'idle' ||
+      pose.modelStatus !== 'ready' ||
+      tracker.calibration !== null ||
+      applyingSavedCalibrationRef.current
+    ) {
+      return;
+    }
+    let active = true;
+    applyingSavedCalibrationRef.current = true;
+    loadSavedCalibration(exerciseId, tracker.side).then((saved) => {
+      if (!active || !saved) {
+        applyingSavedCalibrationRef.current = false;
+        return;
+      }
+      trackerRef.current.applySavedCalibration(saved);
+      setCalibrationStage('complete');
+      accessibilityRef.current({
+        text: 'Using your saved calibration. Press Recalibrate to capture it again.',
+        priority: 'high',
+        haptic: 'success'
+      });
+      applyingSavedCalibrationRef.current = false;
+    });
+    return () => {
+      active = false;
+    };
+  }, [calibrationStage, exerciseId, pose.modelStatus, tracker.side]);
+
+  // Persist a freshly captured calibration for next time.
+  useEffect(() => {
+    if (calibrationStage !== 'complete' || tracker.calibration === null) {
+      return;
+    }
+    saveCalibration(exerciseId, tracker.side, tracker.calibration).catch(() => {
+      // Saving is best-effort; a failed save only means the next session
+      // recalibrates again.
+    });
+  }, [calibrationStage, exerciseId, tracker.calibration, tracker.side]);
 
   useEffect(() => {
     if (calibrationStage === 'start_hold') {
@@ -320,6 +440,17 @@ export function CvDemoScreen({
     setCalibrationStage('start_hold');
   }
 
+  function startRest() {
+    const seconds = Math.max(1, Math.round(restSecondsRef.current ?? 70));
+    accessibilityRef.current({
+      text: `Set complete. Rest ${seconds} seconds.`,
+      priority: 'high',
+      haptic: 'success'
+    });
+    setRestRemaining(seconds);
+    setRestAnnouncePending(true);
+  }
+
   const selectedKeypointNames = tracker.selectedKeypoints.map((keypoint) => keypoint.name);
   const visibleNames = pose.visibleKeypointNames;
   const missingRequired = tracker.requiredKeypoints.filter(
@@ -343,7 +474,10 @@ export function CvDemoScreen({
     return (
       <View style={styles.centered}>
         <Text style={styles.centerTitle}>Camera access</Text>
-        <Text style={styles.centerText}>UniFit needs the camera to watch your movement.</Text>
+        <Text style={styles.centerText}>
+          UniFit uses the camera to count repetitions and measure your movement
+          range. You can also count manually without the camera.
+        </Text>
         <Pressable
           accessibilityRole="button"
           style={styles.permissionButton}
@@ -351,6 +485,15 @@ export function CvDemoScreen({
         >
           <Text style={styles.permissionButtonText}>Allow camera</Text>
         </Pressable>
+        {onManualRequest ? (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.manualFallbackButton}
+            onPress={onManualRequest}
+          >
+            <Text style={styles.manualFallbackText}>Count reps manually instead</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -364,7 +507,7 @@ export function CvDemoScreen({
       <View style={styles.cameraArea}>
         <View style={cameraSize}>
           <TensorCamera
-            key={`cam-${sessionKey ?? 'default'}`}
+            key={`cam-${sessionKey ?? 'default'}-${cameraFacing}`}
             style={StyleSheet.absoluteFill}
             facing={pose.facing}
             ratio={Platform.OS === 'android' ? '4:3' : undefined}
@@ -414,6 +557,14 @@ export function CvDemoScreen({
               );
             })}
           </View>
+
+          {restRemaining > 0 ? (
+            <View style={styles.restBanner} pointerEvents="none">
+              <Text style={styles.restBannerText}>
+                Rest — {restRemaining}s
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -471,9 +622,29 @@ export function CvDemoScreen({
 
       <View style={styles.bottomCard}>
         {pose.error ? (
-          <Text accessibilityRole="alert" style={styles.errorText}>
-            {pose.error}
-          </Text>
+          <View style={styles.errorContainer}>
+            <Text accessibilityRole="alert" style={styles.errorText}>
+              {pose.error}
+            </Text>
+            <View style={styles.errorActions}>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.errorActionButton}
+                onPress={() => setRetryKey((key) => key + 1)}
+              >
+                <Text style={styles.errorActionText}>Retry</Text>
+              </Pressable>
+              {onManualRequest ? (
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.errorActionButton}
+                  onPress={onManualRequest}
+                >
+                  <Text style={styles.errorActionText}>Count reps manually</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
         ) : (
           <>
             <View style={styles.stageRow}>
@@ -496,7 +667,7 @@ export function CvDemoScreen({
               </Text>
             </View>
             <View style={styles.statsRow}>
-              <Text style={styles.stat}>Form {quality.score}%</Text>
+              <Text style={styles.stat}>Range {quality.score}%</Text>
               <Text style={styles.stat}>
                 {targetReps ? `Target ${Math.min(tracker.reps, targetReps)}/${targetReps}` : 'Unlimited'}
               </Text>
@@ -525,18 +696,22 @@ export function CvDemoScreen({
                 </Text>
               </Pressable>
 
-              <Pressable
-                accessibilityRole="button"
-                style={styles.debugButton}
-                onPress={() => setShowDebug((current) => !current)}
-              >
-                <Text style={styles.debugButtonText}>{showDebug ? 'Hide details' : 'Details'}</Text>
-              </Pressable>
+              {IS_DEV ? (
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.debugButton}
+                  onPress={() => setShowDebug((current) => !current)}
+                >
+                  <Text style={styles.debugButtonText}>
+                    {showDebug ? 'Hide details' : 'Details'}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           </>
         )}
 
-        {showDebug && !pose.error ? (
+        {IS_DEV && showDebug && !pose.error ? (
           <View style={styles.debugPanel}>
             <Text style={styles.debugText}>
               Detected: {visibleNames.length ? visibleNames.map(jointLabel).join(', ') : 'none'}
@@ -769,6 +944,53 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#b91c1c'
+  },
+  errorContainer: {
+    gap: 10
+  },
+  errorActions: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  errorActionButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc'
+  },
+  errorActionText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0b1220'
+  },
+  manualFallbackButton: {
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 10
+  },
+  manualFallbackText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+    textDecorationLine: 'underline'
+  },
+  restBanner: {
+    position: 'absolute',
+    top: '42%',
+    alignSelf: 'center',
+    zIndex: 40,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(2, 132, 199, 0.92)'
+  },
+  restBannerText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center'
   },
   debugPanel: {
     marginTop: 10,
