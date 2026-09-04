@@ -50,6 +50,8 @@ export function keypointsMoved(
  * - Fast-moving landmarks snap quickly instead of leaving trails.
  * - A joint missing for a frame or two keeps its last position (up to
  *   `holdMs`) instead of flickering out, then disappears cleanly.
+ * - Sub-deadband wobble keeps the previous smoothed position exactly, so a
+ *   still pose renders perfectly still instead of creeping a pixel at a time.
  */
 export function smoothWithHold(
   previous: CvKeypoint[],
@@ -58,7 +60,8 @@ export function smoothWithHold(
   teleportDistance: number,
   holdMs: number,
   now: number,
-  lastSeen: Map<string, number>
+  lastSeen: Map<string, number>,
+  deadbandDistance = 0
 ): CvKeypoint[] {
   if (previous.length === 0 && current.length === 0) {
     return [];
@@ -77,6 +80,10 @@ export function smoothWithHold(
       continue;
     }
     const distance = Math.hypot(point.x - last.x, point.y - last.y);
+    if (distance <= deadbandDistance) {
+      next.push({ ...point, x: last.x, y: last.y });
+      continue;
+    }
     const effectiveAlpha =
       distance > teleportDistance ? 0.95 : Math.min(1, Math.max(0.05, alpha));
     next.push({

@@ -13,6 +13,7 @@ import { KEYPOINT_MIN_SCORE } from './cv/confidence';
 import { loadSavedCalibration, saveCalibration } from './cv/calibrationStore';
 import { resolvePoseSourceMode } from './cv/native/runtime';
 import { keypointToViewPx } from './cv/overlayGeometry';
+import { trackRenderBurst } from './cv/debugRenderCount';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 type CalibrationStage = 'idle' | 'start_hold' | 'end_move' | 'end_hold' | 'complete' | 'failed';
@@ -123,6 +124,7 @@ export function CvDemoScreen({
   onProgress,
   onSessionComplete
 }: CvDemoScreenProps) {
+  trackRenderBurst('CvDemoScreen');
   const [calibrationStage, setCalibrationStage] = useState<CalibrationStage>('idle');
   const [countdown, setCountdown] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
@@ -482,6 +484,7 @@ export function CvDemoScreen({
   }
 
   const selectedKeypointNames = tracker.selectedKeypoints.map((keypoint) => keypoint.name);
+  const requiredKeypointNames = new Set(tracker.requiredKeypoints);
   const visibleNames = pose.visibleKeypointNames;
   const missingRequired = tracker.requiredKeypoints.filter(
     (name) => !visibleNames.includes(name)
@@ -580,16 +583,18 @@ export function CvDemoScreen({
               sourceSize={pose.native ? pose.sourceSize : null}
               activeSide={tracker.side}
               isGoodForm={isGoodForm}
+              requiredKeypointNames={tracker.requiredKeypoints}
             />
             {pose.keypoints.map((keypoint) => {
               const hasEnoughConfidence =
                 typeof keypoint.score !== 'number' || keypoint.score >= KEYPOINT_MIN_SCORE;
 
-              if (!hasEnoughConfidence) {
+              // Only the joints this exercise needs are drawn on the coach
+              // overlay; the remaining full-body dots add noise, not signal.
+              if (!requiredKeypointNames.has(keypoint.name) || !hasEnoughConfidence) {
                 return null;
               }
 
-              const isTracked = selectedKeypointNames.includes(keypoint.name);
               const fitted = keypointToViewPx(
                 keypoint,
                 cameraSize,
@@ -602,7 +607,7 @@ export function CvDemoScreen({
                   key={keypoint.name}
                   style={[
                     styles.keypoint,
-                    isTracked ? styles.trackedKeypoint : styles.otherKeypoint,
+                    styles.trackedKeypoint,
                     {
                       left: fitted.x,
                       top: fitted.y
@@ -844,15 +849,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#ffffff',
     backgroundColor: '#22d3ee'
-  },
-  otherKeypoint: {
-    width: 10,
-    height: 10,
-    marginLeft: -5,
-    marginTop: -5,
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    backgroundColor: '#f59e0b'
   },
   topArea: {
     position: 'absolute',

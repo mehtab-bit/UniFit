@@ -29,6 +29,7 @@ type SkeletonOverlayProps = {
   sourceSize?: SourceSize | null;
   activeSide?: Side;
   isGoodForm: boolean;
+  requiredKeypointNames?: KeypointName[];
 };
 
 function toPx(
@@ -51,17 +52,24 @@ export function SkeletonOverlay({
   size,
   sourceSize,
   activeSide,
-  isGoodForm
+  isGoodForm,
+  requiredKeypointNames
 }: SkeletonOverlayProps) {
   if (keypoints.length === 0) {
     return null;
   }
 
   const byName = new Map(keypoints.map((keypoint) => [keypoint.name, keypoint]));
+  const requiredNames = new Set(requiredKeypointNames ?? []);
 
   const primaryColor = isGoodForm ? GOOD : WARN;
 
   const lines = BONES.map(([start, end], index) => {
+    // The coach skeleton shows only the joints the current exercise tracks:
+    // full-body bones just read as noise next to the form feedback.
+    if (requiredNames.size > 0 && (!requiredNames.has(start) || !requiredNames.has(end))) {
+      return null;
+    }
     const startKeypoint = byName.get(start);
     const endKeypoint = byName.get(end);
     if (

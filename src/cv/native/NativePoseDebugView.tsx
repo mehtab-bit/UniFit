@@ -16,12 +16,14 @@ import {
 } from '../nativePose';
 import { CvKeypoint } from '../types';
 import { smoothWithHold } from '../landmarkSmoothing';
+import { trackRenderBurst } from '../debugRenderCount';
 
 /**
  * Standalone native pose debug screen. Kept behind a lazy route so Expo Go /
  * MoveNet builds never evaluate the Vision Camera modules.
  */
 export default function NativePoseDebugView() {
+  trackRenderBurst('NativePoseDebugView');
   const router = useRouter();
   const device = useCameraDevice('front');
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -79,7 +81,8 @@ export default function NativePoseDebugView() {
               0.1,
               300,
               now,
-              lastSeenRef.current
+              lastSeenRef.current,
+              0.004
             );
             setKeypoints(snapshot.smoothed);
             setImageSize({

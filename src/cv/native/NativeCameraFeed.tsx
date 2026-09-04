@@ -10,6 +10,7 @@ import {
 import { Worklets } from 'react-native-worklets-core';
 import { CameraType } from 'expo-camera';
 import { NativePoseFrame } from '../nativePose';
+import { trackRenderBurst } from '../debugRenderCount';
 
 type NativeCameraFeedProps = {
   facing: CameraType;
@@ -27,6 +28,7 @@ export function NativeCameraFeed({
   onDetected,
   onError
 }: NativeCameraFeedProps) {
+  trackRenderBurst('NativeCameraFeed');
   const device = useCameraDevice(facing === 'back' ? 'back' : 'front');
   const { hasPermission, requestPermission } = useCameraPermission();
 

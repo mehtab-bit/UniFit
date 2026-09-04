@@ -38,6 +38,7 @@ const NATIVE_UPDATE_INTERVAL_MS = 33;
 const NATIVE_SMOOTH_ALPHA = 0.68;
 const NATIVE_TELEPORT_DISTANCE = 0.09;
 const NATIVE_HOLD_MS = 300;
+const NATIVE_DEADBAND_DISTANCE = 0.004;
 
 /**
  * Live pose pipeline: loads MoveNet once, then runs inference on camera
@@ -168,7 +169,8 @@ export function usePoseDetection(
       NATIVE_TELEPORT_DISTANCE,
       NATIVE_HOLD_MS,
       now,
-      nativeLastSeenRef.current
+      nativeLastSeenRef.current,
+      NATIVE_DEADBAND_DISTANCE
     );
     smoothedKeypointsRef.current = smoothed;
 

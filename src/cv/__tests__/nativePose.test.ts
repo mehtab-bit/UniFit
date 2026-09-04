@@ -127,4 +127,33 @@ describe('landmark smoothing', () => {
     );
     expect(snapped[0].x).toBeCloseTo(0.785, 3);
   });
+
+  it('freezes a landmark below the deadband so a still pose does not jitter', () => {
+    const lastSeen = new Map<string, number>();
+    const previous = [point('left_knee', 0.5, 0.5)];
+    const frozen = smoothWithHold(
+      previous,
+      [point('left_knee', 0.503, 0.502)],
+      0.68,
+      0.1,
+      300,
+      100,
+      lastSeen,
+      0.004
+    );
+    expect(frozen[0].x).toBe(0.5);
+    expect(frozen[0].y).toBe(0.5);
+
+    const moving = smoothWithHold(
+      previous,
+      [point('left_knee', 0.51, 0.5)],
+      0.68,
+      0.1,
+      300,
+      100,
+      lastSeen,
+      0.004
+    );
+    expect(moving[0].x).toBeGreaterThan(0.5);
+  });
 });
