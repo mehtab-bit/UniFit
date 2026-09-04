@@ -98,7 +98,12 @@ type CvDemoScreenProps = {
     sideReps: number;
     sideTarget: number;
   }) => void;
-  onSessionComplete?: (result: { reps: number; score: number; correction?: string }) => void;
+  onSessionComplete?: (result: {
+    reps: number;
+    score: number;
+    correction?: string;
+    issues?: string[];
+  }) => void;
 };
 
 export function CvDemoScreen({
@@ -307,7 +312,8 @@ export function CvDemoScreen({
         onCompleteRef.current?.({
           reps: tracker.reps,
           score: quality.score,
-          correction: quality.correction
+          correction: quality.correction,
+          issues: quality.issues.map((issue) => issue.code)
         });
       }
     }

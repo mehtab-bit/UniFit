@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { unstable_batchedUpdates } from 'react-native';
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-react-native/dist/platform_react_native';
 import { CameraType, useCameraPermissions } from 'expo-camera';
@@ -33,9 +34,9 @@ type FrameImages = IterableIterator<tf.Tensor3D>;
 
 const DETECTION_INTERVAL_MS = 180;
 const DEFAULT_FACING: CameraType = 'front';
-const NATIVE_UPDATE_INTERVAL_MS = 45;
-const NATIVE_SMOOTH_ALPHA = 0.72;
-const NATIVE_TELEPORT_DISTANCE = 0.1;
+const NATIVE_UPDATE_INTERVAL_MS = 33;
+const NATIVE_SMOOTH_ALPHA = 0.68;
+const NATIVE_TELEPORT_DISTANCE = 0.09;
 const NATIVE_HOLD_MS = 300;
 
 /**
@@ -171,12 +172,21 @@ export function usePoseDetection(
     );
     smoothedKeypointsRef.current = smoothed;
 
-    if (isActiveRef.current) {
-      if (keypointsMoved(lastKeypointsRef.current, smoothed, 0.004)) {
+    if (!isActiveRef.current) {
+      return;
+    }
+    unstable_batchedUpdates(() => {
+      const keypointsChanged = keypointsMoved(
+        lastKeypointsRef.current,
+        smoothed,
+        0.003
+      );
+      if (keypointsChanged) {
         lastKeypointsRef.current = smoothed;
         setKeypoints(smoothed);
       }
-      const visible = detected
+
+      const visible = smoothed
         .filter(
           (keypoint) =>
             typeof keypoint.score !== 'number' ||
@@ -203,7 +213,7 @@ export function usePoseDetection(
         setSourceSize(nextSource);
       }
       setError(null);
-    }
+    });
   }, []);
 
   const handleCameraStream = useCallback(

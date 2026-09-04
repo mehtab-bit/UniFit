@@ -65,6 +65,7 @@ export default function CvSessionScreen() {
   const accumulatedRepsRef = useRef(0);
   const scoreSumRef = useRef(0);
   const scoreCountRef = useRef(0);
+  const issueCodesRef = useRef<Set<string>>(new Set());
   const completedRef = useRef(false);
   const progressRef = useRef<SessionProgress>({
     side: 'right',
@@ -77,7 +78,8 @@ export default function CvSessionScreen() {
       completionPct: number,
       repsCompleted: number,
       source: 'camera' | 'manual',
-      rangeScore: number | null = null
+      rangeScore: number | null = null,
+      issueCodes: string[] | null = null
     ): WorkoutCompletionPayload => ({
       user_id: user?.id || 'user_default',
       activity_id: params.activityId || 'strength',
@@ -90,7 +92,8 @@ export default function CvSessionScreen() {
       },
       source,
       reps_completed: repsCompleted,
-      range_score: rangeScore
+      range_score: rangeScore,
+      issue_codes: issueCodes ?? undefined
     }),
     [family, params.activityId, params.progressionKey, params.sessionType, user?.id]
   );
@@ -176,20 +179,29 @@ export default function CvSessionScreen() {
         score: averageScore
       });
 
-      const payload = makePayload(100, reps, 'camera', averageScore);
+      const payload = makePayload(
+        100,
+        reps,
+        'camera',
+        averageScore,
+        Array.from(issueCodesRef.current)
+      );
       void logCompletion(payload, reps).finally(() => router.back());
     },
     [exerciseId, family, logCompletion, makePayload, router]
   );
 
   const handleSessionComplete = useCallback(
-    (result: { reps: number; score: number }) => {
+    (result: { reps: number; score: number; issues?: string[] }) => {
       if (completedRef.current) return;
 
       const currentSide = activeSideRef.current;
       accumulatedRepsRef.current += result.reps;
       scoreSumRef.current += result.score;
       scoreCountRef.current += 1;
+      for (const code of result.issues ?? []) {
+        issueCodesRef.current.add(code);
+      }
       progressRef.current.sideReps = 0;
 
       if (isBilateral && !finishedSidesRef.current.includes(currentSide)) {

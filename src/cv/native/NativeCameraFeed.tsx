@@ -61,6 +61,16 @@ export function NativeCameraFeed({
     (frame) => {
       'worklet';
       if (plugin == null) return;
+      // Throttle the JS bridge in the worklet itself so camera frames don't
+      // pile up in a queue faster than the JS thread can consume them.
+      const FRAME_INTERVAL_NS = 33_000_000; // ~30fps
+      const lastRun = (globalThis as any).__unifitPoseLastTimestamp as
+        | number
+        | undefined;
+      if (lastRun !== undefined && frame.timestamp - lastRun < FRAME_INTERVAL_NS) {
+        return;
+      }
+      (globalThis as any).__unifitPoseLastTimestamp = frame.timestamp;
       const result = plugin.call(frame) as NativePoseFrame | undefined;
       if (result) {
         onDetectedOnJS(result);
