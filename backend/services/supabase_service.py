@@ -8,6 +8,7 @@ in-memory caching when running in local development mode.
 from __future__ import annotations
 
 import os
+from uuid import UUID
 from typing import Any, Optional
 from dotenv import load_dotenv
 
@@ -43,6 +44,29 @@ class SupabaseService:
                 print(f"[SupabaseService] Client init failed, using in-memory mode: {e}")
                 self.is_connected = False
 
+    def _require_user_id(self, user_id: Optional[str]) -> None:
+        """Live Supabase rows key on auth.users UUIDs.
+
+        In-memory dev mode keeps accepting arbitrary ids (test_veg_user,
+        user_default, ...) so the engine works offline. Once Supabase is
+        connected, fail fast with a clear message instead of letting
+        PostgREST surface "invalid input syntax for type uuid".
+        """
+        if not self.is_connected:
+            return
+        if not user_id or user_id == "user_default":
+            raise ValueError(
+                "A real Supabase user_id (UUID) is required when Supabase "
+                "persistence is enabled. Sign in through the app first."
+            )
+        try:
+            UUID(str(user_id))
+        except ValueError as exc:
+            raise ValueError(
+                f"user_id must be a Supabase UUID when persistence is "
+                f"enabled (got {user_id!r})."
+            ) from exc
+
     def get_cached_weekly_plan(
         self, user_id: str, week_number: int
     ) -> Optional[dict[str, Any]]:
@@ -57,6 +81,7 @@ class SupabaseService:
 
         # Persist to Supabase if connected
         if self.is_connected and self.client:
+            self._require_user_id(user_id)
             try:
                 self.client.table("user_weekly_plans").upsert(
                     {
@@ -88,6 +113,7 @@ class SupabaseService:
         self._cached_profiles[user_id] = profile_data
 
         if self.is_connected and self.client:
+            self._require_user_id(user_id)
             try:
                 self.client.table("profiles").upsert(
                     {
@@ -138,6 +164,7 @@ class SupabaseService:
     def save_workout_session(self, session: dict[str, Any]) -> bool:
         """Persists a completed workout session to Supabase."""
         if self.is_connected and self.client:
+            self._require_user_id(session.get("user_id"))
             try:
                 self.client.table("user_workout_sessions").insert(session).execute()
                 return True
@@ -148,6 +175,7 @@ class SupabaseService:
     def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
         """Persists the user's engine progression state to Supabase."""
         if self.is_connected and self.client:
+            self._require_user_id(user_id)
             try:
                 from datetime import datetime, timezone
 
