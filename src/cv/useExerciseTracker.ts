@@ -111,10 +111,7 @@ export function useExerciseTracker(
     }
     const current = repStateRef.current;
     const next = updateRepCounter(current, smoothedAngle, calibration);
-    if (
-      next !== current &&
-      (next.reps !== current.reps || next.phase !== current.phase)
-    ) {
+    if (next !== current) {
       repStateRef.current = next;
       dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
     }

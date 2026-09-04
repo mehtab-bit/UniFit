@@ -106,10 +106,23 @@ describe('rep counter', () => {
     expect(state.reps).toBe(1);
   });
 
-  it('does not double-count while hovering near the end', () => {
+  it('does not count a rep when tracking begins at the end pose', () => {
     const calibration = createCalibration(160, 60);
     let state = createRepCounterState();
 
+    state = updateRepCounter(state, 60, calibration);
+    state = updateRepCounter(state, 65, calibration);
+    state = updateRepCounter(state, 62, calibration);
+
+    expect(state.reps).toBe(0);
+    expect(state.phase).toBe('end');
+  });
+
+  it('counts once the user returns to start and completes a full rep', () => {
+    const calibration = createCalibration(160, 60);
+    let state = createRepCounterState();
+
+    state = updateRepCounter(state, 160, calibration);
     state = updateRepCounter(state, 60, calibration);
     state = updateRepCounter(state, 65, calibration);
     state = updateRepCounter(state, 62, calibration);
