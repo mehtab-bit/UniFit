@@ -4,7 +4,7 @@
     "slug": "unifit",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/unifit-logo.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "unifit",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -26,7 +26,7 @@
         "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/unifit-logo.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0F172A"
       },
       "package": "com.unifit.app"
@@ -34,7 +34,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/unifit-logo.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
