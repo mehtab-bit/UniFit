@@ -161,6 +161,40 @@ def get_progress(
     active_month_days = sum(
         1 for d in month_days if d.year == today.year and d.month == today.month
     )
+    session_logs = progression_service.get_session_logs(user_id)
+    all_dates = {
+        day
+        for day in (_session_day(log) for log in session_logs)
+        if day is not None
+    }
+    milestones = []
+    if len(all_dates) >= 1:
+        milestones.append(
+            {
+                "id": "first_active_day",
+                "title": "First Active Day",
+                "date": min(all_dates).isoformat(),
+                "status": "Completed",
+            }
+        )
+    if len(all_dates) >= 3:
+        milestones.append(
+            {
+                "id": "three_active_days",
+                "title": "3 Active Days",
+                "date": sorted(all_dates)[2].isoformat(),
+                "status": "Completed",
+            }
+        )
+    if len(all_dates) >= 5:
+        milestones.append(
+            {
+                "id": "five_active_days",
+                "title": "5 Active Days",
+                "date": sorted(all_dates)[4].isoformat(),
+                "status": "Completed",
+            }
+        )
     monthly_consistency = (
         round(active_month_days / max(elapsed_days, 1) * 100, 1)
         if active_month_days
@@ -176,6 +210,7 @@ def get_progress(
         strength_variation_levels=state["strength_variation_levels"],
         logged_sessions_count=logged,
         recent_activity_completions=state["activity_completion_pct"],
+        milestones=milestones,
     )
 
 

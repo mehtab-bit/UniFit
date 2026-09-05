@@ -21,7 +21,7 @@ export class ProgressApiService implements IProgressService {
       totalActiveMinutes: 0,
       adherenceScore: response.monthly_consistency_pct || 0,
       phaseTitle: `Week ${response.current_week || 1} • Phase ${response.current_week || 1}`,
-      milestones: [],
+      milestones: response.milestones || [],
       activity_rule_week: response.activity_rule_week,
       exercise_rule_week: response.exercise_rule_week,
       strength_variation_levels: response.strength_variation_levels,

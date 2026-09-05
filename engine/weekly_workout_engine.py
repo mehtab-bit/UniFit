@@ -406,6 +406,16 @@ class WorkoutDatabase:
             f"lifestyle={lifestyle}, week={rule_week}"
         )
 
+_WORKOUT_DB_CACHE: Optional[WorkoutDatabase] = None
+
+
+def get_workout_database() -> WorkoutDatabase:
+    """Returns the shared immutable parsed rule database."""
+    global _WORKOUT_DB_CACHE
+    if _WORKOUT_DB_CACHE is None:
+        _WORKOUT_DB_CACHE = WorkoutDatabase()
+    return _WORKOUT_DB_CACHE
+
 
 # ============================================================
 # INPUT VALIDATION
@@ -1712,7 +1722,7 @@ def generate_weekly_workout_plan(
             strength_experience
         )
 
-    database = WorkoutDatabase()
+    database = get_workout_database()
 
     accessibility_presentation = (
         build_accessibility_presentation(

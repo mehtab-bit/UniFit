@@ -630,6 +630,16 @@ def optimize_portions(
 
     return best_score, best_multipliers, best_totals
 
+_MEAL_DB_CACHE: Optional[MealDatabase] = None
+
+
+def get_meal_database() -> MealDatabase:
+    """Returns the shared immutable parsed meal database."""
+    global _MEAL_DB_CACHE
+    if _MEAL_DB_CACHE is None:
+        _MEAL_DB_CACHE = MealDatabase()
+    return _MEAL_DB_CACHE
+
 
 # ============================================================
 # DAILY MEAL SELECTION
@@ -782,7 +792,7 @@ def generate_weekly_meal_plan(
     diet = str(nutrition_plan.get("diet", "")).strip()
     week_number = int(nutrition_plan.get("week_number", 0))
 
-    database = MealDatabase()
+    database = get_meal_database()
 
     output_days: list[MealPlanDay] = []
     weekly_usage: Counter = Counter()

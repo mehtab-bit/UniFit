@@ -68,7 +68,8 @@ Required: plan-based denominators; persisted state; reconstructible history; cal
 - [x] Plan-based denominators (planned obligations, capped attempts)
 - [x] Persisted state with progression revision
 - [x] Correct distinct-day streak/adherence vs issued schedule
-- [ ] Calendar from snapshots; milestones from achievements
+- [x] Calendar from snapshots
+- [x] Milestones from persisted active days
 - [ ] Fully reconstructible history across workers
 
 ## W07 — Camera/workout lifecycle
@@ -104,6 +105,8 @@ Required: shared tokens/layout primitives; content-driven sizes; safe areas; key
 ## W12 — Performance/diagnostics/deployment
 
 Required: meal planner retains top-candidate optimization (verify); parsed data cache; duplicate-generation guard; readiness vs liveness; request IDs; pinned backend env; release-build identity; CI smoke.
+- [x] Parsed immutable rule-data cache (workout + meal)
+- [ ] Readiness vs liveness; request IDs; CI
 
 ## W13 — Migration, regression, pilot
 

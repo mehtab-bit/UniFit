@@ -75,3 +75,4 @@ class ProgressSummaryResponse(BaseModel):
     strength_variation_levels: dict[str, int]
     logged_sessions_count: int
     recent_activity_completions: dict[str, float]
+    milestones: list[dict[str, Any]] = Field(default_factory=list)
