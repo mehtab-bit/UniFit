@@ -4,10 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useScreenAnnouncement } from '../../hooks/useScreenAnnouncement';
 import { CardSpringEntry } from '../../components/animations/CardSpringEntry';
@@ -15,8 +17,9 @@ import { AnimatedNumberCounter } from '../../components/animations/AnimatedNumbe
 import { ScalePressable } from '../../components/animations/ScalePressable';
 import { AsyncStateView } from '../../components/common/AsyncStateView';
 
-import { activityService } from '../../services';
-import { ActivitySession, ActivitySummary, ActivityType } from '../../types/domain';
+import { activityService, activityLogService } from '../../services';
+import { ActivityLog, ActivitySession, ActivitySummary, ActivityType } from '../../types/domain';
+import { getAppToday, formatDateISO } from '../../utils/date';
 import { Surface } from '../../context/SurfaceContext';
 
 const FILTER_TABS: { label: string; value: 'all' | ActivityType }[] = [
@@ -37,10 +40,12 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 };
 
 export default function ActivityScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   useScreenAnnouncement('Activity and Cardio screen.');
 
   const [sessions, setSessions] = useState<ActivitySession[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<'all' | ActivityType>('all');
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -55,8 +60,10 @@ export default function ActivityScreen() {
         activityService.getRecentSessions(user?.id),
         activityService.getWeeklySummary(user?.id),
       ]);
+      const logsRes = await activityLogService.list(formatDateISO(getAppToday()));
       setSessions(sessionsRes);
       setSummary(summaryRes);
+      setActivityLogs(logsRes);
     } catch (err) {
       setError('Unable to load activity logs. Please try again.');
     } finally {
@@ -64,9 +71,11 @@ export default function ActivityScreen() {
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    loadActivityData();
-  }, [loadActivityData]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadActivityData();
+    }, [loadActivityData])
+  );
 
   const filteredSessions = useMemo(() => {
     if (selectedFilter === 'all') return sessions;
@@ -145,6 +154,39 @@ export default function ActivityScreen() {
               </View>
             </Surface>
           </CardSpringEntry>
+
+          <Text style={styles.sectionTitle}>START ACTIVITY</Text>
+          <View style={styles.quickStartRow}>
+            {(['walking', 'running', 'cycling', 'swimming'] as ActivityType[]).map(
+              (activity) => (
+                <ScalePressable
+                  key={activity}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(app)/activity-session',
+                      params: { type: activity, mode: 'guided' },
+                    })
+                  }
+                  style={styles.quickStartChip}
+                >
+                  {getActivityIcon(activity, DISCIPLINE_COLORS[activity])}
+                  <Text style={styles.quickStartLabel}>{activity.toUpperCase()}</Text>
+                </ScalePressable>
+              )
+            )}
+          </View>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/(app)/activity-session',
+                params: { type: 'walking', mode: 'manual' },
+              })
+            }
+            style={styles.manualEntryLink}
+          >
+            <Feather name="edit-3" size={14} color="#0EA5E9" />
+            <Text style={styles.manualEntryText}>Log a past session manually (duration / distance)</Text>
+          </Pressable>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsRow}>
             {FILTER_TABS.map((tab) => {
@@ -229,6 +271,31 @@ export default function ActivityScreen() {
               );
             })
           )}
+
+          {activityLogs.length > 0 ? (
+            <View style={styles.activityLogSection}>
+              <Text style={styles.sectionTitle}>GUIDED & MANUAL LOGS</Text>
+              {activityLogs.map((log) => (
+                <View key={log.id} style={styles.activityLogCard}>
+                  <View style={styles.activityLogMain}>
+                    <Text style={styles.activityLogTitle}>
+                      {log.activity_type.toUpperCase()} · {log.source.toUpperCase()}
+                    </Text>
+                    <Text style={styles.activityLogMeta}>
+                      {log.duration_minutes != null
+                        ? `${Math.round(log.duration_minutes)} min`
+                        : 'Duration not recorded'}
+                      {log.distance_entered && log.distance_km != null
+                        ? ` · ${log.distance_km} km`
+                        : ''}
+                      {log.completed ? ' · Completed' : ' · Partial'}
+                    </Text>
+                  </View>
+                  <Feather name="check-circle" size={18} color="#10B981" />
+                </View>
+              ))}
+            </View>
+          ) : null}
         </AsyncStateView>
       </ScrollView>
     </SafeAreaView>
@@ -271,7 +338,44 @@ const styles = StyleSheet.create({
   filterTabPillActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },
   filterTabPillText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
   filterTabPillTextActive: { color: '#FFFFFF' },
+  quickStartRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
+  quickStartChip: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickStartLabel: { fontSize: 12, fontWeight: '800', color: '#0F172A', letterSpacing: 0.6 },
+  manualEntryLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+    paddingVertical: 6,
+  },
+  manualEntryText: { color: '#0EA5E9', fontSize: 13, fontWeight: '700', flex: 1 },
   sectionTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A', letterSpacing: 1.5, marginBottom: 16 },
+  activityLogSection: { marginTop: 24 },
+  activityLogCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 8,
+    gap: 10,
+  },
+  activityLogMain: { flex: 1 },
+  activityLogTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  activityLogMeta: { fontSize: 12, color: '#64748B', marginTop: 3 },
   activityCard: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, marginBottom: 12,
     borderLeftWidth: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,

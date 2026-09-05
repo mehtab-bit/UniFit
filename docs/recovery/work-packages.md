@@ -87,7 +87,8 @@ Required: variation coverage check; calibration identity; low-confidence behavio
 
 Required: guided/manual sessions for walking/running/cycling/swimming; pause/resume; honest unknown values; persisted filters/summaries.
 - [x] Honest unknown duration/calories/distance; GPS claim removed
-- [ ] Guided timer flow and manual entry screens
+- [x] Guided timer flow and manual entry screens
+- [x] Durable activity-log API with operation ids
 
 ## W10 — Food logging
 

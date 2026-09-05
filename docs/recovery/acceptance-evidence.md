@@ -15,6 +15,7 @@ Living index of evidence produced by each package.
 | W07 | typecheck; vitest 45/45 | lifecycle code fixes only | user device test required | Foreground gating + cancellation boundaries added; device cycles still needed |
 | W08 | pending | pending | user device test required | — |
 | W09 | typecheck; vitest | unknown values stay unknown | pending | Guided timers/manual entry UI still to add |
+| W09 (sprint) | pytest activity log 1/1; typecheck | guided/manual round trip | pending | Needs APK rebuild |
 | W10 | pytest meal-log CRUD 2/2 | full nutrient snapshot; cross-user 404 | pending | Migration `20260905000005`; UI edit/date navigation partial |
 | W10 (round 2) | typecheck | food search/edit sheet | pending | Needs app rebuild for UI verification |
 | W11 | pending | pending | pending | — |

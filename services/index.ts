@@ -25,6 +25,7 @@ import { activityApiService } from './api/activityApi';
 import { streakApiService } from './api/streakApi';
 import { progressApiService } from './api/progressApi';
 import { mealLogApiService } from './api/mealLogApi';
+import { activityLogApiService } from './api/activityLogApi';
 import { mockCVService } from './mock/cvMock';
 
 import { workoutNoteService } from './workoutNoteService';
@@ -38,3 +39,4 @@ export const streakService = streakApiService;
 export const cvService = mockCVService; // CV boundary stays mock until live coach is mounted
 export const progressService = progressApiService;
 export const mealLogService = mealLogApiService;
+export const activityLogService = activityLogApiService;

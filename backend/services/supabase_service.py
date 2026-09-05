@@ -65,6 +65,7 @@ class SupabaseService:
         self._cached_profiles: dict[str, dict[str, Any]] = {}
         self._workout_sessions: dict[str, list[dict[str, Any]]] = {}
         self._meal_log_entries: dict[str, list[dict[str, Any]]] = {}
+        self._activity_logs: dict[str, list[dict[str, Any]]] = {}
 
         if (
             SUPABASE_URL
@@ -620,6 +621,55 @@ class SupabaseService:
                 print(f"[SupabaseService] Failed to search foods: {exc}")
                 return []
         return []
+
+    def list_activity_logs(
+        self, user_id: str, local_date: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        if self.is_connected and self.client:
+            try:
+                query = (
+                    self.client.table("user_activity_logs")
+                    .select("*")
+                    .eq("user_id", user_id)
+                )
+                if local_date:
+                    query = query.eq("local_date", local_date)
+                resp = query.order("created_at", desc=True).execute()
+                return list(resp.data or [])
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to list activity logs: {exc}")
+                return []
+        rows = self._activity_logs.get(user_id, [])
+        if local_date:
+            rows = [row for row in rows if str(row.get("local_date")) == local_date]
+        return sorted(rows, key=lambda r: str(r.get("created_at") or ""), reverse=True)
+
+    def create_activity_log(self, entry: dict[str, Any]) -> dict[str, Any]:
+        user_id = entry.get("user_id")
+        self._require_user_id(user_id)
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("user_activity_logs")
+                    .insert(entry)
+                    .select("*")
+                    .execute()
+                )
+                return resp.data[0] if resp.data else dict(entry)
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to create activity log: {exc}")
+                raise ValueError("Unable to save this activity. Please try again.") from exc
+        row = dict(entry)
+        row.setdefault("id", str(uuid4()))
+        row.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+        row["updated_at"] = datetime.now(timezone.utc).isoformat()
+        rows = self._activity_logs.setdefault(user_id, [])
+        if row.get("operation_id") and any(
+            r.get("operation_id") == row.get("operation_id") for r in rows
+        ):
+            return rows[-1]
+        rows.append(row)
+        return row
 
     def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
         """Persists the user's engine progression state to Supabase."""

@@ -337,6 +337,24 @@ export interface ActivitySummary {
   totalDistanceKm?: number | null;
 }
 
+export interface ActivityLog {
+  id: string;
+  user_id: string;
+  activity_type: ActivityType;
+  local_date: string;
+  source: 'guided' | 'manual';
+  operation_id?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  active_duration_seconds?: number | null;
+  duration_minutes?: number | null;
+  distance_km?: number | null;
+  distance_entered: boolean;
+  completed: boolean;
+  notes?: string | null;
+  createdAt?: string;
+}
+
 // -------------------------------------------------------------
 // 5. Streak & Calendar Models
 // -------------------------------------------------------------
