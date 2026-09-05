@@ -94,7 +94,7 @@ Required: guided/manual sessions for walking/running/cycling/swimming; pause/res
 Required: plan/food/custom logging; quantity edit; delete; date selection; snapshots; completeness; progress computation; plan-date corrections.
 - [x] Backend CRUD + snapshots + completeness flags
 - [x] UI: log planned meal, custom food, delete, consumed totals/macros
-- [ ] Quantity edit in UI; date navigation; planned food selection from database foods
+- [x] Quantity edit in UI; date navigation; database-food search/logging
 
 ## W11 — Layout/navigation/accessibility
 

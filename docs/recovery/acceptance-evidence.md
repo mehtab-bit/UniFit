@@ -16,6 +16,7 @@ Living index of evidence produced by each package.
 | W08 | pending | pending | user device test required | — |
 | W09 | typecheck; vitest | unknown values stay unknown | pending | Guided timers/manual entry UI still to add |
 | W10 | pytest meal-log CRUD 2/2 | full nutrient snapshot; cross-user 404 | pending | Migration `20260905000005`; UI edit/date navigation partial |
+| W10 (round 2) | typecheck | food search/edit sheet | pending | Needs app rebuild for UI verification |
 | W11 | pending | pending | pending | — |
 | W12 | pending | pending | pending | — |
 | W13 | pending | pending | pending | — |

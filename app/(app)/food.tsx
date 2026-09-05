@@ -24,6 +24,8 @@ import { AsyncStateView } from '../../components/common/AsyncStateView';
 import { mealService, mealLogService } from '../../services';
 import { MealLogEntry, MealPlan, Meal } from '../../types/domain';
 import { Surface } from '../../context/SurfaceContext';
+import { getAppToday, formatDateISO } from '../../utils/date';
+import { MealLogSheet } from '../../components/nutrition/MealLogSheet';
 
 export default function FoodScreen() {
   const { user } = useAuth();
@@ -33,6 +35,8 @@ export default function FoodScreen() {
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [logEntries, setLogEntries] = useState<MealLogEntry[]>([]);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<MealLogEntry | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => formatDateISO());
   const [logCustomName, setLogCustomName] = useState('');
   const [logCalories, setLogCalories] = useState('');
   const [logProtein, setLogProtein] = useState('');
@@ -47,14 +51,9 @@ export default function FoodScreen() {
     try {
       setLoading(true);
       setError(null);
-      const todayStr = new Date();
-      const y = todayStr.getFullYear();
-      const m = String(todayStr.getMonth() + 1).padStart(2, '0');
-      const d = String(todayStr.getDate()).padStart(2, '0');
-      const todayKey = `${y}-${m}-${d}`;
       const [plan, logs] = await Promise.all([
-        mealService.getDailyMealPlan(user?.id),
-        mealLogService.list(todayKey),
+        mealService.getDailyMealPlan(user?.id, selectedDate),
+        mealLogService.list(selectedDate),
       ]);
       setMealPlan(plan);
       setLogEntries(logs);
@@ -63,7 +62,7 @@ export default function FoodScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, selectedDate]);
 
   useEffect(() => {
     loadMealData();
@@ -116,7 +115,7 @@ export default function FoodScreen() {
   const logPlannedMeal = async (meal: Meal) => {
     try {
       await mealLogService.create({
-        local_date: mealPlan?.date || '',
+        local_date: selectedDate,
         meal_type: meal.mealType,
         source: 'planned_meal',
         plan_meal_id: meal.id,
@@ -134,7 +133,7 @@ export default function FoodScreen() {
           fiber_complete: meal.fibreG != null,
         },
       });
-      setLogEntries(await mealLogService.list(mealPlan?.date));
+      setLogEntries(await mealLogService.list(selectedDate));
       AccessibilityInfo.announceForAccessibility(`${meal.title} logged.`);
     } catch {
       Alert.alert('Could not log meal', 'Please check your connection and try again.');
@@ -150,7 +149,7 @@ export default function FoodScreen() {
     setLogSaving(true);
     try {
       await mealLogService.create({
-        local_date: mealPlan?.date || '',
+        local_date: selectedDate,
         source: 'custom',
         custom_name: logCustomName.trim(),
         quantity: 1,
@@ -173,7 +172,7 @@ export default function FoodScreen() {
       setLogFat('');
       setLogFibre('');
       setShowLogModal(false);
-      setLogEntries(await mealLogService.list(mealPlan?.date));
+      setLogEntries(await mealLogService.list(selectedDate));
       AccessibilityInfo.announceForAccessibility('Custom food logged.');
     } catch {
       Alert.alert('Could not log food', 'Please check your connection and try again.');
@@ -185,7 +184,7 @@ export default function FoodScreen() {
   const deleteLogEntry = async (entry: MealLogEntry) => {
     try {
       await mealLogService.remove(entry.id);
-      setLogEntries(await mealLogService.list(mealPlan?.date));
+      setLogEntries(await mealLogService.list(selectedDate));
     } catch {
       Alert.alert('Could not delete entry', 'Please try again.');
     }
@@ -195,6 +194,17 @@ export default function FoodScreen() {
     setExpandedMealId((prev) => (prev === id ? null : id));
   };
 
+  const shiftDate = (delta: number) => {
+    const next = new Date(`${selectedDate}T00:00:00`);
+    next.setDate(next.getDate() + delta);
+    setSelectedDate(formatDateISO(next));
+  };
+
+  const openLogFood = () => {
+    setEditingEntry(null);
+    setShowLogModal(true);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" backgroundColor="#F8FAFC" />
@@ -202,6 +212,25 @@ export default function FoodScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Nutrition</Text>
         <Text style={styles.headerSubtitle}>Fuel and macro tracking</Text>
+        <View style={styles.dateNavRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Previous day"
+            onPress={() => shiftDate(-1)}
+            style={styles.dateNavButton}
+          >
+            <Feather name="chevron-left" size={18} color="#0F172A" />
+          </Pressable>
+          <Text style={styles.dateNavText}>{selectedDate}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next day"
+            onPress={() => shiftDate(1)}
+            style={styles.dateNavButton}
+          >
+            <Feather name="chevron-right" size={18} color="#0F172A" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -221,7 +250,7 @@ export default function FoodScreen() {
                     </Text>
                     <Pressable
                       accessibilityRole="button"
-                      onPress={() => setShowLogModal(true)}
+                      onPress={openLogFood}
                       style={styles.logFoodButton}
                     >
                       <Feather name="plus" size={14} color="#FFFFFF" />
@@ -391,14 +420,27 @@ export default function FoodScreen() {
                         : ''}
                     </Text>
                   </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete ${entry.custom_name || 'logged food'}`}
-                    onPress={() => deleteLogEntry(entry)}
-                    style={styles.deleteLogButton}
-                  >
-                    <Feather name="trash-2" size={16} color="#EF4444" />
-                  </Pressable>
+                  <View style={styles.logActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${entry.custom_name || 'logged food'}`}
+                      onPress={() => {
+                        setEditingEntry(entry);
+                        setShowLogModal(true);
+                      }}
+                      style={styles.editLogButton}
+                    >
+                      <Feather name="edit-2" size={15} color="#0EA5E9" />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${entry.custom_name || 'logged food'}`}
+                      onPress={() => deleteLogEntry(entry)}
+                      style={styles.deleteLogButton}
+                    >
+                      <Feather name="trash-2" size={15} color="#EF4444" />
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </View>
@@ -406,87 +448,16 @@ export default function FoodScreen() {
         </AsyncStateView>
       </ScrollView>
 
-      {showLogModal ? (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Log food</Text>
-            <TextInput
-              value={logCustomName}
-              onChangeText={setLogCustomName}
-              placeholder="Food name (e.g. Oats with banana)"
-              placeholderTextColor="#94A3B8"
-              style={styles.modalInput}
-            />
-            <View style={styles.modalNumberRow}>
-              <TextInput
-                value={logCalories}
-                onChangeText={setLogCalories}
-                placeholder="Calories"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                style={[styles.modalInput, styles.modalNumberInput]}
-              />
-              <TextInput
-                value={logProtein}
-                onChangeText={setLogProtein}
-                placeholder="Protein g"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                style={[styles.modalInput, styles.modalNumberInput]}
-              />
-            </View>
-            <View style={styles.modalNumberRow}>
-              <TextInput
-                value={logCarbs}
-                onChangeText={setLogCarbs}
-                placeholder="Carbs g"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                style={[styles.modalInput, styles.modalNumberInput]}
-              />
-              <TextInput
-                value={logFat}
-                onChangeText={setLogFat}
-                placeholder="Fat g"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                style={[styles.modalInput, styles.modalNumberInput]}
-              />
-            </View>
-            <TextInput
-              value={logFibre}
-              onChangeText={setLogFibre}
-              placeholder="Fibre g (optional)"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <View style={styles.modalActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowLogModal(false)}
-                style={styles.modalCancel}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Save custom food"
-                onPress={saveCustomLog}
-                disabled={logSaving}
-                style={styles.modalSave}
-              >
-                <Text style={styles.modalSaveText}>
-                  {logSaving ? 'Saving…' : 'Save'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      ) : null}
+      <MealLogSheet
+        visible={showLogModal}
+        date={selectedDate}
+        entry={editingEntry}
+        onClose={() => {
+          setShowLogModal(false);
+          setEditingEntry(null);
+        }}
+        onSaved={loadMealData}
+      />
     </SafeAreaView>
   );
 }
@@ -496,6 +467,21 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: '#F8FAFC' },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  dateNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  dateNavText: { fontSize: 13, fontWeight: '700', color: '#0F172A', minWidth: 90, textAlign: 'center' },
+  dateNavButton: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   scrollView: { flex: 1 },
   scrollContent: { padding: 24, paddingBottom: 100 },
   fuelHeroCard: {
@@ -585,13 +571,22 @@ const styles = StyleSheet.create({
   logRowMain: { flex: 1 },
   logRowTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
   logRowMeta: { fontSize: 12, color: '#64748B', marginTop: 3 },
+  logActions: { flexDirection: 'row', gap: 8 },
   deleteLogButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FEF2F2',
+  },
+  editLogButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,

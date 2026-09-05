@@ -286,6 +286,18 @@ export interface MealLogEntry {
   updatedAt?: string;
 }
 
+export interface FoodCatalogItem {
+  food_code: string;
+  display_name: string;
+  energy_kcal?: number | null;
+  protein_g?: number | null;
+  carbohydrate_g?: number | null;
+  fat_g?: number | null;
+  fiber_g?: number | null;
+  carbohydrate_status?: string | null;
+  fiber_status?: string | null;
+}
+
 export interface MealPlan {
   id: string;
   date: string;

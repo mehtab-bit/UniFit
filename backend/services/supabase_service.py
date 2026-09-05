@@ -603,6 +603,24 @@ class SupabaseService:
         ]
         return len(self._meal_log_entries[user_id]) != before
 
+    def search_foods(
+        self, query: Optional[str] = None, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        """Searches the seeded foods catalogue."""
+        if self.is_connected and self.client:
+            try:
+                builder = self.client.table("foods").select(
+                    "food_code,display_name,energy_kcal,protein_g,carbohydrate_g,fat_g,fiber_g,carbohydrate_status,fiber_status"
+                )
+                if query and query.strip():
+                    builder = builder.ilike("display_name", f"%{query.strip()}%")
+                resp = builder.order("display_name").limit(min(max(limit, 1), 50)).execute()
+                return list(resp.data or [])
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to search foods: {exc}")
+                return []
+        return []
+
     def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
         """Persists the user's engine progression state to Supabase."""
         if self.is_connected and self.client:

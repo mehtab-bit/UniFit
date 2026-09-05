@@ -113,3 +113,15 @@ class MealLogEntryResponse(BaseModel):
     notes: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class FoodSearchResult(BaseModel):
+    food_code: str
+    display_name: str
+    energy_kcal: Optional[float] = None
+    protein_g: Optional[float] = None
+    carbohydrate_g: Optional[float] = None
+    fat_g: Optional[float] = None
+    fiber_g: Optional[float] = None
+    carbohydrate_status: Optional[str] = None
+    fiber_status: Optional[str] = None

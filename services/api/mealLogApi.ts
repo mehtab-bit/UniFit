@@ -3,7 +3,7 @@
  */
 
 import { apiClient } from './apiClient';
-import { MealLogEntry } from '../../types/domain';
+import { FoodCatalogItem, MealLogEntry } from '../../types/domain';
 
 export interface MealLogCreateInput {
   local_date: string;
@@ -100,6 +100,56 @@ export class MealLogApiService {
 
   async remove(entryId: string): Promise<void> {
     await apiClient.delete(`/api/v1/meals/logs/${entryId}`);
+  }
+
+  async update(
+    entryId: string,
+    input: Partial<MealLogCreateInput>
+  ): Promise<MealLogEntry> {
+    const row = await apiClient.put<Record<string, any>>(
+      `/api/v1/meals/logs/${entryId}`,
+      {
+        ...(input.quantity != null ? { quantity: input.quantity } : {}),
+        ...(input.quantity_unit ? { quantity_unit: input.quantity_unit } : {}),
+        ...(input.custom_name != null ? { custom_name: input.custom_name } : {}),
+        ...(input.meal_type ? { meal_type: input.meal_type } : {}),
+        ...(input.notes != null ? { notes: input.notes } : {}),
+        ...(input.nutrition
+          ? {
+              nutrition: {
+                calories_kcal: input.nutrition.calories_kcal ?? null,
+                protein_g: input.nutrition.protein_g ?? null,
+                carbohydrates_g: input.nutrition.carbohydrates_g ?? null,
+                fat_g: input.nutrition.fat_g ?? null,
+                fibre_g: input.nutrition.fibre_g ?? null,
+                carbohydrate_complete:
+                  input.nutrition.carbohydrate_complete ?? false,
+                fiber_complete: input.nutrition.fiber_complete ?? false,
+              },
+            }
+          : {}),
+      }
+    );
+    return mapEntry(row);
+  }
+
+  async searchFoods(query: string): Promise<FoodCatalogItem[]> {
+    const rows = await apiClient.get<Record<string, any>[]>(
+      `/api/v1/meals/foods?q=${encodeURIComponent(query)}&limit=15`
+    );
+    return (rows || []).map((row) => ({
+      food_code: row.food_code,
+      display_name: row.display_name,
+      energy_kcal:
+        row.energy_kcal != null ? Number(row.energy_kcal) : null,
+      protein_g: row.protein_g != null ? Number(row.protein_g) : null,
+      carbohydrate_g:
+        row.carbohydrate_g != null ? Number(row.carbohydrate_g) : null,
+      fat_g: row.fat_g != null ? Number(row.fat_g) : null,
+      fiber_g: row.fiber_g != null ? Number(row.fiber_g) : null,
+      carbohydrate_status: row.carbohydrate_status,
+      fiber_status: row.fiber_status,
+    }));
   }
 }
 

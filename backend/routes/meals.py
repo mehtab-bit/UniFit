@@ -8,6 +8,7 @@ from backend.schemas.meal import (
     MealLogEntryCreate,
     MealLogEntryResponse,
     MealLogEntryUpdate,
+    FoodSearchResult,
 )
 from backend.services.engine_service import engine_service
 from backend.services.supabase_service import supabase_service
@@ -63,6 +64,14 @@ def list_meal_logs(
     user_id = resolve_user_id(verified, None)
     rows = supabase_service.list_meal_log_entries(user_id, local_date)
     return [_log_entry_response(row) for row in rows]
+
+
+@router.get("/foods", response_model=list[FoodSearchResult])
+def search_foods(
+    q: str = Query(default=""),
+    limit: int = Query(default=20, ge=1, le=50),
+):
+    return supabase_service.search_foods(q, limit)
 
 
 @router.post("/logs", response_model=MealLogEntryResponse)
