@@ -8,6 +8,7 @@ in-memory caching when running in local development mode.
 from __future__ import annotations
 
 import os
+import threading
 from uuid import UUID, uuid4
 from typing import Any, Optional
 from datetime import date
@@ -55,7 +56,8 @@ class ProfileConflictError(ValueError):
 
 class SupabaseService:
     def __init__(self):
-        self.client = None
+        self._base_client = None
+        self._thread_local = threading.local()
         self._live_credentials = False
         self._cached_weekly_plans: dict[str, dict[str, Any]] = {}
         self._plan_snapshots: dict[str, dict[str, Any]] = {}
@@ -73,7 +75,7 @@ class SupabaseService:
             try:
                 from supabase import create_client
 
-                self.client = create_client(SUPABASE_URL, SUPABASE_KEY)
+                self._base_client = create_client(SUPABASE_URL, SUPABASE_KEY)
                 self._live_credentials = True
             except Exception as e:
                 print(f"[SupabaseService] Client init failed, using in-memory mode: {e}")
@@ -91,6 +93,25 @@ class SupabaseService:
         if mode in {"offline", "memory", "isolated", "test"}:
             return False
         return self._live_credentials
+
+    @property
+    def client(self):
+        """Per-thread Supabase client.
+
+        FastAPI runs synchronous route handlers on a shared threadpool. A
+        single httpx/PostgREST client shared across those threads can raise
+        Windows socket errors (e.g. WinError 10035) under concurrent requests,
+        so each thread gets its own client/connection pool.
+        """
+        if not self._live_credentials:
+            return None
+        local_client = getattr(self._thread_local, "client", None)
+        if local_client is None:
+            from supabase import create_client
+
+            local_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+            self._thread_local.client = local_client
+        return local_client
 
     def _require_user_id(self, user_id: Optional[str]) -> None:
         """Live Supabase rows key on auth.users UUIDs.
