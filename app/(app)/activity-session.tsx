@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getAppToday, formatDateISO } from '../../utils/date';
 import { operationIdFromParts } from '../../utils/operationId';
 import { ActivityLog, ActivityType } from '../../types/domain';
+import { enqueuePending } from '../../lib/pendingQueue';
 
 const INSTRUCTIONS: Record<string, string> = {
   walking:
@@ -162,9 +163,46 @@ export default function ActivitySessionScreen() {
       }
       router.back();
     } catch {
+      if (!editingLog && user?.id) {
+        try {
+          const localDate = formatDateISO(getAppToday());
+          const operationId = operationIdFromParts(
+            user.id,
+            activityType,
+            manual ? 'manual' : startedAtRef.current || 'guided'
+          );
+          await enqueuePending(user.id, {
+            id: operationIdFromParts(user.id, activityType, 'queued'),
+            kind: 'activity_create',
+            payload: {
+              activity_type: activityType,
+              local_date: localDate,
+              source: manual ? 'manual' : 'guided',
+              operation_id: operationId,
+              started_at: startedAtRef.current || undefined,
+              ended_at: new Date().toISOString(),
+              active_duration_seconds: durationSeconds,
+              duration_minutes: durationSeconds / 60,
+              distance_km:
+                distanceKm && distanceKm > 0 ? distanceKm : undefined,
+              distance_entered: Boolean(distance.trim()),
+              completed,
+              notes: notes.trim() || undefined,
+            },
+          });
+          Alert.alert(
+            'Saved on this device',
+            'Your session will sync automatically when you are back online.'
+          );
+          router.back();
+          return;
+        } catch {
+          // Local queue write failed; fall through to the error alert.
+        }
+      }
       Alert.alert(
         'Could not save activity',
-        'Check your connection. Your session is not lost — retry saving before leaving.'
+        'Check your connection and try again.'
       );
     } finally {
       setSaving(false);

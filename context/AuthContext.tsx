@@ -14,6 +14,7 @@ import { AuthUser, AuthSession, AuthState } from '../types/auth';
 import { UserProfile, QuizFormData } from '../types/quiz';
 import { DEMO_ACCOUNT, isDemoModeEnabled } from '../constants/demo';
 import { clearCombinedWeek } from '../services/api/combinedPlan';
+import { syncPendingOperations } from '../lib/pendingSync';
 
 const STORAGE_KEYS = {
   INTRO_SEEN: '@unifit_intro_seen',
@@ -102,6 +103,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const completed = Boolean(userProfile.onboarding_completed);
         setIsOnboardingCompleted(completed);
         setProfileRevision(userProfile.profile_revision ?? 0);
+        void syncPendingOperations(userId);
         return userProfile;
       } else {
         const initialProfile: UserProfile = {

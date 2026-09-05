@@ -21,6 +21,7 @@ import { AsyncStateView } from '../../components/common/AsyncStateView';
 import { activityService, activityLogService } from '../../services';
 import { ActivityLog, ActivitySession, ActivitySummary, ActivityType } from '../../types/domain';
 import { getAppToday, formatDateISO } from '../../utils/date';
+import { enqueuePending } from '../../lib/pendingQueue';
 import { Surface } from '../../context/SurfaceContext';
 
 const FILTER_TABS: { label: string; value: 'all' | ActivityType }[] = [
@@ -325,12 +326,18 @@ export default function ActivityScreen() {
                               activityLogService
                                 .remove(log.id)
                                 .then(() => loadActivityData())
-                                .catch(() =>
+                                .catch(async () => {
+                                  if (user?.id) {
+                                    await enqueuePending(user.id, {
+                                      id: log.id,
+                                      kind: 'activity_delete',
+                                    });
+                                  }
                                   Alert.alert(
-                                    'Could not delete',
-                                    'Please try again.'
-                                  )
-                                ),
+                                    'Saved on this device',
+                                    'Deletion will sync when you are back online.'
+                                  );
+                                }),
                           },
                         ]
                       )

@@ -58,7 +58,8 @@ Required:
 
 Required:
 - [x] Scheduled-workout and exercise-attempt identity; operation IDs; transactional persistence
-- [ ] Local pending queue; retry/user separation
+- [x] Local pending queue for activity logs; retry/user separation
+- [ ] Offline queue coverage for workout/meal writes
 - [x] No success broadcast before durable save
 - [ ] Partial/discard/back handling on camera screens
 
