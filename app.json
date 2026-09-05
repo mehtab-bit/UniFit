@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniFit",
     "slug": "unifit",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "unifit",
@@ -16,11 +16,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.unifit.app",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "UniFit uses the camera to count repetitions and measure your movement range."
       }
     },
     "android": {
+      "versionCode": 2,
       "permissions": [
         "CAMERA",
         "android.permission.CAMERA"
