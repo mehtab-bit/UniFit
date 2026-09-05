@@ -98,9 +98,15 @@ export default function WorkoutScreen() {
       setError(null);
       let targetWorkout: WorkoutDay | null = null;
       if (params.date) {
-        targetWorkout = await workoutService.getWorkoutByDate(params.date);
+        targetWorkout = await workoutService.getWorkoutByDate(
+          params.date,
+          user?.id
+        );
       } else if (params.dayId) {
-        targetWorkout = await workoutService.getWorkoutByDate(params.dayId);
+        targetWorkout = await workoutService.getWorkoutByDate(
+          params.dayId,
+          user?.id
+        );
       }
       if (!targetWorkout) {
         targetWorkout = await workoutService.getTodayWorkout(user?.id);
