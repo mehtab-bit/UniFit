@@ -23,6 +23,7 @@ from backend.routes.completion import router as completion_router
 from backend.routes.progress import router as progress_router, session_router
 from backend.routes.calendar import router as calendar_router
 from backend.routes.activity import router as activity_router
+from backend.services.supabase_service import SupabaseUnavailableError
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -78,6 +79,17 @@ async def value_error_handler(request: Request, exc: ValueError):
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
             "error_type": "engine_error",
+            "message": str(exc),
+        },
+    )
+
+
+@app.exception_handler(SupabaseUnavailableError)
+async def unavailable_handler(request: Request, exc: SupabaseUnavailableError):
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "error_type": "database_unavailable",
             "message": str(exc),
         },
     )

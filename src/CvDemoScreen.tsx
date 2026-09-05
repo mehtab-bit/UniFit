@@ -188,7 +188,7 @@ function CvDemoScreenReady({
     exerciseId,
     pose.keypoints,
     sideOverride,
-    restRemaining > 0
+    restRemaining > 0 || !isForegroundActive
   );
   const trackerRef = useRef(tracker);
   trackerRef.current = tracker;

@@ -5,6 +5,7 @@
 
 import { mealLogService, activityLogService } from '../services';
 import { supabase } from './supabase';
+import { apiClient } from '../services/api/apiClient';
 import {
   PendingOperation,
   readPending,
@@ -49,6 +50,9 @@ async function replayOperation(
       return;
     case 'activity_delete':
       await activityLogService.remove(operation.id);
+      return;
+    case 'workout_create':
+      await apiClient.post('/api/v1/workout/complete', operation.payload);
       return;
     default:
       return;

@@ -20,6 +20,12 @@ export type PendingOperation =
       kind: 'activity_create' | 'activity_delete';
       createdAt: string;
       payload?: Record<string, any>;
+    }
+  | {
+      id: string;
+      kind: 'workout_create';
+      createdAt: string;
+      payload?: Record<string, any>;
     };
 
 function keyFor(userId: string): string {

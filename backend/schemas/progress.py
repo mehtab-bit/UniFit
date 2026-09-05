@@ -47,6 +47,7 @@ class CombinedWeeklyPlanResponse(BaseModel):
     engine_version: Optional[str] = None
     rule_data_version: Optional[str] = None
     generation_status: Optional[str] = None
+    personalization_notes: list[str] = Field(default_factory=list)
     user_id: Optional[str] = "user_default"
     user: dict[str, Any]
     workouts: list[WorkoutDaySchema]

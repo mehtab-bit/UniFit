@@ -44,6 +44,7 @@ def get_calendar(
         last.isoformat(),
     )
     sessions = supabase_service.load_workout_sessions(user_id)
+    activity_logs = supabase_service.list_activity_logs(user_id)
     profile_row = supabase_service.get_profile(user_id)
     program_start = _local_date_key(
         (profile_row or {}).get("created_at")
@@ -58,6 +59,15 @@ def get_calendar(
         )
         if d is not None
     }
+    completed_dates.update(
+        d
+        for d in (
+            _local_date_key(row.get("local_date"))
+            or _local_date_key(row.get("created_at"))
+            for row in activity_logs
+        )
+        if d is not None
+    )
 
     plan_by_date: dict[str, dict] = {}
     for snapshot in snapshots:

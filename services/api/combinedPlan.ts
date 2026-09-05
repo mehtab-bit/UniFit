@@ -117,5 +117,11 @@ export function pickDayFromWeek(days: any[] | undefined, date?: string): any {
   const byToday = list.find(
     (d) => String(d.local_date || '') === localDateString(todayDate)
   );
-  return byToday || list[0];
+  if (byToday) return byToday;
+  const dow = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][
+    todayDate.getDay()
+  ];
+  return (
+    list.find((d) => String(d.day || '').toLowerCase() === dow) || list[0]
+  );
 }

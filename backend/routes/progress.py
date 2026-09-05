@@ -158,6 +158,14 @@ def get_progress(
         )
         if day is not None
     }
+    month_days.update(
+        day
+        for day in (
+            _session_day(log)
+            for log in supabase_service.list_activity_logs(user_id)
+        )
+        if day is not None
+    )
     active_month_days = sum(
         1 for d in month_days if d.year == today.year and d.month == today.month
     )
@@ -167,6 +175,14 @@ def get_progress(
         for day in (_session_day(log) for log in session_logs)
         if day is not None
     }
+    all_dates.update(
+        day
+        for day in (
+            _session_day(log)
+            for log in supabase_service.list_activity_logs(user_id)
+        )
+        if day is not None
+    )
     milestones = []
     if len(all_dates) >= 1:
         milestones.append(

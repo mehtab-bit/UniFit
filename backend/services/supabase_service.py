@@ -54,6 +54,10 @@ class ProfileConflictError(ValueError):
     """Raised when an edit is based on an outdated profile revision."""
 
 
+class SupabaseUnavailableError(RuntimeError):
+    """Raised when a live persistence read fails; never disguised as empty."""
+
+
 class SupabaseService:
     def __init__(self):
         self._base_client = None
@@ -239,7 +243,9 @@ class SupabaseService:
                 return list(resp.data or [])
             except Exception as exc:
                 print(f"[SupabaseService] Failed to list plan snapshots: {exc}")
-                return []
+                raise SupabaseUnavailableError(
+                    "Plans are temporarily unavailable."
+                ) from exc
         return [
             row
             for row in self._plan_snapshots.values()
@@ -292,11 +298,6 @@ class SupabaseService:
                 "plan_data": snapshot.get("plan_data", {}),
                 "status": "active",
             }
-            self.client.table("user_plan_snapshots").update({"status": "superseded"}).eq(
-                "user_id", user_id
-            ).eq("week_start_date", snapshot["week_start_date"]).eq(
-                "status", "active"
-            ).execute()
             inserted = (
                 self.client.table("user_plan_snapshots")
                 .upsert(payload, on_conflict="user_id,week_start_date,profile_revision,progression_revision,engine_version,rule_data_version")
@@ -304,6 +305,17 @@ class SupabaseService:
                 .execute()
             )
             row = inserted.data[0] if inserted.data else dict(payload)
+            # Publish the replacement first, then retire the previous active
+            # version. A failure between these steps never leaves the user
+            # without an active plan (the older one stays visible until the
+            # new one is durable).
+            self.client.table("user_plan_snapshots").update(
+                {"status": "superseded"}
+            ).eq("user_id", user_id).eq(
+                "week_start_date", snapshot["week_start_date"]
+            ).eq(
+                "status", "active"
+            ).neq("id", row.get("id")).execute()
             schedule_rows = []
             for scheduled in snapshot.get("scheduled_workouts", []):
                 schedule_rows.append(
@@ -465,6 +477,9 @@ class SupabaseService:
                 return list(resp.data or [])
             except Exception as e:
                 print(f"[SupabaseService] Failed to load workout sessions: {e}")
+                raise SupabaseUnavailableError(
+                    "Session history is temporarily unavailable."
+                ) from e
         return list(self._workout_sessions.get(user_id, []))
 
     def save_workout_session(self, session: dict[str, Any]) -> bool:
@@ -528,7 +543,9 @@ class SupabaseService:
                 return list(resp.data or [])
             except Exception as exc:
                 print(f"[SupabaseService] Failed to list meal logs: {exc}")
-                return []
+                raise SupabaseUnavailableError(
+                    "Meal history is temporarily unavailable."
+                ) from exc
         rows = self._meal_log_entries.get(user_id, [])
         if local_date:
             rows = [row for row in rows if str(row.get("local_date")) == local_date]
@@ -638,7 +655,9 @@ class SupabaseService:
                 return list(resp.data or [])
             except Exception as exc:
                 print(f"[SupabaseService] Failed to list activity logs: {exc}")
-                return []
+                raise SupabaseUnavailableError(
+                    "Activity history is temporarily unavailable."
+                ) from exc
         rows = self._activity_logs.get(user_id, [])
         if local_date:
             rows = [row for row in rows if str(row.get("local_date")) == local_date]

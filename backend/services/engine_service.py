@@ -127,6 +127,18 @@ class FitnessEngineService:
             )
 
         needs = list(row.get("accessibility_needs") or [])
+        notes = []
+        if row.get("has_exercise_restriction"):
+            notes.append(
+                "Your exercise-restriction note is preserved for your coach "
+                "and profile; UniFit does not auto-diagnose or silently adapt "
+                "prescriptions from free text."
+            )
+        if "other" in needs:
+            notes.append(
+                "Your 'other' accessibility note is stored and surfaced to "
+                "the session, but is not used to infer an adaptation."
+            )
         # W04 decision (user-confirmed): keep multi-select; the engine adapts
         # around the most restrictive need while the UI honors presentation
         # needs for every selected need.
@@ -150,6 +162,7 @@ class FitnessEngineService:
             "accessibility_resources": [str(r) for r in resources],
             "strength_equipment": [str(e) for e in (row.get("strength_equipment") or [])],
             "strength_experience": row.get("strength_experience"),
+            "notes": notes,
             "profile_revision": int(row.get("profile_revision") or 1),
         }
 

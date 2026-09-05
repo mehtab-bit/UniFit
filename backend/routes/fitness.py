@@ -215,6 +215,7 @@ def generate_combined_weekly_plan(
                 "engine_version": ENGINE_VERSION,
                 "rule_data_version": RULE_DATA_VERSION,
                 "generation_status": "generated",
+                "personalization_notes": context.get("notes", []),
             }
         )
         scheduled_workouts = _scheduled_rows(
