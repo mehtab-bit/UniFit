@@ -1,20 +1,23 @@
 """
 UniFit Progression Service.
 
-Orchestrates progression state, evaluates the 80% progression gates,
-and tracks independent strength exercise variation levels using the
-authoritative logic in weekly_workout_engine.py.
+Evaluates the 80% progression gates and tracks independent strength exercise
+variation levels using the authoritative logic in weekly_workout_engine.py.
+When an issued plan snapshot exists, weekly completion is calculated against
+that plan (planned obligations are the denominator) rather than averaging only
+the logs that happened to be submitted.
 """
 
 from __future__ import annotations
 
-from typing import Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Optional
 
 from engine.weekly_workout_engine import (
     ProgressState,
     summarize_week_completion,
+    summarize_planned_week,
     activity_can_progress,
     determine_rule_week,
     determine_strength_exercise_rule_week,
@@ -28,17 +31,45 @@ from backend.services.supabase_service import supabase_service
 class UserProgressionRecord:
     user_id: str
     calendar_week: int = 1
+    progression_revision: int = 1
     session_logs: list[dict[str, Any]] = field(default_factory=list)
     state: ProgressState = field(default_factory=ProgressState)
+
+
+def _as_local_date(value: Any) -> Optional[date]:
+    if not value:
+        return None
+    try:
+        if isinstance(value, date):
+            return value
+        text = str(value)
+        if "T" in text or " " in text:
+            return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+        return datetime.strptime(text[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+
+
+def _monday(local: date) -> str:
+    return (local - timedelta(days=local.weekday())).isoformat()
 
 
 class ProgressionService:
     """Manages progression state and workout completions."""
 
     def __init__(self):
-        # In-memory user progression store (backed by Supabase when configured)
         self._user_records: dict[str, UserProgressionRecord] = {}
-        self._load_all_records()
+        self._records_loaded = False
+
+    def _ensure_records_loaded(self) -> None:
+        """Lazily restores history on first access instead of at import/startup."""
+        if self._records_loaded:
+            return
+        self._records_loaded = True
+        try:
+            self._load_all_records()
+        except Exception as exc:
+            print(f"[ProgressionService] Failed to restore session history: {exc}")
 
     def _load_all_records(self) -> None:
         """Rebuilds in-memory progression state from Supabase session history."""
@@ -57,40 +88,94 @@ class ProgressionService:
                 if not user_id:
                     continue
                 record = self.get_or_create_record(user_id)
-                record.session_logs.append(
-                    {
-                        "activity_id": session.get("activity_id"),
-                        "requested_activity_id": session.get("requested_activity_id"),
-                        "progression_key": session.get("progression_key")
-                        or session.get("activity_id"),
-                        "session_type": session.get("session_type"),
-                        "completion_pct": float(session.get("completion_pct") or 0),
-                        "exercise_completion_pct": session.get(
-                            "exercise_completion_pct", {}
-                        )
-                        or {},
-                        "created_at": session.get("created_at"),
-                    }
-                )
-            # Recompute aggregate state per user from their session history.
-            for record in self._user_records.values():
-                summary_state = summarize_week_completion(record.session_logs)
-                record.state.overall_completion_pct = (
-                    summary_state.overall_completion_pct
-                )
-                record.state.activity_completion_pct.update(
-                    summary_state.activity_completion_pct
-                )
-                record.state.exercise_completion_pct.update(
-                    summary_state.exercise_completion_pct
-                )
-        except Exception as e:
-            print(f"[ProgressionService] Failed to load session history: {e}")
+                record.session_logs.append(self._normalize_log(session))
+            for record in list(self._user_records.values()):
+                summary = self._summarize(record.user_id, record.session_logs)
+                record.state.overall_completion_pct = summary.overall_completion_pct
+                record.state.activity_completion_pct = summary.activity_completion_pct
+                record.state.exercise_completion_pct = summary.exercise_completion_pct
+        except Exception as exc:
+            print(f"[ProgressionService] Failed to load session history: {exc}")
 
     def get_or_create_record(self, user_id: str) -> UserProgressionRecord:
+        self._ensure_records_loaded()
         if user_id not in self._user_records:
             self._user_records[user_id] = UserProgressionRecord(user_id=user_id)
         return self._user_records[user_id]
+
+    @staticmethod
+    def _normalize_log(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "activity_id": row.get("activity_id"),
+            "requested_activity_id": row.get("requested_activity_id"),
+            "progression_key": row.get("progression_key")
+            or row.get("activity_id"),
+            "session_type": row.get("session_type"),
+            "completion_pct": float(row.get("completion_pct") or 0),
+            "exercise_completion_pct": row.get("exercise_completion_pct", {}) or {},
+            "source": row.get("source"),
+            "reps_completed": row.get("reps_completed"),
+            "range_score": row.get("range_score"),
+            "issue_codes": row.get("issue_codes"),
+            "active_duration_seconds": row.get("active_duration_seconds"),
+            "duration_minutes": row.get("duration_minutes"),
+            "started_at": row.get("started_at"),
+            "ended_at": row.get("ended_at"),
+            "operation_id": row.get("operation_id"),
+            "scheduled_workout_id": row.get("scheduled_workout_id"),
+            "local_date": row.get("local_date"),
+            "created_at": row.get("created_at"),
+        }
+
+    @staticmethod
+    def _plan_obligations(
+        user_id: str, week_start: str
+    ) -> list[dict[str, Any]]:
+        snapshot = supabase_service.get_active_plan_snapshot(user_id, week_start)
+        if not snapshot:
+            return []
+        workouts = (snapshot.get("plan_data") or {}).get("workouts") or []
+        obligations = []
+        for day in workouts:
+            if day.get("is_rest_day"):
+                continue
+            workout = day.get("workout") or {}
+            exercises = workout.get("exercises") or []
+            obligations.append(
+                {
+                    "scheduled_workout_id": day.get("scheduled_workout_id"),
+                    "local_date": day.get("local_date"),
+                    "day": day.get("day"),
+                    "activity_id": workout.get("activity_id"),
+                    "requested_activity_id": workout.get("requested_activity_id"),
+                    "progression_key": workout.get("progression_key"),
+                    "session_type": workout.get("session_type"),
+                    "exercises": exercises,
+                }
+            )
+        return obligations
+
+    def _summarize(
+        self, user_id: str, logs: list[dict[str, Any]]
+    ) -> ProgressState:
+        if not logs:
+            return ProgressState(overall_completion_pct=0.0)
+
+        # Prefer the issued plan for the week containing the most recent log.
+        dates = [_as_local_date(log.get("local_date") or log.get("created_at")) for log in logs]
+        latest = max((d for d in dates if d), default=date.today())
+        week_start = _monday(latest)
+        obligations = self._plan_obligations(user_id, week_start)
+        if obligations:
+            week_attempts = [
+                log
+                for log in logs
+                if _as_local_date(log.get("local_date") or log.get("created_at"))
+                and _monday(_as_local_date(log.get("local_date") or log.get("created_at")) or date.today())
+                == week_start
+            ]
+            return summarize_planned_week(obligations, week_attempts)
+        return summarize_week_completion(logs)
 
     def record_completion(
         self,
@@ -105,12 +190,56 @@ class ProgressionService:
         reps_completed: Optional[int] = None,
         range_score: Optional[float] = None,
         issue_codes: Optional[list[str]] = None,
+        operation_id: Optional[str] = None,
+        scheduled_workout_id: Optional[str] = None,
+        local_date: Optional[str] = None,
+        started_at: Optional[str] = None,
+        ended_at: Optional[str] = None,
+        active_duration_seconds: Optional[int] = None,
+        notes: Optional[str] = None,
     ) -> dict[str, Any]:
-        """
-        Records a completed workout session log and recomputes progression metrics.
-        The backend owns the 80% progression decision.
-        """
+        """Records a workout attempt and recomputes progression metrics."""
+
         record = self.get_or_create_record(user_id)
+
+        def build_response(duplicate: bool = False) -> dict[str, Any]:
+            summary = self._summarize(user_id, record.session_logs)
+            record.state.overall_completion_pct = summary.overall_completion_pct
+            record.state.activity_completion_pct.update(summary.activity_completion_pct)
+            record.state.exercise_completion_pct.update(summary.exercise_completion_pct)
+            can_advance = activity_can_progress(
+                record.state, progression_key or activity_id
+            )
+            exercise_advances = {
+                family: bool(
+                    (record.state.overall_completion_pct or 0)
+                    >= PROGRESSION_THRESHOLD
+                    and (record.state.exercise_completion_pct.get(family) or 0)
+                    >= PROGRESSION_THRESHOLD
+                )
+                for family in STRENGTH_FAMILIES
+                if record.state.exercise_completion_pct.get(family) is not None
+            }
+            return {
+                "success": True,
+                "duplicate": duplicate,
+                "user_id": user_id,
+                "activity_id": activity_id,
+                "progression_key": progression_key or activity_id,
+                "completion_pct": completion_pct,
+                "overall_completion_pct": record.state.overall_completion_pct,
+                "activity_can_progress": can_advance,
+                "exercise_advances": exercise_advances,
+                "total_logged_sessions": len(record.session_logs),
+                "current_state": record.state.to_dict(),
+            }
+
+        if operation_id:
+            existing = supabase_service.get_workout_session_by_operation_id(
+                user_id, operation_id
+            )
+            if existing:
+                return build_response(duplicate=True)
 
         session_log = {
             "activity_id": activity_id,
@@ -123,51 +252,39 @@ class ProgressionService:
             "reps_completed": reps_completed,
             "range_score": range_score,
             "issue_codes": issue_codes,
+            "operation_id": operation_id,
+            "scheduled_workout_id": scheduled_workout_id,
+            "local_date": local_date,
+            "started_at": started_at,
+            "ended_at": ended_at,
+            "active_duration_seconds": active_duration_seconds,
+            "duration_minutes": (
+                round(active_duration_seconds / 60, 1)
+                if active_duration_seconds is not None
+                else None
+            ),
+            "notes": notes,
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        record.session_logs.append(session_log)
-        session_log["created_at"] = datetime.now(timezone.utc).isoformat()
-
-        # Persist the session so streaks/progress survive restarts.
-        supabase_service.save_workout_session(
-            {
-                "user_id": user_id,
-                "activity_id": session_log["activity_id"],
-                "requested_activity_id": session_log["requested_activity_id"],
-                "progression_key": session_log["progression_key"],
-                "session_type": session_log["session_type"],
-                "completion_pct": session_log["completion_pct"],
-                "exercise_completion_pct": session_log["exercise_completion_pct"],
-                "source": session_log["source"],
-                "reps_completed": session_log["reps_completed"],
-                "range_score": session_log["range_score"],
-                "issue_codes": session_log["issue_codes"],
-                "created_at": session_log["created_at"],
-            }
+        persisted = supabase_service.save_workout_session(
+            {**session_log, "user_id": user_id}
         )
+        if not persisted:
+            # A successful response must mean the database committed the
+            # recording. Callers keep their local pending queue and retry.
+            raise ValueError(
+                "Unable to save this session. Your progress is safe on this "
+                "device and will sync when the connection is restored."
+            )
 
-        # Re-summarize week using the engine function
-        summary_state = summarize_week_completion(record.session_logs)
-
-        # Merge summary completion metrics into current progression state
-        record.state.overall_completion_pct = summary_state.overall_completion_pct
-        record.state.activity_completion_pct.update(summary_state.activity_completion_pct)
-        record.state.exercise_completion_pct.update(summary_state.exercise_completion_pct)
-
-        # Check if this activity passed the 80% progression threshold
-        can_advance = activity_can_progress(record.state, progression_key or activity_id)
-
-        # Evaluate individual exercise family progression
-        exercise_advances: dict[str, bool] = {}
-        for family in STRENGTH_FAMILIES:
-            ex_pct = record.state.exercise_completion_pct.get(family)
-            if ex_pct is not None:
-                exercise_advances[family] = bool(
-                    (record.state.overall_completion_pct or 0) >= PROGRESSION_THRESHOLD
-                    and ex_pct >= PROGRESSION_THRESHOLD
-                )
-
-        # Persist the recomputed progression state.
+        record.session_logs.append(session_log)
+        response = build_response()
+        record.state.activity_rule_week = record.state.activity_rule_week
+        record.state.exercise_rule_week = record.state.exercise_rule_week
+        record.state.strength_variation_levels = (
+            record.state.strength_variation_levels
+        )
         supabase_service.save_progress_state(
             user_id,
             {
@@ -176,55 +293,50 @@ class ProgressionService:
                 "activity_rule_week": record.state.activity_rule_week,
                 "exercise_rule_week": record.state.exercise_rule_week,
                 "strength_variation_levels": record.state.strength_variation_levels,
+                "progression_revision": record.progression_revision,
             },
         )
-
-        return {
-            "success": True,
-            "user_id": user_id,
-            "activity_id": activity_id,
-            "progression_key": progression_key or activity_id,
-            "completion_pct": completion_pct,
-            "overall_completion_pct": record.state.overall_completion_pct,
-            "activity_can_progress": can_advance,
-            "exercise_advances": exercise_advances,
-            "total_logged_sessions": len(record.session_logs),
-            "current_state": record.state.to_dict(),
-        }
+        return response
 
     def advance_to_next_week(self, user_id: str) -> ProgressState:
-        """
-        Calculates rule weeks for the subsequent calendar week based on completion history.
-        """
+        """Calculates rule weeks for the next program week."""
         record = self.get_or_create_record(user_id)
-        current_cal_week = record.calendar_week
-        next_cal_week = current_cal_week + 1
+        next_cal_week = record.calendar_week + 1
 
-        new_activity_rule_weeks = {}
-        for key in list(record.state.activity_completion_pct.keys()):
-            new_activity_rule_weeks[key] = determine_rule_week(
+        record.state.activity_rule_week = {
+            key: determine_rule_week(
                 progression_key=key,
                 calendar_week=next_cal_week,
                 previous_state=record.state,
             )
-
-        new_exercise_rule_weeks = {}
-        for family in STRENGTH_FAMILIES:
-            new_exercise_rule_weeks[family] = determine_strength_exercise_rule_week(
+            for key in list(record.state.activity_completion_pct.keys())
+        }
+        record.state.exercise_rule_week = {
+            family: determine_strength_exercise_rule_week(
                 family=family,
                 calendar_week=next_cal_week,
                 previous_state=record.state,
             )
-
-        # Transition record
+            for family in STRENGTH_FAMILIES
+        }
         record.calendar_week = next_cal_week
+        record.progression_revision += 1
         record.session_logs = []
-        record.state.activity_rule_week.update(new_activity_rule_weeks)
-        record.state.exercise_rule_week.update(new_exercise_rule_weeks)
         record.state.overall_completion_pct = None
         record.state.activity_completion_pct = {}
         record.state.exercise_completion_pct = {}
 
+        supabase_service.save_progress_state(
+            user_id,
+            {
+                "calendar_week": record.calendar_week,
+                "overall_completion_pct": record.state.overall_completion_pct,
+                "activity_rule_week": record.state.activity_rule_week,
+                "exercise_rule_week": record.state.exercise_rule_week,
+                "strength_variation_levels": record.state.strength_variation_levels,
+                "progression_revision": record.progression_revision,
+            },
+        )
         return record.state
 
     def get_progress_state(self, user_id: str) -> dict[str, Any]:
@@ -232,6 +344,7 @@ class ProgressionService:
         return {
             "user_id": user_id,
             "calendar_week": record.calendar_week,
+            "progression_revision": record.progression_revision,
             "overall_completion_pct": record.state.overall_completion_pct,
             "activity_completion_pct": record.state.activity_completion_pct,
             "exercise_completion_pct": record.state.exercise_completion_pct,
@@ -242,8 +355,13 @@ class ProgressionService:
         }
 
     def get_session_logs(self, user_id: str) -> list[dict[str, Any]]:
-        """Returns the user's raw session logs (oldest first for streak math)."""
+        """Returns the user's raw session logs oldest first."""
         record = self.get_or_create_record(user_id)
+        if not record.session_logs:
+            record.session_logs = [
+                self._normalize_log(row)
+                for row in supabase_service.load_workout_sessions(user_id)
+            ]
         return sorted(
             record.session_logs,
             key=lambda s: s.get("created_at") or "",

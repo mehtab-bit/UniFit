@@ -41,7 +41,10 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
         <Text style={[styles.indexText, isActive && styles.activeIndex]}>
           {displayIndex}
         </Text>
-        <Text style={[styles.nameText, isActive && styles.activeName]}>
+        <Text
+          numberOfLines={2}
+          style={[styles.nameText, isActive && styles.activeName]}
+        >
           {exercise.name.toUpperCase()}
         </Text>
       </View>
@@ -78,6 +81,9 @@ const styles = StyleSheet.create({
   leftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
   },
   indexText: {
     fontSize: 16,
@@ -94,12 +100,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#27272A',
     letterSpacing: 1,
+    flexShrink: 1,
   },
   activeName: {
     color: '#FFFFFF',
   },
   rightGroup: {
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   metaText: {
     fontSize: 14,

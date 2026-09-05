@@ -150,11 +150,12 @@ export default function ProgressScreen() {
           <CardSpringEntry index={2}>
             <View style={styles.timelineCard}>
               {JOURNEY_PHASES.map((phase, index) => {
-                // Find a matching milestone conceptually or visually represent the static phase
-                const isCompleted = index === 0;
-                const isActive = index === 1;
-                const isUpcoming = index > 1;
-                
+                // Journey phases are driven by actual persisted achievements:
+                // each completed milestone advances one phase, the next phase
+                // becomes active, and the rest stay locked until earned.
+                const achieved = summary?.milestones?.length ?? 0;
+                const isCompleted = index < achieved;
+                const isActive = index === achieved;
                 const milestone = summary?.milestones?.[index];
 
                 return (
@@ -231,12 +232,31 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 5,
   },
-  heroContentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroTextCol: { flex: 1, paddingRight: 16 },
+  heroContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  heroTextCol: { flex: 1, flexShrink: 1, minWidth: 0, paddingRight: 8 },
   heroBadge: { fontSize: 11, fontWeight: '800', color: '#D4AF37', letterSpacing: 1.5, marginBottom: 8 },
-  heroNumberRow: { flexDirection: 'row', alignItems: 'baseline' },
-  heroNumber: { fontSize: 48, fontWeight: '800', color: '#FFFFFF', letterSpacing: -2 },
-  heroPhaseText: { fontSize: 12, fontWeight: '700', color: '#CBD5E1', marginTop: 4, letterSpacing: 1 },
+  heroNumberRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap' },
+  heroNumber: {
+    fontSize: 42,
+    lineHeight: 50,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
+  heroPhaseText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#CBD5E1',
+    marginTop: 4,
+    letterSpacing: 0.8,
+    flexWrap: 'wrap',
+  },
   progWeekPill: {
     backgroundColor: 'rgba(212, 175, 55, 0.1)',
     alignSelf: 'flex-start',

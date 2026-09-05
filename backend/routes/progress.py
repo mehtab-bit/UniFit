@@ -1,11 +1,13 @@
 """Progress and Streak API endpoints."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from typing import Any, Optional
 from datetime import date, datetime, timedelta
 from backend.schemas.progress import StreakResponse, ProgressSummaryResponse
 from backend.services.progression_service import progression_service
 from backend.services.supabase_service import supabase_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(tags=["Progress & Streak"])
 session_router = APIRouter(tags=["Sessions"])
@@ -15,13 +17,10 @@ def _compute_streaks(logs: list[dict]) -> tuple[int, int]:
     """Computes current and best consecutive-day streaks from session dates."""
     days: set[date] = set()
     for log in logs:
-        created = log.get("created_at")
-        if not created:
+        day = _session_day(log)
+        if day is None:
             continue
-        try:
-            days.add(datetime.fromisoformat(str(created).replace("Z", "+00:00")).date())
-        except (ValueError, TypeError):
-            continue
+        days.add(day)
 
     if not days:
         return 0, 0
@@ -49,24 +48,81 @@ def _compute_streaks(logs: list[dict]) -> tuple[int, int]:
     return current, best
 
 
+def _session_day(log: dict) -> Optional[date]:
+    local = log.get("local_date")
+    if local:
+        try:
+            return datetime.strptime(str(local)[:10], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    created = log.get("created_at")
+    if created:
+        try:
+            return datetime.fromisoformat(
+                str(created).replace("Z", "+00:00")
+            ).date()
+        except (ValueError, TypeError):
+            pass
+    return None
+
+
+def _issued_week_schedule(user_id: str, week_start: date) -> tuple[int, int, set[date]]:
+    """Returns (planned active target, due obligations, issued dates) from the
+    active plan snapshot. When no snapshot exists the schedule is unknown and
+    no fixed target is invented."""
+    snapshot = supabase_service.get_active_plan_snapshot(
+        user_id, week_start.isoformat()
+    )
+    if not snapshot:
+        return 0, 0, set()
+    workouts = (snapshot.get("plan_data") or {}).get("workouts") or []
+    issued: set[date] = set()
+    for day in workouts:
+        if day.get("is_rest_day"):
+            continue
+        local = day.get("local_date")
+        if not local:
+            continue
+        try:
+            issued.add(datetime.strptime(str(local)[:10], "%Y-%m-%d").date())
+        except ValueError:
+            continue
+    today = datetime.now().date()
+    due = {d for d in issued if d <= today}
+    return len(issued), len(due), issued
+
+
 @router.get("/streak", response_model=StreakResponse)
-def get_streak(user_id: str = Query("user_default")):
+def get_streak(
+    user_id: str = Query("user_default"),
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, user_id)
     state = progression_service.get_progress_state(user_id)
     logs = progression_service.get_session_logs(user_id)
     current_streak, best_streak = _compute_streaks(logs)
 
     today = datetime.now().date()
     this_week_start = today - timedelta(days=today.weekday())
-    # Count distinct days, not sessions.
+    # Count distinct active days (never sessions on one day).
+    active_days = {
+        day for day in (_session_day(log) for log in logs) if day is not None
+    }
     active_days_this_week = sum(
-        1
-        for log in logs
-        if log.get("created_at")
-        and datetime.fromisoformat(str(log["created_at"]).replace("Z", "+00:00")).date()
-        >= this_week_start
+        1 for d in active_days if this_week_start <= d < this_week_start + timedelta(days=7)
     )
+    target_active_days, due_count, _issued = _issued_week_schedule(
+        user_id, this_week_start
+    )
+    # Adherence uses the actual issued obligations that are due; an
+    # unissued/future obligation is never counted as missed.
     weekly_adherence = (
-        round(active_days_this_week / 4 * 100, 1) if active_days_this_week else 0.0
+        round(
+            min(active_days_this_week, due_count) / max(due_count, 1) * 100,
+            1,
+        )
+        if due_count
+        else 0.0
     )
 
     return StreakResponse(
@@ -75,12 +131,16 @@ def get_streak(user_id: str = Query("user_default")):
         best_streak=best_streak,
         weekly_adherence_pct=weekly_adherence,
         active_days_this_week=active_days_this_week,
-        total_active_days_target=4,
+        total_active_days_target=target_active_days,
     )
 
 
 @router.get("/progress", response_model=ProgressSummaryResponse)
-def get_progress(user_id: str = Query("user_default")):
+def get_progress(
+    user_id: str = Query("user_default"),
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, user_id)
     state = progression_service.get_progress_state(user_id)
 
     logged = state["logged_sessions_count"]
@@ -88,18 +148,113 @@ def get_progress(user_id: str = Query("user_default")):
     today = datetime.now().date()
     elapsed_days = today.day
     month_days = {
-        datetime.fromisoformat(str(log["created_at"]).replace("Z", "+00:00")).date()
-        for log in progression_service.get_session_logs(user_id)
-        if log.get("created_at")
+        day
+        for day in (
+            _session_day(log)
+            for log in progression_service.get_session_logs(user_id)
+        )
+        if day is not None
     }
+    month_days.update(
+        day
+        for day in (
+            _session_day(log)
+            for log in supabase_service.list_activity_logs(user_id)
+        )
+        if day is not None
+    )
     active_month_days = sum(
         1 for d in month_days if d.year == today.year and d.month == today.month
     )
+    session_logs = progression_service.get_session_logs(user_id)
+    all_dates = {
+        day
+        for day in (_session_day(log) for log in session_logs)
+        if day is not None
+    }
+    all_dates.update(
+        day
+        for day in (
+            _session_day(log)
+            for log in supabase_service.list_activity_logs(user_id)
+        )
+        if day is not None
+    )
+    milestones = []
+    if len(all_dates) >= 1:
+        milestones.append(
+            {
+                "id": "first_active_day",
+                "title": "First Active Day",
+                "date": min(all_dates).isoformat(),
+                "status": "Completed",
+            }
+        )
+    if len(all_dates) >= 3:
+        milestones.append(
+            {
+                "id": "three_active_days",
+                "title": "3 Active Days",
+                "date": sorted(all_dates)[2].isoformat(),
+                "status": "Completed",
+            }
+        )
+    if len(all_dates) >= 5:
+        milestones.append(
+            {
+                "id": "five_active_days",
+                "title": "5 Active Days",
+                "date": sorted(all_dates)[4].isoformat(),
+                "status": "Completed",
+            }
+        )
     monthly_consistency = (
         round(active_month_days / max(elapsed_days, 1) * 100, 1)
         if active_month_days
         else 0.0
     )
+
+    def duration_minutes_of(row: dict) -> Optional[float]:
+        seconds = row.get("active_duration_seconds")
+        if seconds is not None:
+            return float(seconds) / 60
+        minutes = row.get("duration_minutes")
+        if minutes is not None:
+            return float(minutes)
+        return None
+
+    activity_logs_all = supabase_service.list_activity_logs(user_id)
+    month_active_minutes = 0.0
+    for row in session_logs:
+        row_day = _session_day(row)
+        if row_day and row_day.year == today.year and row_day.month == today.month:
+            value = duration_minutes_of(row)
+            if value is not None:
+                month_active_minutes += value
+    for row in activity_logs_all:
+        row_day = _session_day(row)
+        if row_day and row_day.year == today.year and row_day.month == today.month:
+            value = duration_minutes_of(row)
+            if value is not None:
+                month_active_minutes += value
+
+    # A workout counts once per scheduled obligation/day; per-exercise logs on
+    # the same scheduled workout must not inflate the total.
+    workout_keys = {
+        (
+            str(row.get("scheduled_workout_id"))
+            if row.get("scheduled_workout_id")
+            else (
+                str(_session_day(row))
+                if _session_day(row) is not None
+                else None
+            )
+        )
+        for row in session_logs
+        if row.get("completion_pct") is not None
+        and float(row.get("completion_pct") or 0) >= 80
+    }
+    workout_keys.discard(None)
 
     return ProgressSummaryResponse(
         user_id=user_id,
@@ -110,12 +265,19 @@ def get_progress(user_id: str = Query("user_default")):
         strength_variation_levels=state["strength_variation_levels"],
         logged_sessions_count=logged,
         recent_activity_completions=state["activity_completion_pct"],
+        workouts_completed=len(workout_keys),
+        total_active_minutes=round(month_active_minutes, 1),
+        milestones=milestones,
     )
 
 
 @session_router.get("/sessions")
-def get_sessions(user_id: str = Query("user_default")):
+def get_sessions(
+    user_id: str = Query("user_default"),
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
     """Returns the user's actual logged workout sessions, newest first."""
+    user_id = resolve_user_id(verified, user_id)
     sessions = supabase_service.load_workout_sessions(user_id)
     sessions.sort(key=lambda s: str(s.get("created_at") or ""), reverse=True)
     return {"sessions": sessions}

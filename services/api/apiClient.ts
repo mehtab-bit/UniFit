@@ -85,7 +85,11 @@ export async function apiRequest<T>(
       );
     }
 
-    return (await response.json()) as T;
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    const text = await response.text();
+    return (text ? JSON.parse(text) : undefined) as T;
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {

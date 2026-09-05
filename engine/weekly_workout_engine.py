@@ -406,6 +406,16 @@ class WorkoutDatabase:
             f"lifestyle={lifestyle}, week={rule_week}"
         )
 
+_WORKOUT_DB_CACHE: Optional[WorkoutDatabase] = None
+
+
+def get_workout_database() -> WorkoutDatabase:
+    """Returns the shared immutable parsed rule database."""
+    global _WORKOUT_DB_CACHE
+    if _WORKOUT_DB_CACHE is None:
+        _WORKOUT_DB_CACHE = WorkoutDatabase()
+    return _WORKOUT_DB_CACHE
+
 
 # ============================================================
 # INPUT VALIDATION
@@ -603,6 +613,113 @@ def summarize_week_completion(
         activity_completion_pct=activity_summary,
         exercise_completion_pct=exercise_summary,
     )
+
+
+def summarize_planned_week(
+    obligations: list[dict],
+    attempts: list[dict],
+) -> ProgressState:
+    """Summarizes a week against its issued plan.
+
+    ``obligations`` are the non-rest scheduled workouts issued for the week
+    (each carries a stable identity: scheduled_workout_id or local_date plus
+    activity/progression key). ``attempts`` are actual recordings.
+
+    Rules:
+      - unattempted obligations are included as zero (no averaging of only the
+        work that happened to be logged);
+      - repeated attempts roll up to one scheduled workout and are capped at
+        100%, so they cannot inflate progress beyond the prescription;
+      - overall completion = completed obligations / planned obligations.
+    """
+    total = len(obligations)
+    if total == 0:
+        return ProgressState(overall_completion_pct=None)
+
+    def obligation_key(ob: dict) -> str:
+        identity = ob.get("scheduled_workout_id") or ob.get("local_date")
+        if identity:
+            return str(identity)
+        return ":".join(
+            [
+                str(ob.get("day") or ""),
+                str(ob.get("activity_id") or ob.get("progression_key") or ""),
+            ]
+        )
+
+    best_by_obligation: dict[str, float] = {}
+    attempts_by_key: dict[str, list[dict]] = {}
+    for attempt in attempts:
+        identity = (
+            attempt.get("scheduled_workout_id")
+            or attempt.get("local_date")
+        )
+        if not identity:
+            continue
+        key = str(identity)
+        pct = max(
+            0.0,
+            min(float(attempt.get("completion_pct") or 0.0), 100.0),
+        )
+        best_by_obligation[key] = max(
+            best_by_obligation.get(key, 0.0),
+            pct,
+        )
+        attempts_by_key.setdefault(key, []).append(attempt)
+
+    obligation_keys = [obligation_key(ob) for ob in obligations]
+    # Cap per-obligation completion at 100 and average only planned work.
+    overall_total = sum(
+        min(best_by_obligation.get(key, 0.0), 100.0)
+        for key in obligation_keys
+    )
+
+    activity_aggregate: dict[str, list[float]] = defaultdict(list)
+    for obligation in obligations:
+        key = obligation_key(obligation)
+        progression_key = str(
+            obligation.get("progression_key")
+            or obligation.get("activity_id")
+            or "strength"
+        )
+        activity_aggregate[progression_key].append(
+            min(best_by_obligation.get(key, 0.0), 100.0)
+        )
+
+    exercise_aggregate: dict[str, list[float]] = defaultdict(list)
+    # Exercise families appear inside strength obligations. A family is
+    # planned only when its obligation includes exercise data.
+    for obligation in obligations:
+        obligation_identity = obligation_key(obligation)
+        obligation_attempts = attempts_by_key.get(obligation_identity, [])
+        family_values: dict[str, list[float]] = defaultdict(list)
+        for attempt in obligation_attempts:
+            for family, pct in (attempt.get("exercise_completion_pct") or {}).items():
+                if family not in STRENGTH_FAMILIES:
+                    continue
+                family_values[family].append(max(0.0, min(float(pct), 100.0)))
+        exercises = obligation.get("exercises") or []
+        for ex in exercises:
+            family = ex.get("family") or ex.get("exercise_family")
+            if family not in STRENGTH_FAMILIES:
+                continue
+            exercise_aggregate[family].append(
+                min(max(family_values.get(family, [0.0])), 100.0)
+            )
+
+    state = ProgressState(
+        overall_completion_pct=round(overall_total / total, 1),
+        activity_completion_pct={
+            activity: round(sum(vals) / len(vals), 1)
+            for activity, vals in activity_aggregate.items()
+        },
+        exercise_completion_pct={
+            family: round(sum(vals) / len(vals), 1)
+            for family, vals in exercise_aggregate.items()
+            if vals
+        },
+    )
+    return state
 
 
 # ============================================================
@@ -852,6 +969,100 @@ def determine_strength_variation_level(
         previous_level + 1,
         recommended_level,
         3,
+    )
+
+
+def strength_experience_initial_level(
+    strength_experience: Optional[str],
+) -> dict[str, int]:
+    """Maps the quiz experience answer to starting variation levels."""
+    base = {
+        "new": 1,
+        "some_experience": 2,
+        "regularly_train": 3,
+    }.get(strength_experience or "", 1)
+    return {family: base for family in STRENGTH_FAMILIES}
+
+
+def constrain_variation_level_to_equipment(
+    database: WorkoutDatabase,
+    family: str,
+    requested_level: int,
+    strength_equipment: Optional[list[str]],
+) -> int:
+    """Lowers a variation level until it matches the user's declared
+    equipment. Furniture/support variations (chair, wall, stable surface) are
+    treated as environmental, not equipment purchases; resistance variations
+    require dumbbells, household weights, bands, or an explicit other choice.
+    """
+    declared = {
+        str(item).strip().lower()
+        for item in (strength_equipment or [])
+    }
+    for level in range(max(1, requested_level), 0, -1):
+        candidates = [
+            row
+            for row in database.variations
+            if row["exercise_family"] == family
+            and int(row["difficulty_level"]) == level
+        ]
+        for variation in candidates:
+            required = (variation.get("equipment") or "").lower()
+            if "none" in required or required in {"", "bodyweight"}:
+                return level
+            if any(
+                token in required
+                for token in (
+                    "chair",
+                    "wall",
+                    "stable support",
+                    "bench",
+                    "table",
+                )
+            ):
+                return level
+            if any(
+                token in required
+                for token in (
+                    "dumbbell",
+                    "water bottle",
+                    "backpack",
+                    "household",
+                    "resistance",
+                    "band",
+                )
+            ):
+                # Level-1 "light household resistance" (e.g. small water
+                # bottles) is treated as universally available for a beginner
+                # who selected no equipment; loaded/heavier resistance levels
+                # still require declared equipment.
+                if (
+                    level == 1
+                    and "water bottle" in required
+                    and declared == {"no_equipment"}
+                ):
+                    return level
+                if declared and declared != {"no_equipment"}:
+                    return level
+    # No eligible variation exists for the declared equipment. Keep level 1
+    # only when it is genuinely bodyweight/environmental; otherwise fail with
+    # an explicit unsupported result instead of silently claiming adaptation.
+    level_one = [
+        row
+        for row in database.variations
+        if row["exercise_family"] == family
+        and int(row["difficulty_level"]) == 1
+    ]
+    for variation in level_one:
+        required = (variation.get("equipment") or "").lower()
+        if "none" in required or any(
+            token in required
+            for token in ("chair", "wall", "stable support", "bench", "table")
+        ):
+            return 1
+    raise ValueError(
+        f"No exercise variation for {family} is eligible with the declared "
+        "equipment. Add dumbbells or household weights to your profile."
     )
 
 
@@ -1287,6 +1498,7 @@ def build_strength_session(
     previous_state: ProgressState,
     initial_strength_levels: dict[str, int],
     accessibility_id: str,
+    strength_equipment: Optional[list[str]] = None,
 ) -> tuple[dict, dict[str, int], dict[str, int]]:
     session_rule = database.get_progression_rule(
         lifestyle,
@@ -1350,6 +1562,13 @@ def build_strength_session(
             previous_state=previous_state,
             initial_strength_levels=initial_strength_levels,
         )
+        if strength_equipment is not None:
+            level = constrain_variation_level_to_equipment(
+                database=database,
+                family=family,
+                requested_level=level,
+                strength_equipment=strength_equipment,
+            )
 
         current_variation_levels[family] = level
 
@@ -1473,6 +1692,8 @@ def generate_weekly_workout_plan(
     accessibility_resources: Optional[
         list[str]
     ] = None,
+    strength_equipment: Optional[list[str]] = None,
+    strength_experience: Optional[str] = None,
 ) -> dict:
     if accessibility_resources is None:
         accessibility_resources = []
@@ -1497,9 +1718,11 @@ def generate_weekly_workout_plan(
         previous_progress = ProgressState()
 
     if initial_strength_levels is None:
-        initial_strength_levels = {}
+        initial_strength_levels = strength_experience_initial_level(
+            strength_experience
+        )
 
-    database = WorkoutDatabase()
+    database = get_workout_database()
 
     accessibility_presentation = (
         build_accessibility_presentation(
@@ -1602,6 +1825,7 @@ def generate_weekly_workout_plan(
         previous_state=previous_progress,
         initial_strength_levels=initial_strength_levels,
         accessibility_id=accessibility_id,
+        strength_equipment=strength_equipment,
     )
 
     week = []

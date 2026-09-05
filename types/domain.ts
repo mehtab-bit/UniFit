@@ -57,6 +57,7 @@ export interface UserProfile {
   strength_equipment_other?: string;
   strength_experience: StrengthExperienceOption | null;
   onboarding_completed: boolean;
+  profile_revision?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -185,6 +186,14 @@ export interface PlanWorkoutItem {
  */
 export interface WorkoutCompletionPayload {
   user_id?: string;
+  operation_id?: string;
+  scheduled_workout_id?: string;
+  local_date?: string;
+  started_at?: string;
+  ended_at?: string;
+  active_duration_seconds?: number;
+  duration_minutes?: number;
+  notes?: string;
   activity_id: string;
   requested_activity_id?: string;
   progression_key: string;
@@ -250,6 +259,45 @@ export interface Meal {
   icon: string;
 }
 
+export interface MealLogNutrition {
+  calories_kcal?: number | null;
+  protein_g?: number | null;
+  carbohydrates_g?: number | null;
+  fat_g?: number | null;
+  fibre_g?: number | null;
+  carbohydrate_complete: boolean;
+  fiber_complete: boolean;
+}
+
+export interface MealLogEntry {
+  id: string;
+  user_id: string;
+  local_date: string;
+  meal_type?: MealType | null;
+  source: 'planned_meal' | 'food' | 'custom';
+  plan_meal_id?: string | null;
+  food_code?: string | null;
+  custom_name?: string | null;
+  quantity: number;
+  quantity_unit: 'serving' | 'gram' | 'piece';
+  nutrition: MealLogNutrition;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FoodCatalogItem {
+  food_code: string;
+  display_name: string;
+  energy_kcal?: number | null;
+  protein_g?: number | null;
+  carbohydrate_g?: number | null;
+  fat_g?: number | null;
+  fiber_g?: number | null;
+  carbohydrate_status?: string | null;
+  fiber_status?: string | null;
+}
+
 export interface MealPlan {
   id: string;
   date: string;
@@ -264,6 +312,7 @@ export type ActivityType = 'walking' | 'running' | 'cycling' | 'swimming' | 'str
 
 export interface ActivitySession {
   id: string;
+  date?: string;
   title: string;
   type: ActivityType;
   activity_id?: string;
@@ -271,11 +320,11 @@ export interface ActivitySession {
   progression_key?: string;
   session_type?: string;
   duration: string;
-  durationMinutes: number;
+  durationMinutes: number | null;
   distance?: string;
-  distanceKm?: number;
+  distanceKm?: number | null;
   calories: string;
-  caloriesNum: number;
+  caloriesNum: number | null;
   intensity?: WorkoutIntensity;
   icon: string;
   color: string;
@@ -284,9 +333,27 @@ export interface ActivitySession {
 
 export interface ActivitySummary {
   sessionsCount: number;
-  activeMinutes: number;
-  activeCalories: number;
-  totalDistanceKm?: number;
+  activeMinutes: number | null;
+  activeCalories: number | null;
+  totalDistanceKm?: number | null;
+}
+
+export interface ActivityLog {
+  id: string;
+  user_id: string;
+  activity_type: ActivityType;
+  local_date: string;
+  source: 'guided' | 'manual';
+  operation_id?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  active_duration_seconds?: number | null;
+  duration_minutes?: number | null;
+  distance_km?: number | null;
+  distance_entered: boolean;
+  completed: boolean;
+  notes?: string | null;
+  createdAt?: string;
 }
 
 // -------------------------------------------------------------

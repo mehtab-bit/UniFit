@@ -4,6 +4,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Platform,
+  Pressable,
+  Alert,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -15,9 +19,12 @@ import { AnimatedProgressRing } from '../../components/animations/AnimatedProgre
 import { ScalePressable } from '../../components/animations/ScalePressable';
 import { AsyncStateView } from '../../components/common/AsyncStateView';
 
-import { mealService } from '../../services';
-import { MealPlan } from '../../types/domain';
+import { mealService, mealLogService } from '../../services';
+import { MealLogEntry, MealPlan, Meal } from '../../types/domain';
 import { Surface } from '../../context/SurfaceContext';
+import { getAppToday, formatDateISO } from '../../utils/date';
+import { MealLogSheet } from '../../components/nutrition/MealLogSheet';
+import { FoodDatePicker } from '../../components/nutrition/FoodDatePicker';
 
 export default function FoodScreen() {
   const { user } = useAuth();
@@ -25,6 +32,11 @@ export default function FoodScreen() {
 
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
+  const [logEntries, setLogEntries] = useState<MealLogEntry[]>([]);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<MealLogEntry | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => formatDateISO());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,27 +44,117 @@ export default function FoodScreen() {
     try {
       setLoading(true);
       setError(null);
-      const plan = await mealService.getDailyMealPlan(user?.id);
+      const [plan, logs] = await Promise.all([
+        mealService.getDailyMealPlan(user?.id, selectedDate),
+        mealLogService.list(selectedDate),
+      ]);
       setMealPlan(plan);
+      setLogEntries(logs);
     } catch (err) {
       setError('Unable to load nutrition and meal plan. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, selectedDate]);
 
   useEffect(() => {
     loadMealData();
   }, [loadMealData]);
 
   const targets = mealPlan?.targets;
-  const consumedCalories = targets?.consumedCalories || 0;
+  const known = (value?: number | null) => (value == null ? 0 : Number(value));
+  const consumedCalories = logEntries.reduce(
+    (sum, entry) => sum + known(entry.nutrition.calories_kcal),
+    0
+  );
+  const consumedProtein = logEntries.reduce(
+    (sum, entry) => sum + known(entry.nutrition.protein_g),
+    0
+  );
+  const consumedCarbs = logEntries.reduce(
+    (sum, entry) => sum + known(entry.nutrition.carbohydrates_g),
+    0
+  );
+  const consumedFat = logEntries.reduce(
+    (sum, entry) => sum + known(entry.nutrition.fat_g),
+    0
+  );
   const targetCalories = targets?.calories ?? 0;
-  const remainingCalories = targets?.remainingCalories || Math.max(0, targetCalories - consumedCalories);
-  const progressPercent = Math.min(100, Math.round((consumedCalories / targetCalories) * 100));
+  const remainingCalories = Math.max(0, targetCalories - consumedCalories);
+  const progressPercent =
+    targetCalories > 0
+      ? Math.min(100, Math.round((consumedCalories / targetCalories) * 100))
+      : 0;
+  const proteinPct =
+    (targets?.proteinG ?? 0) > 0
+      ? Math.min(100, Math.round((consumedProtein / (targets?.proteinG || 1)) * 100))
+      : 0;
+  const carbsPct =
+    ((targets?.carbohydratesG ?? targets?.carbsG) ?? 0) > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (consumedCarbs /
+              ((targets?.carbohydratesG ?? targets?.carbsG) || 1)) *
+              100
+          )
+        )
+      : 0;
+  const fatPct =
+    (targets?.fatG ?? 0) > 0
+      ? Math.min(100, Math.round((consumedFat / (targets?.fatG || 1)) * 100))
+      : 0;
+
+  const logPlannedMeal = async (meal: Meal) => {
+    try {
+      await mealLogService.create({
+        local_date: selectedDate,
+        meal_type: meal.mealType,
+        source: 'planned_meal',
+        plan_meal_id: meal.id,
+        custom_name: meal.title,
+        quantity: meal.servings || 1,
+        quantity_unit: 'serving',
+        nutrition: {
+          calories_kcal: meal.calories,
+          protein_g: meal.proteinG,
+          carbohydrates_g: meal.carbohydratesG ?? meal.carbsG,
+          fat_g: meal.fatG,
+          fibre_g: meal.fibreG,
+          carbohydrate_complete:
+            meal.carbohydratesG != null || meal.carbsG != null,
+          fiber_complete: meal.fibreG != null,
+        },
+      });
+      setLogEntries(await mealLogService.list(selectedDate));
+      AccessibilityInfo.announceForAccessibility(`${meal.title} logged.`);
+    } catch {
+      Alert.alert('Could not log meal', 'Please check your connection and try again.');
+    }
+  };
+
+  const deleteLogEntry = async (entry: MealLogEntry) => {
+    try {
+      await mealLogService.remove(entry.id);
+      setLogEntries(await mealLogService.list(selectedDate));
+    } catch {
+      Alert.alert('Could not delete entry', 'Please try again.');
+    }
+  };
 
   const toggleMealExpand = (id: string) => {
     setExpandedMealId((prev) => (prev === id ? null : id));
+  };
+
+  const shiftDate = (delta: number) => {
+    const next = new Date(`${selectedDate}T00:00:00`);
+    next.setDate(next.getDate() + delta);
+    setSelectedDate(formatDateISO(next));
+  };
+
+  const openLogFood = () => {
+    setEditingEntry(null);
+    setShowLogModal(true);
   };
 
   return (
@@ -62,6 +164,33 @@ export default function FoodScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Nutrition</Text>
         <Text style={styles.headerSubtitle}>Fuel and macro tracking</Text>
+        <View style={styles.dateNavRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Previous day"
+            onPress={() => shiftDate(-1)}
+            style={styles.dateNavButton}
+          >
+            <Feather name="chevron-left" size={18} color="#0F172A" />
+          </Pressable>
+          <Text style={styles.dateNavText}>{selectedDate}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open date calendar"
+            onPress={() => setShowDatePicker(true)}
+            style={styles.dateNavButton}
+          >
+            <Feather name="calendar" size={16} color="#0EA5E9" />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next day"
+            onPress={() => shiftDate(1)}
+            style={styles.dateNavButton}
+          >
+            <Feather name="chevron-right" size={18} color="#0F172A" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -79,6 +208,14 @@ export default function FoodScreen() {
                     <Text style={styles.heroCalorieSub}>
                       <Text style={{ fontWeight: '800', color: '#FFFFFF' }}>{consumedCalories.toLocaleString()}</Text> CONSUMED  /  <Text style={{ fontWeight: '800', color: '#00C8FF' }}>{remainingCalories.toLocaleString()}</Text> REMAINING
                     </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={openLogFood}
+                      style={styles.logFoodButton}
+                    >
+                      <Feather name="plus" size={14} color="#FFFFFF" />
+                      <Text style={styles.logFoodButtonText}>Log Food</Text>
+                    </Pressable>
                   </View>
                   <AnimatedProgressRing
                     progress={progressPercent}
@@ -97,30 +234,34 @@ export default function FoodScreen() {
                   <View style={styles.macroProgressCol}>
                     <View style={styles.macroLabelRow}>
                       <Text style={styles.macroKey}>PROTEIN</Text>
-                      <Text style={styles.macroRatio}>{targets?.proteinG ?? 0}g</Text>
+                      <Text style={styles.macroRatio}>
+                        {consumedProtein}/{targets?.proteinG ?? 0}g
+                      </Text>
                     </View>
                     <View style={styles.macroTrack}>
-                      <View style={[styles.macroFill, { width: '85%', backgroundColor: '#00C8FF' }]} />
+                      <View style={[styles.macroFill, { width: `${proteinPct}%`, backgroundColor: '#00C8FF' }]} />
                     </View>
                   </View>
 
                   <View style={styles.macroProgressCol}>
                     <View style={styles.macroLabelRow}>
                       <Text style={styles.macroKey}>CARBS</Text>
-                      <Text style={styles.macroRatio}>{targets?.carbohydratesG ?? targets?.carbsG ?? 0}g</Text>
+                      <Text style={styles.macroRatio}>
+                        {consumedCarbs}/{targets?.carbohydratesG ?? targets?.carbsG ?? 0}g
+                      </Text>
                     </View>
                     <View style={styles.macroTrack}>
-                      <View style={[styles.macroFill, { width: '75%', backgroundColor: '#10B981' }]} />
+                      <View style={[styles.macroFill, { width: `${carbsPct}%`, backgroundColor: '#10B981' }]} />
                     </View>
                   </View>
 
                   <View style={styles.macroProgressCol}>
                     <View style={styles.macroLabelRow}>
                       <Text style={styles.macroKey}>FAT</Text>
-                      <Text style={styles.macroRatio}>{targets?.fatG ?? 0}g</Text>
+                      <Text style={styles.macroRatio}>{consumedFat}/{targets?.fatG ?? 0}g</Text>
                     </View>
                     <View style={styles.macroTrack}>
-                      <View style={[styles.macroFill, { width: '65%', backgroundColor: '#F59E0B' }]} />
+                      <View style={[styles.macroFill, { width: `${fatPct}%`, backgroundColor: '#F59E0B' }]} />
                     </View>
                   </View>
                 </View>
@@ -200,6 +341,15 @@ export default function FoodScreen() {
                                 <Text style={styles.prepNoteText}>{meal.preparationNote || meal.prepNote}</Text>
                               </View>
                             )}
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Log ${meal.title} as eaten`}
+                              onPress={() => void logPlannedMeal(meal)}
+                              style={styles.logThisMealButton}
+                            >
+                              <Feather name="check-circle" size={15} color="#FFFFFF" />
+                              <Text style={styles.logThisMealText}>Log this meal</Text>
+                            </Pressable>
                           </View>
                         )}
                       </ScalePressable>
@@ -209,8 +359,73 @@ export default function FoodScreen() {
               );
             })}
           </View>
+
+          {logEntries.length > 0 ? (
+            <View style={styles.logsSection}>
+              <View style={styles.mealsHeaderRow}>
+                <Text style={styles.sectionHeading}>LOG TODAY</Text>
+              </View>
+              {logEntries.map((entry) => (
+                <View key={entry.id} style={styles.logRow}>
+                  <View style={styles.logRowMain}>
+                    <Text style={styles.logRowTitle} numberOfLines={1}>
+                      {entry.custom_name || entry.plan_meal_id || 'Logged food'}
+                    </Text>
+                    <Text style={styles.logRowMeta}>
+                      {entry.nutrition.calories_kcal != null
+                        ? `${Math.round(entry.nutrition.calories_kcal)} kcal`
+                        : 'Calories unknown'}
+                      {entry.nutrition.protein_g != null
+                        ? ` · ${Math.round(entry.nutrition.protein_g)}g protein`
+                        : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.logActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${entry.custom_name || 'logged food'}`}
+                      onPress={() => {
+                        setEditingEntry(entry);
+                        setShowLogModal(true);
+                      }}
+                      style={styles.editLogButton}
+                    >
+                      <Feather name="edit-2" size={15} color="#0EA5E9" />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${entry.custom_name || 'logged food'}`}
+                      onPress={() => deleteLogEntry(entry)}
+                      style={styles.deleteLogButton}
+                    >
+                      <Feather name="trash-2" size={15} color="#EF4444" />
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </AsyncStateView>
       </ScrollView>
+
+      <MealLogSheet
+        visible={showLogModal}
+        date={selectedDate}
+        entry={editingEntry}
+        onClose={() => {
+          setShowLogModal(false);
+          setEditingEntry(null);
+        }}
+        onSaved={loadMealData}
+      />
+      <FoodDatePicker
+        visible={showDatePicker}
+        selectedDate={selectedDate}
+        onSelect={(date) => {
+          setSelectedDate(date);
+        }}
+        onClose={() => setShowDatePicker(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -220,6 +435,21 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 24, paddingVertical: 16, backgroundColor: '#F8FAFC' },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  dateNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  dateNavText: { fontSize: 13, fontWeight: '700', color: '#0F172A', minWidth: 90, textAlign: 'center' },
+  dateNavButton: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   scrollView: { flex: 1 },
   scrollContent: { padding: 24, paddingBottom: 100 },
   fuelHeroCard: {
@@ -271,4 +501,59 @@ const styles = StyleSheet.create({
   scaledAmount: { fontSize: 13, color: '#0F172A', fontWeight: '700' },
   prepNoteContainer: { backgroundColor: '#F1F5F9', padding: 12, borderRadius: 12 },
   prepNoteText: { fontSize: 13, color: '#334155', lineHeight: 18 },
+  logFoodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: 14,
+    backgroundColor: '#0EA5E9',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  logFoodButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
+  logThisMealButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    backgroundColor: '#0EA5E9',
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  logThisMealText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  logsSection: { marginTop: 8, paddingBottom: 24 },
+  logRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 8,
+    gap: 12,
+  },
+  logRowMain: { flex: 1 },
+  logRowTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  logRowMeta: { fontSize: 12, color: '#64748B', marginTop: 3 },
+  logActions: { flexDirection: 'row', gap: 8 },
+  deleteLogButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+  },
+  editLogButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0F9FF',
+  },
 });

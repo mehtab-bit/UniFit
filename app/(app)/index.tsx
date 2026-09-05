@@ -12,6 +12,8 @@ import {
   Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { subscribeToPlanChanges } from '../../services/api/combinedPlan';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -33,6 +35,7 @@ import {
   streakService,
   nutritionService,
   workoutNoteService,
+  mealLogService,
 } from '../../services';
 import {
   WorkoutPlan,
@@ -78,19 +81,31 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       setError(null);
-      const [planResult, todayResult, streakResult, nutritionResult] = await Promise.all([
+      const [planResult, todayResult, streakResult, nutritionResult, mealLogs] = await Promise.all([
         workoutService.getWeeklyPlan(user?.id),
         workoutService.getTodayWorkout(user?.id),
         streakService.getStreakData(user?.id),
         nutritionService.getDailyTargets(user?.id),
+        mealLogService.list(formatDateISO()),
       ]);
       setWeeklyPlan(planResult);
       setTodayWorkout(todayResult);
       setStreakData(streakResult);
-      setNutritionTargets(nutritionResult);
+      const consumedCalories = (mealLogs || []).reduce(
+        (sum, entry) =>
+          sum + (entry.nutrition.calories_kcal != null ? entry.nutrition.calories_kcal : 0),
+        0
+      );
+      setNutritionTargets({
+        ...nutritionResult,
+        consumedCalories,
+        remainingCalories: Math.max(0, (nutritionResult.calories || 0) - consumedCalories),
+      });
 
       if (planResult?.days && !selectedDayId) {
-        const today = planResult.days.find((d) => d.status === 'today');
+        const today =
+          planResult.days.find((d) => d.date === todayResult?.date) ||
+          planResult.days.find((d) => d.status === 'today');
         if (today) setSelectedDayId(today.id);
         else setSelectedDayId(planResult.days[0].id);
       }
@@ -99,16 +114,29 @@ export default function HomeScreen() {
       const targetDate = todayResult?.date || formatDateISO();
       const existingNote = await workoutNoteService.getNote(targetDate, user?.id);
       setUserNote(existingNote);
-    } catch {
-      setError('Unable to load fitness dashboard. Please try again.');
+    } catch (err: any) {
+      const detail =
+        err?.message && typeof err.message === 'string'
+          ? err.message
+          : 'Unable to load fitness dashboard. Please try again.';
+      console.warn('Home load failed:', err);
+      setError(detail);
     } finally {
       setLoading(false);
     }
   }, [user?.id, selectedDayId]);
 
+  useFocusEffect(
+    useCallback(() => {
+      void loadHomeData();
+    }, [loadHomeData])
+  );
+
   useEffect(() => {
-    loadHomeData();
-  }, [loadHomeData]);
+    return subscribeToPlanChanges(user?.id, () => {
+      void loadHomeData();
+    });
+  }, [loadHomeData, user?.id]);
 
   const handleOpenStreakPlan = () => {
     router.push('/(app)/streak-plan');

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 SexOption = Literal["male", "female"]
 FitnessGoalOption = Literal["fat_loss", "maintain", "muscle_gain", "lose_fat"]
@@ -78,3 +78,59 @@ class ProfilePreviewResponse(BaseModel):
     protein_targets: dict[str, float]
     lifestyle_target_active_days: int
     accessibility_summary: dict
+
+
+class ProfileWriteRequest(BaseModel):
+    """Complete committed profile contract (all onboarding fields)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    full_name: Optional[str] = None
+    age: Optional[int] = Field(default=None, ge=18, le=100)
+    sex: Optional[SexOption] = None
+    height_cm: Optional[float] = Field(default=None, gt=50, lt=260)
+    weight_kg: Optional[float] = Field(default=None, gt=25, lt=350)
+    fitness_goal: Optional[FitnessGoalOption] = Field(default=None, alias="goal")
+    lifestyle_activity: Optional[LifestyleOption] = None
+    diet: Optional[DietOption] = None
+    preferred_activities: list[str] = Field(default_factory=list)
+    accessibility_needs: list[AccessibilityOption] = Field(default_factory=list)
+    accessibility_other_details: Optional[str] = None
+    blind_low_vision_resources: list[str] = Field(default_factory=list)
+    has_exercise_restriction: Optional[bool] = None
+    exercise_restriction_description: Optional[str] = None
+    strength_equipment: list[str] = Field(default_factory=list)
+    strength_equipment_other: Optional[str] = None
+    strength_experience: Optional[str] = None
+    onboarding_completed: bool = False
+    expected_profile_revision: Optional[int] = Field(default=None, ge=1)
+
+
+class ProfileResponse(BaseModel):
+    """Full committed profile returned by GET/PUT /api/v1/profile/me."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: Optional[str] = None
+    user_id: str
+    full_name: Optional[str] = None
+    age: Optional[int] = None
+    sex: Optional[SexOption] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    fitness_goal: Optional[str] = None
+    lifestyle_activity: Optional[LifestyleOption] = None
+    diet: Optional[DietOption] = None
+    preferred_activities: list[str] = Field(default_factory=list)
+    accessibility_needs: list[str] = Field(default_factory=list)
+    accessibility_other_details: Optional[str] = None
+    blind_low_vision_resources: list[str] = Field(default_factory=list)
+    has_exercise_restriction: Optional[bool] = None
+    exercise_restriction_description: Optional[str] = None
+    strength_equipment: list[str] = Field(default_factory=list)
+    strength_equipment_other: Optional[str] = None
+    strength_experience: Optional[str] = None
+    onboarding_completed: bool = False
+    profile_revision: int = 1
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

@@ -14,8 +14,10 @@ both MoveNet and native MediaPipe pose engines.
 - [docs/engine.md](docs/engine.md) — the Python fitness engine (plans, nutrition, progression)
 - [docs/cv-coach.md](docs/cv-coach.md) — camera pose tracking, calibration, rep counting, form feedback
 - [docs/setup.md](docs/setup.md) — running it on your laptop and phone
+- [docs/deployment.md](docs/deployment.md) — EAS builds, Render env, and Supabase migrations
 - [docs/performance.md](docs/performance.md) — measured timings and what to profile next
 - [docs/audit.md](docs/audit.md) — historical over-engineering audit
+- [docs/recovery/final-status.md](docs/recovery/final-status.md) — current recovery status and open gaps
 
 > Note: `graphify-out/` is a locally generated code-map produced by the
 > graphify tool. It is not part of the repository and is not required to
@@ -31,6 +33,8 @@ both MoveNet and native MediaPipe pose engines.
 6. **Multi-Activity Tracking** — Walking, running, cycling, swimming, and strength session logging.
 7. **Pose Engine Selection** — Profile → Camera Engine picks Auto, MediaPipe (dev builds), or MoveNet (Expo Go / fallback), persisted per device.
 8. **Manual Counting Fallback** — Camera-free rep counting with audio/haptic confirmation and no fabricated scores.
+9. **Real Meal Logging** — Planned meals, catalog foods, or custom entries with quantity editing and day navigation.
+10. **Offline Durability** — Failed activity/camera saves queue on-device and replay under the same account when connected.
 
 ## Screen Flow
 
@@ -52,19 +56,15 @@ and `deep-onlyfrontend` are upstream UI source branches; `vijul-engine` is the
 standalone engine history. The Python engine and FastAPI backend are
 maintained inside this repo (see `backend/` and `engine/`).
 
-## Demo / Staging Deployment
+## Deployment
 
-This repository is intended for **staging/demo deployment, not production**.
-The development configuration is intentionally retained:
+The app ships from `main` through **EAS** for Android and **Render** for the
+FastAPI backend. Client-safe `EXPO_PUBLIC_*` values live in `eas.json`;
+private backend credentials are set only in the Render dashboard and local
+`.env` files. See [docs/deployment.md](docs/deployment.md).
 
-- Placeholder Supabase env values enable resilient local auth + offline demo data.
-- `demo@unifit.app` demo credentials are part of the app.
-- Offline mock services stand in for the FastAPI backend when it is unreachable.
-
-For a hosted demo, point `EXPO_PUBLIC_SUPABASE_URL`,
-`EXPO_PUBLIC_SUPABASE_ANON_KEY`, and `EXPO_PUBLIC_API_URL` at real services,
-then export the web app with `npx expo export -p web`. Full steps live in
-[docs/setup.md](docs/setup.md).
+Demo entry is gated: `EXPO_PUBLIC_DEMO_MODE=true` only in the EAS preview
+profile; release builds keep it `false`.
 
 ## Quick Start
 

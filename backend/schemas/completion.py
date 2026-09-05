@@ -8,6 +8,23 @@ from pydantic import BaseModel, Field
 
 class WorkoutCompletionRequest(BaseModel):
     user_id: Optional[str] = "user_default"
+    operation_id: Optional[str] = Field(
+        default=None,
+        description="Client-generated idempotency key reused on retries.",
+    )
+    scheduled_workout_id: Optional[str] = Field(
+        default=None,
+        description="Stable identity of the issued scheduled workout.",
+    )
+    local_date: Optional[str] = Field(
+        default=None,
+        description="User-local workout date YYYY-MM-DD.",
+    )
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    active_duration_seconds: Optional[int] = Field(default=None, ge=0)
+    duration_minutes: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
     activity_id: str = Field(..., description="Actual performed activity identifier")
     requested_activity_id: Optional[str] = Field(
         None, description="Original user preference before accessibility adaptation"
@@ -38,6 +55,7 @@ class WorkoutCompletionRequest(BaseModel):
 
 class WorkoutCompletionResponse(BaseModel):
     success: bool
+    duplicate: bool = False
     user_id: str
     activity_id: str
     progression_key: str

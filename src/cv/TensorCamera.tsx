@@ -71,12 +71,21 @@ export class TensorCamera extends React.Component<TensorCameraProps, TensorCamer
   private glViewRef: GLView | null = null;
   private glContext: ExpoWebGLRenderingContext | null = null;
   private rafId: number = 0;
+  private isMounted = false;
+  private cancellationRef: { active: boolean } = { active: true };
 
   state: TensorCameraState = {
     cameraLayout: null
   };
 
+  componentDidMount() {
+    this.isMounted = true;
+    this.cancellationRef = { active: true };
+  }
+
   componentWillUnmount() {
+    this.isMounted = false;
+    this.cancellationRef.active = false;
     cancelAnimationFrame(this.rafId);
 
     if (this.glContext) {
@@ -121,9 +130,21 @@ export class TensorCamera extends React.Component<TensorCameraProps, TensorCamer
 
   private onGLContextCreate = async (gl: ExpoWebGLRenderingContext) => {
     try {
+      if (!this.isMounted) {
+        // The screen disappeared while GL was initializing: release the new
+        // context immediately instead of resuming after cleanup.
+        GLView.destroyContextAsync(gl);
+        return;
+      }
       this.glContext = gl;
       const cameraTexture = await this.createCameraTexture();
       await detectGLCapabilities(gl);
+
+      if (!this.isMounted) {
+        GLView.destroyContextAsync(gl);
+        this.glContext = null;
+        return;
+      }
 
       const updateCameraPreview = this.previewUpdateFunc(gl, cameraTexture);
       const autorender = this.props.autorender ?? true;
@@ -155,7 +176,7 @@ export class TensorCamera extends React.Component<TensorCameraProps, TensorCamer
 
       const glHolder = { context: this.glContext };
 
-      const generator = (function* buildGenerator() {
+      const generator = (function* buildGenerator(activeToken: { active: boolean }) {
         const sourceDims = {
           width: cameraTextureWidth ?? 0,
           height: cameraTextureHeight ?? 0,
@@ -167,7 +188,7 @@ export class TensorCamera extends React.Component<TensorCameraProps, TensorCamer
           depth: resizeDepth ?? 3
         };
 
-        while (glHolder.context != null) {
+        while (glHolder.context != null && activeToken.active) {
           yield fromTexture(
             gl,
             cameraTexture,
@@ -177,9 +198,14 @@ export class TensorCamera extends React.Component<TensorCameraProps, TensorCamer
             { rotation: rotation ?? 0 }
           );
         }
-      })();
+      })(this.cancellationRef);
 
-      this.props.onReady(generator, updateCameraPreview, gl, cameraTexture);
+      if (this.isMounted) {
+        this.props.onReady(generator, updateCameraPreview, gl, cameraTexture);
+      } else {
+        GLView.destroyContextAsync(gl);
+        this.glContext = null;
+      }
     } catch (error) {
       this.props.onError?.(error instanceof Error ? error : new Error(String(error)));
     }

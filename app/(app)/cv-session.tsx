@@ -9,6 +9,8 @@ import {
   requestManualSession
 } from '../../src/cv/sessionEvents';
 import { workoutService } from '../../services';
+import { operationIdFromParts } from '../../utils/operationId';
+import { enqueuePending } from '../../lib/pendingQueue';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { WorkoutCompletionPayload } from '../../types/domain';
 import { useAuth } from '../../context/AuthContext';
@@ -49,6 +51,8 @@ export default function CvSessionScreen() {
     activityId?: string;
     progressionKey?: string;
     sessionType?: string;
+    scheduledWorkoutId?: string;
+    date?: string;
     nonce?: string;
   }>();
   const { provideFeedback } = useAccessibility();
@@ -96,6 +100,15 @@ export default function CvSessionScreen() {
       issueCodes: string[] | null = null
     ): WorkoutCompletionPayload => ({
       user_id: user?.id || 'user_default',
+      operation_id: operationIdFromParts(
+        user?.id,
+        params.scheduledWorkoutId,
+        params.date,
+        params.exerciseId || family,
+        params.nonce || family
+      ),
+      scheduled_workout_id: params.scheduledWorkoutId,
+      local_date: params.date,
       activity_id: params.activityId || 'strength',
       requested_activity_id: params.activityId || 'strength',
       progression_key: params.progressionKey || params.activityId || 'strength',
@@ -114,14 +127,40 @@ export default function CvSessionScreen() {
 
   const logCompletion = useCallback(
     async (payload: WorkoutCompletionPayload, repsCompleted: number) => {
-      await workoutService.logWorkoutCompletion(
-        payload,
-        25,
-        repsCompleted,
-        user?.id
-      );
+      try {
+        await workoutService.logWorkoutCompletion(
+          payload,
+          25,
+          repsCompleted,
+          user?.id
+        );
+      } catch {
+        if (user?.id) {
+          try {
+            await enqueuePending(user.id, {
+              id:
+                payload.operation_id ||
+                operationIdFromParts(user.id, payload.activity_id, 'cv'),
+              kind: 'workout_create',
+              payload,
+            });
+            Alert.alert(
+              'Saved on this device',
+              'Your workout will sync when you are back online.'
+            );
+          } catch {
+            Alert.alert(
+              'Could not save workout',
+              'Your progress could not be stored. Please try again.'
+            );
+          }
+        } else {
+          Alert.alert('Could not save workout', 'Please sign in and try again.');
+        }
+      }
+      router.back();
     },
-    [user?.id]
+    [router, user?.id]
   );
 
   const savePartialAndExit = useCallback(
@@ -138,9 +177,7 @@ export default function CvSessionScreen() {
         priority: 'high',
         haptic: 'success'
       });
-      void logCompletion(makePayload(fraction, totalDone, 'camera'), totalDone).finally(
-        () => router.back()
-      );
+      void logCompletion(makePayload(fraction, totalDone, 'camera'), totalDone);
     },
     [logCompletion, makePayload, plan.totalReps, provideFeedback, router]
   );
@@ -200,7 +237,7 @@ export default function CvSessionScreen() {
         averageScore,
         Array.from(issueCodesRef.current)
       );
-      void logCompletion(payload, reps).finally(() => router.back());
+      void logCompletion(payload, reps);
     },
     [exerciseId, family, logCompletion, makePayload, router]
   );

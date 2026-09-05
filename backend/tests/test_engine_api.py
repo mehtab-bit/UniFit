@@ -6,6 +6,14 @@ Verifies the 12 core engine contracts specified in the requirements.
 
 from __future__ import annotations
 
+import os
+
+# Deterministic engine tests must never depend on a live Supabase project or
+# require a real bearer token: force isolated auth + in-memory persistence
+# before importing the app.
+os.environ["UNIFIT_AUTH_MODE"] = "dev"
+os.environ["UNIFIT_PERSISTENCE"] = "offline"
+
 import pytest
 from fastapi.testclient import TestClient
 

@@ -36,7 +36,8 @@ export function keypointsMoved(
     if (
       ka.name !== kb.name ||
       Math.abs(ka.x - kb.x) > threshold ||
-      Math.abs(ka.y - kb.y) > threshold
+      Math.abs(ka.y - kb.y) > threshold ||
+      Math.abs((ka.score ?? 0) - (kb.score ?? 0)) > 0.2
     ) {
       return true;
     }

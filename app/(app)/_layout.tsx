@@ -111,6 +111,10 @@ export default function AppTabsLayout() {
         name="cv-native-test"
         options={{ href: null, tabBarStyle: { display: 'none' } }}
       />
+      <Tabs.Screen
+        name="activity-session"
+        options={{ href: null, tabBarStyle: { display: 'none' } }}
+      />
       <Tabs.Screen name="performance-test" options={{ href: null }} />
     </Tabs>
   );

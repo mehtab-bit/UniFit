@@ -1,15 +1,69 @@
-"""Profile preview and onboarding validation endpoints."""
+"""Profile preview and committed profile endpoints."""
 
-from fastapi import APIRouter, HTTPException
-from backend.schemas.profile import UserProfileRequest, ProfilePreviewResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from backend.schemas.profile import (
+    UserProfileRequest,
+    ProfilePreviewResponse,
+    ProfileWriteRequest,
+    ProfileResponse,
+)
 from backend.services.engine_service import engine_service
-from backend.services.supabase_service import supabase_service
+from backend.services.supabase_service import (
+    supabase_service,
+    ProfileConflictError,
+)
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
 
+@router.get("/me", response_model=ProfileResponse)
+def get_my_profile(
+    verified: VerifiedUser = Depends(require_user_dependency),
+) -> ProfileResponse:
+    user_id = resolve_user_id(verified, None)
+    row = supabase_service.get_profile(user_id)
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No committed profile exists for this account.",
+        )
+    return ProfileResponse.model_validate(row)
+
+
+@router.put("/me", response_model=ProfileResponse)
+def put_my_profile(
+    request: ProfileWriteRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+) -> ProfileResponse:
+    user_id = resolve_user_id(verified, None)
+    try:
+        row = supabase_service.commit_profile(
+            user_id=user_id,
+            profile=request.model_dump(exclude_unset=True),
+            expected_revision=request.expected_profile_revision,
+        )
+    except ProfileConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    return ProfileResponse.model_validate(row)
+
+
 @router.post("/preview", response_model=ProfilePreviewResponse)
-def preview_profile(request: UserProfileRequest):
+def preview_profile(
+    request: UserProfileRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, request.user_id)
     try:
         engine_profile = engine_service.create_user_profile(
             age=request.age,
@@ -22,10 +76,6 @@ def preview_profile(request: UserProfileRequest):
         )
 
         baseline = engine_service.calculate_baseline(engine_profile)
-
-        # Cache profile if user_id is provided
-        if request.user_id:
-            supabase_service.save_profile(request.user_id, request.model_dump())
 
         # Determine target active days
         active_days_map = {

@@ -7,7 +7,7 @@
 - **Node.js 20 or 22 LTS** + npm
 - **Expo SDK 52 tooling** (`npx expo` / Expo Go app for MoveNet-only runs)
 - **Python 3.12/3.13** for the FastAPI backend
-- A **Supabase project** (optional; the app falls back to local demo mode)
+- A **Supabase project** (required for live persistence)
 
 ## 1. Clone and install
 
@@ -26,12 +26,14 @@ Copy `.env.example` → `.env` and fill in:
 EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>   # private — never commit
+SUPABASE_JWT_SECRET=<jwt-secret>               # private — never commit
 EXPO_PUBLIC_API_URL=http://localhost:8000
 EXPO_PUBLIC_DEMO_MODE=false
+UNIFIT_AUTH_MODE=live                         # dev only for offline engine tests
+SUPABASE_AUTH_REMOTE_FALLBACK=false           # optional fallback
 ```
 
-Leave the Supabase values as placeholders for offline demo mode with resilient
-local auth + mock data.
+Never commit `.env`.
 
 ## 3. Start the backend
 
@@ -44,6 +46,10 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 Health check: http://localhost:8000/api/v1/health
+
+With a real Supabase project, the backend also requires `SUPABASE_JWT_SECRET`
+to verify mobile sessions. Set it in `.env` (and Render) before signing in
+from a device.
 
 ## 4. Run the app
 
@@ -89,9 +95,16 @@ choice is stored per device and applies to the next camera session:
 supabase db push
 ```
 
-This applies `supabase/migrations/*.sql`. The demo account `demo@unifit.app`
-is created through the Supabase dashboard/admin API (one-time). Without
-Supabase configured, the app uses local auth + mock services.
+This applies `supabase/migrations/*.sql` in timestamp order, including profile
+revisions, plan snapshots, session idempotency, meal logs, and activity logs.
+The demo account `demo@unifit.app` is created through the Supabase
+dashboard/admin API (one-time).
+
+## 7. EAS / Release
+
+See [docs/deployment.md](docs/deployment.md). Preview APKs use
+`eas build -p android --profile preview`; store release uses
+`--profile production`. Never put service-role or JWT secrets in `eas.json`.
 
 ## Running tests
 
@@ -114,5 +127,6 @@ pytest backend/tests/test_engine_api.py   # engine integration (in venv)
 ## Architecture & deeper docs
 
 - `docs/architecture.md` — full system map
+- `docs/deployment.md` — EAS/Render/Supabase release steps
 - `docs/engine.md` — the Python fitness engine
 - `docs/cv-coach.md` — camera pose tracking, calibration, rep counting
