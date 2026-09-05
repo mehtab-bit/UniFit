@@ -242,11 +242,10 @@ export function usePoseDetection(
         if (shouldDetect) {
           isDetectingRef.current = true;
           lastDetectionAtRef.current = now;
-
-          const imageTensor = images.next().value;
-
-          if (imageTensor) {
-            try {
+          let imageTensor: tf.Tensor3D | undefined;
+          try {
+            imageTensor = images.next().value;
+            if (imageTensor) {
               const poses = await detectorRef.current?.estimatePoses(imageTensor);
               const pose = poses?.[0];
 
@@ -295,19 +294,20 @@ export function usePoseDetection(
                 }
                 setError(null);
               }
-            } catch (detectError) {
-              if (isActiveRef.current) {
-                setError(
-                  detectError instanceof Error
-                    ? detectError.message
-                    : 'Pose detection failed.'
-                );
-              }
-            } finally {
-              tf.dispose(imageTensor);
-              isDetectingRef.current = false;
-
             }
+          } catch (detectError) {
+            if (isActiveRef.current) {
+              setError(
+                detectError instanceof Error
+                  ? detectError.message
+                  : 'Pose detection failed.'
+              );
+            }
+          } finally {
+            if (imageTensor) {
+              tf.dispose(imageTensor);
+            }
+            isDetectingRef.current = false;
           }
         }
 
