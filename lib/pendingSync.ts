@@ -4,6 +4,7 @@
  */
 
 import { mealLogService, activityLogService } from '../services';
+import { supabase } from './supabase';
 import {
   PendingOperation,
   readPending,
@@ -12,13 +13,18 @@ import {
 
 export async function syncPendingOperations(userId: string): Promise<void> {
   const pending = await readPending(userId);
+  const { data } = await supabase.auth.getSession();
+  if (data.session?.user?.id && data.session.user.id !== userId) {
+    // Never replay one account's queue under a different signed-in user.
+    return;
+  }
   for (const operation of pending) {
     try {
       await replayOperation(userId, operation);
       await removePending(userId, operation.id);
     } catch {
-      // Leave it queued; next successful profile load retries again.
-      return;
+      // Leave this entry queued and keep trying the remaining entries on the
+      // next successful profile load.
     }
   }
 }

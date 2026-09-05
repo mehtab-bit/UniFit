@@ -122,6 +122,14 @@ export default function ActivitySessionScreen() {
   };
 
   const save = async (completed: boolean) => {
+    const attemptOperationId =
+      editingLog
+        ? undefined
+        : operationIdFromParts(
+            user?.id,
+            activityType,
+            `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          );
     const durationSeconds = manual
       ? minutesInput.trim()
         ? Math.round(Number(minutesInput) * 60)
@@ -151,11 +159,7 @@ export default function ActivitySessionScreen() {
           activity_type: activityType,
           local_date: formatDateISO(getAppToday()),
           source: manual ? 'manual' : 'guided',
-          operation_id: operationIdFromParts(
-            user?.id,
-            activityType,
-            manual ? 'manual' : startedAtRef.current || 'guided'
-          ),
+          operation_id: attemptOperationId,
           started_at: startedAtRef.current || undefined,
           ended_at: new Date().toISOString(),
           ...payload,
@@ -166,19 +170,14 @@ export default function ActivitySessionScreen() {
       if (!editingLog && user?.id) {
         try {
           const localDate = formatDateISO(getAppToday());
-          const operationId = operationIdFromParts(
-            user.id,
-            activityType,
-            manual ? 'manual' : startedAtRef.current || 'guided'
-          );
           await enqueuePending(user.id, {
-            id: operationIdFromParts(user.id, activityType, 'queued'),
+            id: attemptOperationId || operationIdFromParts(user.id, activityType, `${Date.now()}`),
             kind: 'activity_create',
             payload: {
               activity_type: activityType,
               local_date: localDate,
               source: manual ? 'manual' : 'guided',
-              operation_id: operationId,
+              operation_id: attemptOperationId,
               started_at: startedAtRef.current || undefined,
               ended_at: new Date().toISOString(),
               active_duration_seconds: durationSeconds,
@@ -285,7 +284,7 @@ export default function ActivitySessionScreen() {
               <View style={styles.timerActions}>
                 {!running ? (
                   <Pressable
-                    onPress={elapsed > 0 ? pauseTimer : startTimer}
+                    onPress={startTimer}
                     style={styles.timerPrimary}
                   >
                     <Text style={styles.timerPrimaryText}>{elapsed > 0 ? 'Resume' : 'Start'}</Text>

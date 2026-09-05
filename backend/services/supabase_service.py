@@ -649,6 +649,17 @@ class SupabaseService:
         self._require_user_id(user_id)
         if self.is_connected and self.client:
             try:
+                if entry.get("operation_id"):
+                    duplicate = (
+                        self.client.table("user_activity_logs")
+                        .select("*")
+                        .eq("user_id", user_id)
+                        .eq("operation_id", entry.get("operation_id"))
+                        .limit(1)
+                        .execute()
+                    )
+                    if duplicate.data:
+                        return duplicate.data[0]
                 resp = (
                     self.client.table("user_activity_logs")
                     .insert(entry)
@@ -667,7 +678,11 @@ class SupabaseService:
         if row.get("operation_id") and any(
             r.get("operation_id") == row.get("operation_id") for r in rows
         ):
-            return rows[-1]
+            return next(
+                r
+                for r in rows
+                if r.get("operation_id") == row.get("operation_id")
+            )
         rows.append(row)
         return row
 

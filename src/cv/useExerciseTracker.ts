@@ -61,6 +61,13 @@ export function useExerciseTracker(
 
   useEffect(() => {
     trackEffectBurst('tracker.reset');
+    if (sideOverride) {
+      // Controlled side changes (bilateral switch) own the tracker side:
+      // update the authoritative value here so reset and side state move
+      // together instead of leaving a stale second copy behind.
+      sideLockedRef.current = sideOverride;
+      setActiveSide(sideOverride);
+    }
     recentAnglesRef.current = [];
     setSmoothedAngle(null);
     setCalibrationPhase('idle');
