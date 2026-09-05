@@ -12,6 +12,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -33,6 +34,7 @@ import {
   streakService,
   nutritionService,
   workoutNoteService,
+  mealLogService,
 } from '../../services';
 import {
   WorkoutPlan,
@@ -78,16 +80,26 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       setError(null);
-      const [planResult, todayResult, streakResult, nutritionResult] = await Promise.all([
+      const [planResult, todayResult, streakResult, nutritionResult, mealLogs] = await Promise.all([
         workoutService.getWeeklyPlan(user?.id),
         workoutService.getTodayWorkout(user?.id),
         streakService.getStreakData(user?.id),
         nutritionService.getDailyTargets(user?.id),
+        mealLogService.list(formatDateISO()),
       ]);
       setWeeklyPlan(planResult);
       setTodayWorkout(todayResult);
       setStreakData(streakResult);
-      setNutritionTargets(nutritionResult);
+      const consumedCalories = (mealLogs || []).reduce(
+        (sum, entry) =>
+          sum + (entry.nutrition.calories_kcal != null ? entry.nutrition.calories_kcal : 0),
+        0
+      );
+      setNutritionTargets({
+        ...nutritionResult,
+        consumedCalories,
+        remainingCalories: Math.max(0, (nutritionResult.calories || 0) - consumedCalories),
+      });
 
       if (planResult?.days && !selectedDayId) {
         const today =
@@ -113,9 +125,11 @@ export default function HomeScreen() {
     }
   }, [user?.id, selectedDayId]);
 
-  useEffect(() => {
-    loadHomeData();
-  }, [loadHomeData]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadHomeData();
+    }, [loadHomeData])
+  );
 
   const handleOpenStreakPlan = () => {
     router.push('/(app)/streak-plan');
