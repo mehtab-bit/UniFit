@@ -51,6 +51,50 @@ def _compute_streaks(logs: list[dict]) -> tuple[int, int]:
     return current, best
 
 
+def _session_day(log: dict) -> Optional[date]:
+    local = log.get("local_date")
+    if local:
+        try:
+            return datetime.strptime(str(local)[:10], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    created = log.get("created_at")
+    if created:
+        try:
+            return datetime.fromisoformat(
+                str(created).replace("Z", "+00:00")
+            ).date()
+        except (ValueError, TypeError):
+            pass
+    return None
+
+
+def _issued_week_schedule(user_id: str, week_start: date) -> tuple[int, int, set[date]]:
+    """Returns (planned active target, due obligations, issued dates) from the
+    active plan snapshot. When no snapshot exists the schedule is unknown and
+    no fixed target is invented."""
+    snapshot = supabase_service.get_active_plan_snapshot(
+        user_id, week_start.isoformat()
+    )
+    if not snapshot:
+        return 0, 0, set()
+    workouts = (snapshot.get("plan_data") or {}).get("workouts") or []
+    issued: set[date] = set()
+    for day in workouts:
+        if day.get("is_rest_day"):
+            continue
+        local = day.get("local_date")
+        if not local:
+            continue
+        try:
+            issued.add(datetime.strptime(str(local)[:10], "%Y-%m-%d").date())
+        except ValueError:
+            continue
+    today = datetime.now().date()
+    due = {d for d in issued if d <= today}
+    return len(issued), len(due), issued
+
+
 @router.get("/streak", response_model=StreakResponse)
 def get_streak(
     user_id: str = Query("user_default"),
@@ -63,16 +107,25 @@ def get_streak(
 
     today = datetime.now().date()
     this_week_start = today - timedelta(days=today.weekday())
-    # Count distinct days, not sessions.
+    # Count distinct active days (never sessions on one day).
+    active_days = {
+        day for day in (_session_day(log) for log in logs) if day is not None
+    }
     active_days_this_week = sum(
-        1
-        for log in logs
-        if log.get("created_at")
-        and datetime.fromisoformat(str(log["created_at"]).replace("Z", "+00:00")).date()
-        >= this_week_start
+        1 for d in active_days if this_week_start <= d < this_week_start + timedelta(days=7)
     )
+    target_active_days, due_count, _issued = _issued_week_schedule(
+        user_id, this_week_start
+    )
+    # Adherence uses the actual issued obligations that are due; an
+    # unissued/future obligation is never counted as missed.
     weekly_adherence = (
-        round(active_days_this_week / 4 * 100, 1) if active_days_this_week else 0.0
+        round(
+            min(active_days_this_week, due_count) / max(due_count, 1) * 100,
+            1,
+        )
+        if due_count
+        else 0.0
     )
 
     return StreakResponse(
@@ -81,7 +134,7 @@ def get_streak(
         best_streak=best_streak,
         weekly_adherence_pct=weekly_adherence,
         active_days_this_week=active_days_this_week,
-        total_active_days_target=4,
+        total_active_days_target=target_active_days,
     )
 
 
@@ -98,9 +151,12 @@ def get_progress(
     today = datetime.now().date()
     elapsed_days = today.day
     month_days = {
-        datetime.fromisoformat(str(log["created_at"]).replace("Z", "+00:00")).date()
-        for log in progression_service.get_session_logs(user_id)
-        if log.get("created_at")
+        day
+        for day in (
+            _session_day(log)
+            for log in progression_service.get_session_logs(user_id)
+        )
+        if day is not None
     }
     active_month_days = sum(
         1 for d in month_days if d.year == today.year and d.month == today.month

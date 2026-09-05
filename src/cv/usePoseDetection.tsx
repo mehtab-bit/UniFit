@@ -118,6 +118,12 @@ export function usePoseDetection(
           modelUrl: modelIO
         });
 
+        if (!isActiveRef.current) {
+          // Session ended while the model was loading: dispose the freshly
+          // loaded model instead of leaking it outside the cleanup path.
+          detector.dispose();
+          return;
+        }
         if (isActiveRef.current) {
           detectorRef.current = detector;
           lastKeypointsRef.current = [];

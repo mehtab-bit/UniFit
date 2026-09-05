@@ -10,8 +10,9 @@ Living index of evidence produced by each package.
 | W03 (backend identity + shared store) | plan-identity pytest 3/3; vitest 45/45; typecheck | snapshot reuse + profile-edit regeneration | pending | Migration `20260905000003` required |
 | W04 | pending | pending | pending | — |
 | W05 | pending | pending | pending | — |
-| W06 | pending | pending | pending | — |
-| W07 | pending | pending | user device test required | — |
+| W05 | pytest idempotency; vitest 45/45; typecheck | operation-id retry | pending | Migration `20260905000004`; offline pending queue still required |
+| W06 | pytest plan-denominator 5/5; full backend 37/37 | planned obligations vs attempts | pending | Snapshots feed streak denominators; milestones/calendar remain |
+| W07 | typecheck; vitest 45/45 | lifecycle code fixes only | user device test required | Foreground gating + cancellation boundaries added; device cycles still needed |
 | W08 | pending | pending | user device test required | — |
 | W09 | pending | pending | pending | — |
 | W10 | pending | pending | pending | — |

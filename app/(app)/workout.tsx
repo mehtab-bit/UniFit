@@ -23,6 +23,7 @@ import { CooldownSection } from '../../components/workout/CooldownSection';
 import { AccessibilityGuidance } from '../../components/workout/AccessibilityGuidance';
 import { ManualSessionCard } from '../../components/workout/ManualSessionCard';
 import { workoutService } from '../../services';
+import { operationIdFromParts } from '../../utils/operationId';
 import {
   Exercise,
   StrengthFamily,
@@ -36,6 +37,13 @@ import {
 } from '../../src/cv/sessionEvents';
 
 const LIVE_FAMILIES: StrengthFamily[] = ['squat', 'lunge', 'pushup', 'bicep_curl', 'supported_row'];
+
+function localISODate(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 function familySlug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
@@ -124,6 +132,14 @@ export default function WorkoutScreen() {
       const family = exercise.family ?? familySlug(exercise.name);
       const payload: WorkoutCompletionPayload = {
         user_id: user?.id || 'user_default',
+        operation_id: operationIdFromParts(
+          user?.id,
+          workout?.id,
+          exercise.id,
+          family
+        ),
+        scheduled_workout_id: workout?.id,
+        local_date: workout?.date || localISODate(),
         activity_id: workout?.activity_id || workout?.activity || 'strength',
         requested_activity_id:
           workout?.activity_id || workout?.activity || 'strength',
@@ -235,7 +251,9 @@ export default function WorkoutScreen() {
               workout?.activity_id || workout?.activity || 'strength',
             progressionKey:
               workout?.progression_key || workout?.activity || 'strength',
-            sessionType: workout?.session_type
+            sessionType: workout?.session_type,
+            scheduledWorkoutId: workout?.id,
+            date: workout?.date
           }
         });
         return;
@@ -251,6 +269,9 @@ export default function WorkoutScreen() {
     const duration = workout.durationMinutes ?? 25;
     const payload: WorkoutCompletionPayload = {
       user_id: user?.id || 'user_default',
+      operation_id: operationIdFromParts(user?.id, workout.id, 'activity'),
+      scheduled_workout_id: workout.id,
+      local_date: workout.date || localISODate(),
       activity_id: workout.activity_id || workout.activity || 'strength',
       requested_activity_id:
         workout.activity_id || workout.activity || 'strength',

@@ -605,6 +605,113 @@ def summarize_week_completion(
     )
 
 
+def summarize_planned_week(
+    obligations: list[dict],
+    attempts: list[dict],
+) -> ProgressState:
+    """Summarizes a week against its issued plan.
+
+    ``obligations`` are the non-rest scheduled workouts issued for the week
+    (each carries a stable identity: scheduled_workout_id or local_date plus
+    activity/progression key). ``attempts`` are actual recordings.
+
+    Rules:
+      - unattempted obligations are included as zero (no averaging of only the
+        work that happened to be logged);
+      - repeated attempts roll up to one scheduled workout and are capped at
+        100%, so they cannot inflate progress beyond the prescription;
+      - overall completion = completed obligations / planned obligations.
+    """
+    total = len(obligations)
+    if total == 0:
+        return ProgressState(overall_completion_pct=None)
+
+    def obligation_key(ob: dict) -> str:
+        identity = ob.get("scheduled_workout_id") or ob.get("local_date")
+        if identity:
+            return str(identity)
+        return ":".join(
+            [
+                str(ob.get("day") or ""),
+                str(ob.get("activity_id") or ob.get("progression_key") or ""),
+            ]
+        )
+
+    best_by_obligation: dict[str, float] = {}
+    attempts_by_key: dict[str, list[dict]] = {}
+    for attempt in attempts:
+        identity = (
+            attempt.get("scheduled_workout_id")
+            or attempt.get("local_date")
+        )
+        if not identity:
+            continue
+        key = str(identity)
+        pct = max(
+            0.0,
+            min(float(attempt.get("completion_pct") or 0.0), 100.0),
+        )
+        best_by_obligation[key] = max(
+            best_by_obligation.get(key, 0.0),
+            pct,
+        )
+        attempts_by_key.setdefault(key, []).append(attempt)
+
+    obligation_keys = [obligation_key(ob) for ob in obligations]
+    # Cap per-obligation completion at 100 and average only planned work.
+    overall_total = sum(
+        min(best_by_obligation.get(key, 0.0), 100.0)
+        for key in obligation_keys
+    )
+
+    activity_aggregate: dict[str, list[float]] = defaultdict(list)
+    for obligation in obligations:
+        key = obligation_key(obligation)
+        progression_key = str(
+            obligation.get("progression_key")
+            or obligation.get("activity_id")
+            or "strength"
+        )
+        activity_aggregate[progression_key].append(
+            min(best_by_obligation.get(key, 0.0), 100.0)
+        )
+
+    exercise_aggregate: dict[str, list[float]] = defaultdict(list)
+    # Exercise families appear inside strength obligations. A family is
+    # planned only when its obligation includes exercise data.
+    for obligation in obligations:
+        obligation_identity = obligation_key(obligation)
+        obligation_attempts = attempts_by_key.get(obligation_identity, [])
+        family_values: dict[str, list[float]] = defaultdict(list)
+        for attempt in obligation_attempts:
+            for family, pct in (attempt.get("exercise_completion_pct") or {}).items():
+                if family not in STRENGTH_FAMILIES:
+                    continue
+                family_values[family].append(max(0.0, min(float(pct), 100.0)))
+        exercises = obligation.get("exercises") or []
+        for ex in exercises:
+            family = ex.get("family") or ex.get("exercise_family")
+            if family not in STRENGTH_FAMILIES:
+                continue
+            exercise_aggregate[family].append(
+                min(max(family_values.get(family, [0.0])), 100.0)
+            )
+
+    state = ProgressState(
+        overall_completion_pct=round(overall_total / total, 1),
+        activity_completion_pct={
+            activity: round(sum(vals) / len(vals), 1)
+            for activity, vals in activity_aggregate.items()
+        },
+        exercise_completion_pct={
+            family: round(sum(vals) / len(vals), 1)
+            for family, vals in exercise_aggregate.items()
+            if vals
+        },
+    )
+    return state
+
+
 # ============================================================
 # ACTIVITY PROGRESSION GATE
 # ============================================================

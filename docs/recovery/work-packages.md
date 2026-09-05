@@ -56,16 +56,27 @@ Required:
 ## W05 — Durable idempotent sessions
 
 Required:
-- [ ] Scheduled-workout and exercise-attempt identity; operation IDs; transactional persistence; local pending queue; retry/user separation
-- [ ] No success broadcast before durable save; partial/discard/back handling
+- [x] Scheduled-workout and exercise-attempt identity; operation IDs; transactional persistence
+- [ ] Local pending queue; retry/user separation
+- [x] No success broadcast before durable save
+- [ ] Partial/discard/back handling on camera screens
 
 ## W06 — Progression & summaries
 
 Required: plan-based denominators; persisted state; reconstructible history; calendar from snapshots; correct distinct-day counts; milestones from achievements; timezone rules.
+- [x] Plan-based denominators (planned obligations, capped attempts)
+- [x] Persisted state with progression revision
+- [x] Correct distinct-day streak/adherence vs issued schedule
+- [ ] Calendar from snapshots; milestones from achievements
+- [ ] Fully reconstructible history across workers
 
 ## W07 — Camera/workout lifecycle
 
 Required: stack placement above tabs; conditional camera activation; session tokens; disposal on cancellation; error forwarding; route validation; unified exit policy; device evidence.
+- [x] Conditional camera activation on foreground
+- [x] Disposal on cancellation (model + GL/generator)
+- [ ] Stack placement above tabs; unified exit policy
+- [ ] Device evidence: 20 entry/exit cycles, background/resume, permission revoke
 
 ## W08 — Coaching accuracy & manual parity
 

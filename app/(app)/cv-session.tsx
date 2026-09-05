@@ -9,6 +9,7 @@ import {
   requestManualSession
 } from '../../src/cv/sessionEvents';
 import { workoutService } from '../../services';
+import { operationIdFromParts } from '../../utils/operationId';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { WorkoutCompletionPayload } from '../../types/domain';
 import { useAuth } from '../../context/AuthContext';
@@ -49,6 +50,8 @@ export default function CvSessionScreen() {
     activityId?: string;
     progressionKey?: string;
     sessionType?: string;
+    scheduledWorkoutId?: string;
+    date?: string;
     nonce?: string;
   }>();
   const { provideFeedback } = useAccessibility();
@@ -96,6 +99,15 @@ export default function CvSessionScreen() {
       issueCodes: string[] | null = null
     ): WorkoutCompletionPayload => ({
       user_id: user?.id || 'user_default',
+      operation_id: operationIdFromParts(
+        user?.id,
+        params.scheduledWorkoutId,
+        params.date,
+        params.exerciseId || family,
+        params.nonce || family
+      ),
+      scheduled_workout_id: params.scheduledWorkoutId,
+      local_date: params.date,
       activity_id: params.activityId || 'strength',
       requested_activity_id: params.activityId || 'strength',
       progression_key: params.progressionKey || params.activityId || 'strength',

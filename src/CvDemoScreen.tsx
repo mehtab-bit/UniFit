@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AppState, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CameraType } from 'expo-camera';
 import { TensorCamera } from './cv/TensorCamera';
 import { usePoseDetection } from './cv/usePoseDetection';
@@ -168,6 +168,9 @@ function CvDemoScreenReady({
   const [restRemaining, setRestRemaining] = useState(0);
   const [restAnnouncePending, setRestAnnouncePending] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [isForegroundActive, setIsForegroundActive] = useState(
+    AppState.currentState === 'active'
+  );
   const { width: windowWidth } = useWindowDimensions();
   const { provideFeedback } = useAccessibility();
 
@@ -204,6 +207,16 @@ function CvDemoScreenReady({
   useEffect(() => {
     accessibilityRef.current = provideFeedback;
   }, [provideFeedback]);
+
+  // The native camera must only run while the screen is foregrounded. When
+  // the app is backgrounded, stop the feed so no camera frames, GL context,
+  // or detector activity continues underneath.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      setIsForegroundActive(state === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     onCompleteRef.current = onSessionComplete;
@@ -538,6 +551,9 @@ function CvDemoScreenReady({
     pose.modelStatus === 'ready' && missingRequired.length === 0;
 
   function renderCameraFeed() {
+    if (!isForegroundActive) {
+      return null;
+    }
     if (pose.native) {
       // Lazy-required so Expo Go/MoveNet bundles never evaluate the native
       // Vision Camera + MediaPipe modules.

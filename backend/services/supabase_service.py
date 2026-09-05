@@ -61,6 +61,7 @@ class SupabaseService:
         self._plan_snapshots: dict[str, dict[str, Any]] = {}
         self._scheduled_workouts: dict[str, dict[str, Any]] = {}
         self._cached_profiles: dict[str, dict[str, Any]] = {}
+        self._workout_sessions: dict[str, list[dict[str, Any]]] = {}
 
         if (
             SUPABASE_URL
@@ -413,7 +414,7 @@ class SupabaseService:
                 return list(resp.data or [])
             except Exception as e:
                 print(f"[SupabaseService] Failed to load workout sessions: {e}")
-        return []
+        return list(self._workout_sessions.get(user_id, []))
 
     def save_workout_session(self, session: dict[str, Any]) -> bool:
         """Persists a completed workout session to Supabase."""
@@ -424,7 +425,41 @@ class SupabaseService:
                 return True
             except Exception as e:
                 print(f"[SupabaseService] Failed to save workout session: {e}")
-        return False
+                return False
+            return True
+        # Offline / isolated mode: persist in the service's memory so retries,
+        # streaks, and tests behave like a durable store.
+        user_id = session.get("user_id") or "user_default"
+        existing = self._workout_sessions.setdefault(user_id, [])
+        operation_id = session.get("operation_id")
+        if operation_id and any(
+            row.get("operation_id") == operation_id for row in existing
+        ):
+            return True
+        existing.append(dict(session))
+        return True
+
+    def get_workout_session_by_operation_id(
+        self, user_id: str, operation_id: str
+    ) -> Optional[dict[str, Any]]:
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("user_workout_sessions")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .eq("operation_id", operation_id)
+                    .limit(1)
+                    .execute()
+                )
+                return resp.data[0] if resp.data else None
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to find workout session: {exc}")
+                return None
+        for row in self._workout_sessions.get(user_id, []):
+            if row.get("operation_id") == operation_id:
+                return row
+        return None
 
     def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
         """Persists the user's engine progression state to Supabase."""
@@ -450,7 +485,9 @@ class SupabaseService:
                 return True
             except Exception as e:
                 print(f"[SupabaseService] Failed to save progress state: {e}")
-        return False
+                return False
+            return True
+        return True
 
 
 supabase_service = SupabaseService()

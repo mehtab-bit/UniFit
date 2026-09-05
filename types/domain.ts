@@ -186,6 +186,14 @@ export interface PlanWorkoutItem {
  */
 export interface WorkoutCompletionPayload {
   user_id?: string;
+  operation_id?: string;
+  scheduled_workout_id?: string;
+  local_date?: string;
+  started_at?: string;
+  ended_at?: string;
+  active_duration_seconds?: number;
+  duration_minutes?: number;
+  notes?: string;
   activity_id: string;
   requested_activity_id?: string;
   progression_key: string;

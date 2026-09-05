@@ -15,6 +15,7 @@ import {
 import { apiClient } from './apiClient';
 import { Colors } from '../../constants/colors';
 import { fetchCombinedWeek, clearCombinedWeek } from './combinedPlan';
+import { operationIdFromParts } from '../../utils/operationId';
 
 function mapIconForActivity(activity: string): {
   iconName: string;
@@ -251,6 +252,17 @@ export class WorkoutApiService implements IWorkoutService {
       if (!body.user_id) {
         body = { ...body, user_id: userId || 'user_default' };
       }
+    }
+    if (!body.operation_id) {
+      body = {
+        ...body,
+        operation_id: operationIdFromParts(
+          body.user_id,
+          body.scheduled_workout_id,
+          body.activity_id,
+          body.progression_key
+        ),
+      };
     }
 
     await apiClient.post('/api/v1/workout/complete', body);

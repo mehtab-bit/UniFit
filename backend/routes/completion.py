@@ -31,10 +31,18 @@ def complete_workout(
             reps_completed=payload.reps_completed,
             range_score=payload.range_score,
             issue_codes=payload.issue_codes,
+            operation_id=payload.operation_id,
+            scheduled_workout_id=payload.scheduled_workout_id,
+            local_date=payload.local_date,
+            started_at=payload.started_at,
+            ended_at=payload.ended_at,
+            active_duration_seconds=payload.active_duration_seconds,
+            notes=payload.notes,
         )
 
         return WorkoutCompletionResponse(
             success=result["success"],
+            duplicate=result.get("duplicate", False),
             user_id=result["user_id"],
             activity_id=result["activity_id"],
             progression_key=result["progression_key"],
