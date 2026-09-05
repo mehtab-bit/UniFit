@@ -6,7 +6,7 @@ Living index of evidence produced by each package.
 |---|---|---|---|---|
 | W00 | typecheck 1/1; vitest 45/45; pytest 7/12 w/ live env | — | — | Baseline commit `166b7d3` |
 | W01 | pytest 24/24; vitest 45/45; typecheck pass | token fixtures in `backend/tests/test_auth.py` | pending | Live-token verification requires `SUPABASE_JWT_SECRET`; recovery-link navigation needs device/simulator |
-| W02 | pending | pending | pending | — |
+| W02 | pytest profile API 5/5; vitest 45/45; typecheck | full-field round-trip; 409 concurrency | pending | Migration `20260905000002` must be applied to live Supabase |
 | W03 | pending | pending | pending | — |
 | W04 | pending | pending | pending | — |
 | W05 | pending | pending | pending | — |

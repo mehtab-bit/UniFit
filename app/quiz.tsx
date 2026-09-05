@@ -25,6 +25,7 @@ import {
   AccessibilityNeedOption,
   BlindLowVisionResourceOption,
   StrengthEquipmentOption,
+  UserProfile,
 } from '../types/quiz';
 
 const INITIAL_FORM_DATA: QuizFormData = {
@@ -46,9 +47,38 @@ const INITIAL_FORM_DATA: QuizFormData = {
   strength_experience: null,
 };
 
+function quizFromProfile(profile: UserProfile): QuizFormData {
+  const preferred =
+    profile.preferred_activities || profile.user_activity_preferences || [];
+  return {
+    age: profile.age != null ? String(profile.age) : '',
+    sex: profile.sex,
+    height_cm: profile.height_cm != null ? String(profile.height_cm) : '',
+    weight_kg: profile.weight_kg != null ? String(profile.weight_kg) : '',
+    fitness_goal: profile.fitness_goal,
+    lifestyle_activity: profile.lifestyle_activity,
+    user_activity_preferences: [...preferred],
+    diet: profile.diet,
+    accessibility_needs: [...(profile.accessibility_needs || [])],
+    accessibility_other_details: profile.accessibility_other_details || '',
+    blind_low_vision_resources: [
+      ...(profile.blind_low_vision_resources || []),
+    ],
+    has_exercise_restriction:
+      profile.has_exercise_restriction == null
+        ? null
+        : profile.has_exercise_restriction,
+    exercise_restriction_description:
+      profile.exercise_restriction_description || '',
+    strength_equipment: [...(profile.strength_equipment || [])],
+    strength_equipment_other: profile.strength_equipment_other || '',
+    strength_experience: profile.strength_experience,
+  };
+}
+
 export default function QuizScreen() {
   const router = useRouter();
-  const { user, submitQuizProfile } = useAuth();
+  const { user, profile, submitQuizProfile, refreshProfile } = useAuth();
 
   useScreenAnnouncement('Personalized assessment. Answer 12 questions to customize your plan.');
 
@@ -67,11 +97,13 @@ export default function QuizScreen() {
           if (draft.step >= 0 && draft.step <= 13) {
             setCurrentStep(draft.step);
           }
+        } else if (profile?.onboarding_completed) {
+          setFormData(quizFromProfile(profile));
         }
       }
     };
     restoreDraft();
-  }, [user]);
+  }, [user, profile]);
 
   const updateFormData = (updater: (prev: QuizFormData) => QuizFormData) => {
     setFormData((prev) => {
@@ -98,7 +130,7 @@ export default function QuizScreen() {
     }
   };
 
-  const handlePrevStep = () => {
+  const handlePrevStep = async () => {
     setErrorMessage(null);
     if (currentStep > 0) {
       const prevStep = currentStep - 1;
@@ -110,6 +142,16 @@ export default function QuizScreen() {
         ProfileService.saveQuizDraft(user.id, prevStep, formData);
       }
     } else {
+      if (user && profile?.onboarding_completed) {
+        // Cancelling a retake must restore the committed profile/plan. The
+        // quiz draft is discarded so a future retake starts from the profile.
+        await ProfileService.clearQuizDraft(user.id);
+        try {
+          await refreshProfile();
+        } catch {
+          // Profile state stays as-is; navigation below still returns home.
+        }
+      }
       router.replace('/(app)');
     }
   };

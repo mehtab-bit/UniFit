@@ -57,6 +57,7 @@ export interface UserProfile {
   strength_equipment_other?: string;
   strength_experience: StrengthExperienceOption | null;
   onboarding_completed: boolean;
+  profile_revision?: number;
   created_at?: string;
   updated_at?: string;
 }

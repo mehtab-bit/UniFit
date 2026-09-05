@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from uuid import UUID
 from typing import Any, Optional
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,6 +21,35 @@ SUPABASE_KEY = (
     or os.getenv("EXPO_PUBLIC_SUPABASE_ANON_KEY")
     or os.getenv("SUPABASE_KEY", "")
 )
+
+# Columns that form the committed profile contract. Never spread arbitrary
+# caller keys into a profile write.
+PROFILE_COLUMNS = (
+    "user_id",
+    "full_name",
+    "age",
+    "sex",
+    "height_cm",
+    "weight_kg",
+    "fitness_goal",
+    "lifestyle_activity",
+    "diet",
+    "accessibility_needs",
+    "accessibility_other_details",
+    "blind_low_vision_resources",
+    "has_exercise_restriction",
+    "exercise_restriction_description",
+    "strength_equipment",
+    "strength_equipment_other",
+    "strength_experience",
+    "onboarding_completed",
+    "preferred_activities",
+    "profile_revision",
+)
+
+
+class ProfileConflictError(ValueError):
+    """Raised when an edit is based on an outdated profile revision."""
 
 
 class SupabaseService:
@@ -139,9 +169,6 @@ class SupabaseService:
                 print(f"[SupabaseService] Failed to upsert profile to Supabase: {e}")
 
     def get_profile(self, user_id: str) -> Optional[dict[str, Any]]:
-        if user_id in self._cached_profiles:
-            return self._cached_profiles[user_id]
-
         if self.is_connected and self.client:
             try:
                 resp = (
@@ -156,7 +183,96 @@ class SupabaseService:
                     return resp.data
             except Exception:
                 pass
-        return None
+        return self._cached_profiles.get(user_id)
+
+    def commit_profile(
+        self,
+        user_id: str,
+        profile: dict[str, Any],
+        expected_revision: Optional[int] = None,
+    ) -> dict[str, Any]:
+        """Atomically commits the full profile row.
+
+        Raises ProfileConflictError when expected_revision does not match the
+        stored revision. Any other storage failure raises instead of being
+        swallowed, so callers can never report a false success.
+        """
+        self._require_user_id(user_id)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        payload = {key: profile.get(key) for key in PROFILE_COLUMNS if key in profile}
+        payload["user_id"] = user_id
+        payload["updated_at"] = now_iso
+        payload.setdefault("preferred_activities", [])
+        payload.setdefault("accessibility_needs", [])
+        payload.setdefault("blind_low_vision_resources", [])
+        payload.setdefault("strength_equipment", [])
+        payload.setdefault("has_exercise_restriction", False)
+        payload.setdefault("onboarding_completed", False)
+
+        if not self.is_connected or self.client is None:
+            existing = self._cached_profiles.get(user_id)
+            if existing is not None:
+                current = int(existing.get("profile_revision") or 0)
+                if expected_revision is not None and current != int(expected_revision):
+                    raise ProfileConflictError(
+                        "Profile has changed. Refresh and try again."
+                    )
+                payload["profile_revision"] = current + 1
+                payload["created_at"] = existing.get("created_at", now_iso)
+            else:
+                payload["profile_revision"] = 1
+                payload["created_at"] = now_iso
+            self._cached_profiles[user_id] = dict(payload)
+            return dict(payload)
+
+        try:
+            fetched = (
+                self.client.table("profiles")
+                .select("id,profile_revision,created_at")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            existing = fetched.data[0] if fetched.data else None
+
+            if existing is not None:
+                current = int(existing.get("profile_revision") or 0)
+                if expected_revision is not None and current != int(expected_revision):
+                    raise ProfileConflictError(
+                        "Profile has changed. Refresh and try again."
+                    )
+                payload["profile_revision"] = current + 1
+                payload["created_at"] = existing.get("created_at")
+                updated = (
+                    self.client.table("profiles")
+                    .update(payload)
+                    .eq("user_id", user_id)
+                    .eq("profile_revision", current)
+                    .select("*")
+                    .execute()
+                )
+                if not updated.data:
+                    raise ProfileConflictError(
+                        "Profile has changed. Refresh and try again."
+                    )
+                row = updated.data[0]
+            else:
+                payload["profile_revision"] = 1
+                inserted = (
+                    self.client.table("profiles")
+                    .insert(payload)
+                    .select("*")
+                    .execute()
+                )
+                row = inserted.data[0] if inserted.data else dict(payload)
+
+            self._cached_profiles[user_id] = row
+            return row
+        except ProfileConflictError:
+            raise
+        except Exception as exc:
+            print(f"[SupabaseService] Failed to commit profile: {exc}")
+            raise ValueError("Unable to save your profile. Please try again.") from exc
 
     def load_workout_sessions(self, user_id: str) -> list[dict[str, Any]]:
         """Loads a user's logged workout sessions from Supabase."""

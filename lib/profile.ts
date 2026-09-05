@@ -1,105 +1,118 @@
 import { supabase, isLiveSupabaseConfigured, SafeStorage } from './supabase';
+import { apiClient, ApiError } from '../services/api/apiClient';
 import { UserProfile, QuizFormData, EngineProfilePayload } from '../types/quiz';
 import { getDemoUserProfile } from '../constants/demo';
 
 const PROFILE_STORAGE_KEY_PREFIX = '@unifit_user_profile_';
 const QUIZ_DRAFT_KEY_PREFIX = '@unifit_quiz_draft_';
 
+function normalizeProfile(row: Record<string, any>): UserProfile {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    full_name: row.full_name || 'UniFit Athlete',
+    age: row.age != null ? Number(row.age) : null,
+    sex: row.sex || null,
+    height_cm: row.height_cm != null ? Number(row.height_cm) : null,
+    weight_kg: row.weight_kg != null ? Number(row.weight_kg) : null,
+    fitness_goal: row.fitness_goal || row.goal || null,
+    lifestyle_activity: row.lifestyle_activity || null,
+    preferred_activities: row.preferred_activities || [],
+    user_activity_preferences: row.preferred_activities || [],
+    diet: row.diet || null,
+    accessibility_needs: row.accessibility_needs || [],
+    accessibility_other_details: row.accessibility_other_details || undefined,
+    blind_low_vision_resources: row.blind_low_vision_resources || [],
+    has_exercise_restriction:
+      row.has_exercise_restriction == null ? null : Boolean(row.has_exercise_restriction),
+    exercise_restriction_description:
+      row.exercise_restriction_description || undefined,
+    strength_equipment: row.strength_equipment || [],
+    strength_equipment_other: row.strength_equipment_other || undefined,
+    strength_experience: row.strength_experience || null,
+    onboarding_completed: Boolean(row.onboarding_completed),
+    profile_revision:
+      row.profile_revision != null ? Number(row.profile_revision) : undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+function cacheLocalProfile(profile: UserProfile): void {
+  SafeStorage.setItem(
+    `${PROFILE_STORAGE_KEY_PREFIX}${profile.user_id}`,
+    JSON.stringify(profile)
+  ).catch(() => {
+    // A local cache miss must never look like a backend save failure.
+  });
+}
+
 export const ProfileService = {
   /**
-   * Fetches user profile from Supabase with local fallback
+   * Fetches the committed profile from the authenticated backend.
+   *
+   * Throws ApiError on network/server failures so callers can show truthful
+   * states; returns null only when no committed profile exists (404).
    */
   getProfile: async (userId: string): Promise<UserProfile | null> => {
-    try {
-      if (isLiveSupabaseConfigured()) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-
-        if (data && !error) {
-          const profile: UserProfile = {
-            id: data.id,
-            user_id: data.user_id,
-            full_name: data.full_name || 'UniFit Athlete',
-            age: data.age,
-            sex: data.sex,
-            height_cm: data.height_cm ? Number(data.height_cm) : null,
-            weight_kg: data.weight_kg ? Number(data.weight_kg) : null,
-            fitness_goal: data.fitness_goal,
-            lifestyle_activity: data.lifestyle_activity,
-            preferred_activities: data.preferred_activities || data.user_activity_preferences || [],
-            user_activity_preferences: data.preferred_activities || data.user_activity_preferences || [],
-            diet: data.diet,
-            accessibility_needs: data.accessibility_needs || [],
-            accessibility_other_details: data.accessibility_other_details,
-            blind_low_vision_resources: data.blind_low_vision_resources || [],
-            has_exercise_restriction: data.has_exercise_restriction,
-            exercise_restriction_description: data.exercise_restriction_description,
-            strength_equipment: data.strength_equipment || [],
-            strength_equipment_other: data.strength_equipment_other,
-            strength_experience: data.strength_experience,
-            onboarding_completed: Boolean(data.onboarding_completed),
-            created_at: data.created_at,
-            updated_at: data.updated_at,
-          };
-
-          // Cache locally
-          await SafeStorage.setItem(
-            `${PROFILE_STORAGE_KEY_PREFIX}${userId}`,
-            JSON.stringify(profile)
-          );
-
-          return profile;
+    if (isLiveSupabaseConfigured()) {
+      let row: Record<string, any>;
+      try {
+        row = await apiClient.get<Record<string, any>>('/api/v1/profile/me');
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          return null;
         }
+        throw err;
       }
-
-      // Check local fallback
-      const cached = await SafeStorage.getItem(`${PROFILE_STORAGE_KEY_PREFIX}${userId}`);
-      if (cached) {
-        return JSON.parse(cached) as UserProfile;
-      }
-
-      return null;
-    } catch (err) {
-      console.warn('Profile fetch error:', err);
-      const cached = await SafeStorage.getItem(`${PROFILE_STORAGE_KEY_PREFIX}${userId}`);
-      return cached ? JSON.parse(cached) : null;
+      const profile = normalizeProfile(row);
+      cacheLocalProfile(profile);
+      return profile;
     }
+
+    const cached = await SafeStorage.getItem(`${PROFILE_STORAGE_KEY_PREFIX}${userId}`);
+    return cached ? (JSON.parse(cached) as UserProfile) : null;
   },
 
   /**
-   * Saves the complete quiz answers and marks onboarding as completed
+   * Commits the full quiz/profile payload through the backend profile
+   * contract. expectedRevision enables optimistic concurrency so an older
+   * edit can never silently overwrite a newer committed profile.
    */
   saveQuizProfile: async (
     userId: string,
     fullName: string,
-    quizData: QuizFormData
+    quizData: QuizFormData,
+    expectedRevision?: number
   ): Promise<{ success: boolean; profile?: UserProfile; error?: string }> => {
     try {
-      const parsedAge = parseInt(quizData.age, 10);
-      const parsedHeight = parseFloat(quizData.height_cm);
-      const parsedWeight = parseFloat(quizData.weight_kg);
+      const parsedAge = quizData.age ? parseInt(quizData.age, 10) : null;
+      const parsedHeight = quizData.height_cm ? parseFloat(quizData.height_cm) : null;
+      const parsedWeight = quizData.weight_kg ? parseFloat(quizData.weight_kg) : null;
 
       const profileRecord: UserProfile = {
         user_id: userId,
         full_name: fullName,
-        age: !isNaN(parsedAge) && parsedAge >= 18 ? parsedAge : null,
+        age: parsedAge,
         sex: quizData.sex || null,
-        height_cm: !isNaN(parsedHeight) ? parsedHeight : null,
-        weight_kg: !isNaN(parsedWeight) ? parsedWeight : null,
+        height_cm: parsedHeight,
+        weight_kg: parsedWeight,
         fitness_goal: quizData.fitness_goal || null,
         lifestyle_activity: quizData.lifestyle_activity || null,
         preferred_activities: quizData.user_activity_preferences || [],
         user_activity_preferences: quizData.user_activity_preferences || [],
         diet: quizData.diet || null,
-        accessibility_needs: quizData.accessibility_needs.length > 0 ? quizData.accessibility_needs : ['none'],
-        accessibility_other_details: quizData.accessibility_other_details.trim() || undefined,
+        accessibility_needs: quizData.accessibility_needs || [],
+        accessibility_other_details:
+          quizData.accessibility_other_details.trim() || undefined,
         blind_low_vision_resources: quizData.blind_low_vision_resources || [],
-        has_exercise_restriction: quizData.has_exercise_restriction !== null ? quizData.has_exercise_restriction : false,
-        exercise_restriction_description: quizData.exercise_restriction_description.trim() || undefined,
-        strength_equipment: quizData.strength_equipment.length > 0 ? quizData.strength_equipment : ['no_equipment'],
+        has_exercise_restriction:
+          quizData.has_exercise_restriction == null
+            ? false
+            : quizData.has_exercise_restriction,
+        exercise_restriction_description:
+          quizData.exercise_restriction_description.trim() || undefined,
+        strength_equipment: quizData.strength_equipment || [],
         strength_equipment_other: quizData.strength_equipment_other.trim() || undefined,
         strength_experience: quizData.strength_experience || null,
         onboarding_completed: true,
@@ -107,231 +120,118 @@ export const ProfileService = {
       };
 
       if (isLiveSupabaseConfigured()) {
-        // Upsert into Supabase profiles table
-        const { data, error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            user_id: userId,
-            full_name: fullName,
-            age: profileRecord.age,
-            sex: profileRecord.sex,
-            height_cm: profileRecord.height_cm,
-            weight_kg: profileRecord.weight_kg,
-            fitness_goal: profileRecord.fitness_goal,
-            lifestyle_activity: profileRecord.lifestyle_activity,
-            diet: profileRecord.diet,
-            accessibility_needs: profileRecord.accessibility_needs,
-            accessibility_other_details: profileRecord.accessibility_other_details,
-            blind_low_vision_resources: profileRecord.blind_low_vision_resources,
-            has_exercise_restriction: profileRecord.has_exercise_restriction,
-            exercise_restriction_description: profileRecord.exercise_restriction_description,
-            strength_equipment: profileRecord.strength_equipment,
-            strength_equipment_other: profileRecord.strength_equipment_other,
-            strength_experience: profileRecord.strength_experience,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' })
-          .select()
-          .single();
-
-        if (profileError) {
-          console.warn('Supabase profile upsert error:', profileError);
-        }
-
-        // Sync user activity preferences
-        if (quizData.user_activity_preferences.length > 0) {
-          await supabase
-            .from('user_activity_preferences')
-            .delete()
-            .eq('user_id', userId);
-
-          const activityRows = quizData.user_activity_preferences.map((act) => ({
-            user_id: userId,
-            activity: act,
-          }));
-
-          await supabase.from('user_activity_preferences').insert(activityRows);
-        }
-
-        if (data) {
-          profileRecord.id = data.id;
-        }
+        const saved = await apiClient.put<Record<string, any>>('/api/v1/profile/me', {
+          full_name: fullName,
+          age: profileRecord.age,
+          sex: profileRecord.sex,
+          height_cm: profileRecord.height_cm,
+          weight_kg: profileRecord.weight_kg,
+          fitness_goal: profileRecord.fitness_goal,
+          lifestyle_activity: profileRecord.lifestyle_activity,
+          diet: profileRecord.diet,
+          preferred_activities: profileRecord.preferred_activities,
+          accessibility_needs: profileRecord.accessibility_needs,
+          accessibility_other_details: profileRecord.accessibility_other_details,
+          blind_low_vision_resources: profileRecord.blind_low_vision_resources,
+          has_exercise_restriction: profileRecord.has_exercise_restriction,
+          exercise_restriction_description:
+            profileRecord.exercise_restriction_description,
+          strength_equipment: profileRecord.strength_equipment,
+          strength_equipment_other: profileRecord.strength_equipment_other,
+          strength_experience: profileRecord.strength_experience,
+          onboarding_completed: true,
+          expected_profile_revision: expectedRevision,
+        });
+        const committed = normalizeProfile(saved);
+        cacheLocalProfile(committed);
+        await SafeStorage.removeItem(`${QUIZ_DRAFT_KEY_PREFIX}${userId}`);
+        return { success: true, profile: committed };
       }
 
-      // Save locally to cache & mark onboarding flag
+      // Offline/local mode: the local profile store is the demo boundary.
+      profileRecord.profile_revision = (expectedRevision ?? 0) + 1;
       await SafeStorage.setItem(
         `${PROFILE_STORAGE_KEY_PREFIX}${userId}`,
         JSON.stringify(profileRecord)
       );
-
-      // Clear quiz draft after successful submission
       await SafeStorage.removeItem(`${QUIZ_DRAFT_KEY_PREFIX}${userId}`);
-
       return { success: true, profile: profileRecord };
     } catch (err: any) {
-      console.warn('Failed to save quiz profile:', err);
-      return {
-        success: false,
-        error: 'Unable to save profile data. Please check your connection and try again.',
-      };
+      const message =
+        err instanceof ApiError && err.status === 409
+          ? 'Your profile changed on another device. Review your answers and submit again.'
+          : err?.message || 'Unable to save profile data. Please check your connection and try again.';
+      return { success: false, error: message };
     }
   },
 
-  /**
-   * Authoritative Engine Profile Mapper (Section 2).
-   * Transforms frontend UserProfile into the exact engine profile object:
-   * { age, sex, height_cm, weight_kg, goal, lifestyle_activity, diet, accessibility_id }
-   * Activity preferences remain separate.
-   */
   toEngineProfile: (profile: UserProfile): EngineProfilePayload => {
     return toEngineProfile(profile);
   },
 
-  /**
-   * Creates/refreshes the one-tap demo profile and marks onboarding complete.
-   */
   saveDemoProfile: async (userId: string, fullName: string): Promise<UserProfile> => {
     const profileRecord = getDemoUserProfile(userId, fullName);
+    profileRecord.profile_revision = 1;
 
     if (isLiveSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert(
-          {
-            user_id: userId,
-            full_name: profileRecord.full_name,
-            age: profileRecord.age,
-            sex: profileRecord.sex,
-            height_cm: profileRecord.height_cm,
-            weight_kg: profileRecord.weight_kg,
-            fitness_goal: profileRecord.fitness_goal,
-            lifestyle_activity: profileRecord.lifestyle_activity,
-            diet: profileRecord.diet,
-            accessibility_needs: profileRecord.accessibility_needs,
-            has_exercise_restriction: profileRecord.has_exercise_restriction,
-            strength_equipment: profileRecord.strength_equipment,
-            strength_experience: profileRecord.strength_experience,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: 'user_id' }
-        )
-        .select()
-        .single();
-
-      if (data) {
-        profileRecord.id = data.id;
-      } else {
-        console.warn('Demo profile upsert error:', error);
-      }
-
-      await supabase
-        .from('user_activity_preferences')
-        .delete()
-        .eq('user_id', userId);
-      await supabase.from('user_activity_preferences').insert(
-        profileRecord.preferred_activities.map((activity) => ({
-          user_id: userId,
-          activity
-        }))
-      );
+      const saved = await apiClient.put<Record<string, any>>('/api/v1/profile/me', {
+        full_name: profileRecord.full_name,
+        age: profileRecord.age,
+        sex: profileRecord.sex,
+        height_cm: profileRecord.height_cm,
+        weight_kg: profileRecord.weight_kg,
+        fitness_goal: profileRecord.fitness_goal,
+        lifestyle_activity: profileRecord.lifestyle_activity,
+        diet: profileRecord.diet,
+        preferred_activities: profileRecord.preferred_activities,
+        accessibility_needs: profileRecord.accessibility_needs,
+        blind_low_vision_resources: [],
+        has_exercise_restriction: profileRecord.has_exercise_restriction,
+        strength_equipment: profileRecord.strength_equipment,
+        strength_experience: profileRecord.strength_experience,
+        onboarding_completed: true,
+      });
+      const committed = normalizeProfile(saved);
+      cacheLocalProfile(committed);
+      return committed;
     }
 
     await SafeStorage.setItem(
       `${PROFILE_STORAGE_KEY_PREFIX}${userId}`,
       JSON.stringify(profileRecord)
     );
-
     return profileRecord;
   },
 
-  /**
-   * Extracts activity preferences separately per engine contract.
-   */
   toEngineActivityPreferences: (profile: UserProfile): string[] => {
     return toEngineActivityPreferences(profile);
   },
 
   /**
-   * Transforms the normalized frontend UserProfile into the backend Python fitness-engine request payload.
-   * Ready for direct FastAPI POST /api/v1/plans/generate integration.
-   */
-  toEngineRequestPayload: (profile: UserProfile) => {
-    return {
-      user_id: profile.user_id,
-      age: profile.age ?? 28,
-      sex: profile.sex ?? 'male',
-      height_cm: profile.height_cm ?? 175,
-      weight_kg: profile.weight_kg ?? 70,
-      fitness_goal: profile.fitness_goal ?? 'lose_fat',
-      lifestyle_activity: profile.lifestyle_activity ?? 'sedentary',
-      preferred_activities: profile.preferred_activities || profile.user_activity_preferences || ['walking'],
-      diet: profile.diet ?? 'non_vegetarian',
-      accessibility_needs: profile.accessibility_needs || ['none'],
-      accessibility_resources: profile.blind_low_vision_resources || [],
-      has_exercise_restriction: Boolean(profile.has_exercise_restriction),
-      exercise_restriction_description: profile.exercise_restriction_description ?? '',
-      strength_equipment: profile.strength_equipment || ['no_equipment'],
-      strength_experience: profile.strength_experience ?? 'new',
-    };
-  },
-
-  /**
-   * Resolves the engine request (profile + activity preferences) for a logged-in user.
-   * Loads the user's real onboarding profile when available; falls back to the
-   * demo defaults for not-yet-onboarded users and unknown ids so screens still render.
+   * Resolves the engine request from a committed, completed profile only.
+   * Never fabricates defaults for an incomplete assessment.
    */
   resolveEngineRequest: async (userId?: string) => {
-    const demoProfile = getDemoUserProfile(userId || 'demo');
-
     if (userId && userId !== 'user_default') {
-      try {
-        const profile = await ProfileService.getProfile(userId);
-        if (profile?.onboarding_completed) {
-          const payload = ProfileService.toEngineRequestPayload(profile);
-          return {
-            profile: {
-              age: payload.age,
-              sex: payload.sex,
-              height_cm: payload.height_cm,
-              weight_kg: payload.weight_kg,
-              goal: payload.fitness_goal,
-              lifestyle_activity: payload.lifestyle_activity,
-              diet: payload.diet,
-              accessibility_id:
-                profile.accessibility_needs && profile.accessibility_needs.length > 0
-                  ? profile.accessibility_needs[0]
-                  : 'none',
-            },
-            activities:
-              profile.preferred_activities && profile.preferred_activities.length > 0
-                ? profile.preferred_activities
-                : demoProfile.preferred_activities,
-          };
-        }
-      } catch (err) {
-        console.warn('[ProfileService] Engine request resolve failed, using demo defaults:', err);
+      const profile = await ProfileService.getProfile(userId);
+      if (profile?.onboarding_completed) {
+        return {
+          profile: toEngineProfile(profile),
+          activities: toEngineActivityPreferences(profile),
+          profile_revision: profile.profile_revision ?? 0,
+        };
       }
+      throw new ApiError(
+        'Complete your assessment before generating a plan.',
+        428
+      );
     }
-
-    return {
-      profile: {
-        age: demoProfile.age ?? 28,
-        sex: demoProfile.sex ?? 'male',
-        height_cm: demoProfile.height_cm ?? 175,
-        weight_kg: demoProfile.weight_kg ?? 70,
-        goal: demoProfile.fitness_goal ?? 'lose_fat',
-        lifestyle_activity: demoProfile.lifestyle_activity ?? 'sedentary',
-        diet: demoProfile.diet ?? 'non_vegetarian',
-        accessibility_id: 'none',
-      },
-      activities: demoProfile.preferred_activities,
-    };
+    throw new ApiError(
+      'A signed-in profile is required to generate a plan.',
+      401
+    );
   },
 
-  /**
-   * Saves temporary quiz draft so user progress is never lost on interruption
-   */
   saveQuizDraft: async (userId: string, step: number, data: QuizFormData): Promise<void> => {
     try {
       await SafeStorage.setItem(
@@ -343,9 +243,6 @@ export const ProfileService = {
     }
   },
 
-  /**
-   * Retrieves saved quiz draft if available
-   */
   getQuizDraft: async (
     userId: string
   ): Promise<{ step: number; data: QuizFormData } | null> => {
@@ -362,9 +259,6 @@ export const ProfileService = {
     }
   },
 
-  /**
-   * Clears quiz draft
-   */
   clearQuizDraft: async (userId: string): Promise<void> => {
     try {
       await SafeStorage.removeItem(`${QUIZ_DRAFT_KEY_PREFIX}${userId}`);
@@ -375,40 +269,34 @@ export const ProfileService = {
 };
 
 /**
- * Authoritative Engine Profile Mapper (Section 2).
- * Transforms frontend UserProfile into the exact engine profile object:
- * {
- *   age,
- *   sex,
- *   height_cm,
- *   weight_kg,
- *   goal,
- *   lifestyle_activity,
- *   diet,
- *   accessibility_id
- * }
- * Note: Activity preferences remain separate per engine specification.
+ * Maps the committed UserProfile to the engine payload.
+ *
+ * Values remain null/undefined unless the profile actually has them; the
+ * caller decides when a plan is eligible instead of receiving invented
+ * default demographics.
  */
 export function toEngineProfile(profile: UserProfile): EngineProfilePayload {
+  const accessibility =
+    profile.accessibility_needs && profile.accessibility_needs.length > 0
+      ? profile.accessibility_needs
+      : (['none'] as string[]);
+  const primary =
+    accessibility.find((n) => n === 'blind_low_vision') ||
+    accessibility.find((n) => n === 'deaf_hard_of_hearing') ||
+    accessibility.find((n) => n === 'other') ||
+    'none';
   return {
-    age: profile.age ?? 28,
-    sex: profile.sex ?? 'male',
-    height_cm: profile.height_cm ?? 175,
-    weight_kg: profile.weight_kg ?? 70,
-    goal: profile.fitness_goal ?? 'lose_fat',
-    lifestyle_activity: profile.lifestyle_activity ?? 'sedentary',
-    diet: profile.diet ?? 'non_vegetarian',
-    accessibility_id:
-      profile.accessibility_needs && profile.accessibility_needs.length > 0
-        ? profile.accessibility_needs[0]
-        : 'none',
+    age: profile.age ?? 0,
+    sex: profile.sex ?? '',
+    height_cm: profile.height_cm ?? 0,
+    weight_kg: profile.weight_kg ?? 0,
+    goal: profile.fitness_goal ?? '',
+    lifestyle_activity: profile.lifestyle_activity ?? '',
+    diet: profile.diet ?? '',
+    accessibility_id: primary,
   };
 }
 
-/**
- * Extracts activity preferences separately per engine contract.
- */
 export function toEngineActivityPreferences(profile: UserProfile): string[] {
-  return profile.preferred_activities || profile.user_activity_preferences || ['walking'];
+  return profile.preferred_activities || profile.user_activity_preferences || [];
 }
-

@@ -26,13 +26,13 @@ Done when: no user can access another user's data; auth transitions cannot leave
 Problem: quiz fields are dropped/defaulted; saves can appear successful when the database failed; activities live in a separate table not read back atomically.
 
 Required:
-- [ ] `GET/PUT /api/v1/profile/me` atomic profile+preferences+resources contract
-- [ ] Persistent `profile_revision`; `409` on concurrent conflicting edits
-- [ ] All quiz fields preserved, including combined accessibility selection and "other" notes
-- [ ] Error propagation from storage helpers; no false-success path
-- [ ] Retake prefill from current profile; cancel restores previous committed profile/plan
-- [ ] Incomplete profile never displays as a personalized default
-- [ ] Tests: round-trips, clearing activities, multi-accessibility, DB failure, retake cancel, restart mid-quiz, simultaneous edits
+- [x] `GET/PUT /api/v1/profile/me` atomic profile+preferences+resources contract
+- [x] Persistent `profile_revision`; `409` on concurrent conflicting edits
+- [x] All quiz fields preserved, including combined accessibility selection and "other" notes
+- [x] Error propagation from storage helpers; no false-success path
+- [x] Retake prefill from current profile; cancel restores previous committed profile/plan
+- [x] Incomplete profile never displays as a personalized default
+- [x] Tests: round-trips, clearing activities, multi-accessibility, DB failure, retake cancel, restart mid-quiz, simultaneous edits
 
 ## W03 — Plan identity, caching, refresh
 

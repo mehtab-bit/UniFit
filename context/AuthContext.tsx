@@ -100,6 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setProfile(userProfile);
         const completed = Boolean(userProfile.onboarding_completed);
         setIsOnboardingCompleted(completed);
+        setProfileRevision(userProfile.profile_revision ?? 0);
         return userProfile;
       } else {
         const initialProfile: UserProfile = {
@@ -121,6 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
         setProfile(initialProfile);
         setIsOnboardingCompleted(false);
+        setProfileRevision(0);
         return initialProfile;
       }
     } catch (err) {
@@ -128,6 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (generation === profileLoadGenerationRef.current) {
         setProfile(null);
         setIsOnboardingCompleted(false);
+        setProfileRevision(0);
       }
       return null;
     }
@@ -246,13 +249,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: false, error: 'User session not found.' };
     }
 
-    const result = await ProfileService.saveQuizProfile(user.id, user.fullName, quizData);
+    const result = await ProfileService.saveQuizProfile(
+      user.id,
+      user.fullName,
+      quizData,
+      profile?.profile_revision
+    );
     if (result.success && result.profile) {
       // New quiz answers make the previously generated plan stale. Clear both
       // local and backend caches so the next load regenerates with this profile.
       clearCombinedWeek(user.id);
       setProfile(result.profile);
-      setProfileRevision((r) => r + 1);
+      const revision = result.profile.profile_revision;
+      setProfileRevision(
+        revision !== undefined ? revision : (prev: number) => prev + 1
+      );
       setIsOnboardingCompleted(true);
       return { success: true };
     }
