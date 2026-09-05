@@ -1022,6 +1022,16 @@ def constrain_variation_level_to_equipment(
                     "band",
                 )
             ):
+                # Level-1 "light household resistance" (e.g. small water
+                # bottles) is treated as universally available for a beginner
+                # who selected no equipment; loaded/heavier resistance levels
+                # still require declared equipment.
+                if (
+                    level == 1
+                    and "water bottle" in required
+                    and declared == {"no_equipment"}
+                ):
+                    return level
                 if declared and declared != {"no_equipment"}:
                     return level
     # No eligible variation exists for the declared equipment. Keep level 1

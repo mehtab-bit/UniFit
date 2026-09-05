@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from engine.weekly_workout_engine import (
     WorkoutDatabase,
     constrain_variation_level_to_equipment,
@@ -46,9 +44,9 @@ def test_no_equipment_keeps_bodyweight_pushup_level():
     assert level == 3
 
 
-def test_missing_resistance_variation_is_explicit_unsupported():
+def test_no_equipment_gets_light_household_bicep_variation():
     db = database()
-    with pytest.raises(ValueError, match="eligible"):
-        constrain_variation_level_to_equipment(
-            db, "bicep_curl", 3, ["no_equipment"]
-        )
+    level = constrain_variation_level_to_equipment(
+        db, "bicep_curl", 3, ["no_equipment"]
+    )
+    assert level == 1
