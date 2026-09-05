@@ -13,7 +13,6 @@ import {
   WorkoutDayStatus,
 } from '../../types/domain';
 import { apiClient } from './apiClient';
-import { mockWorkoutService } from '../mock/workoutMock';
 import { Colors } from '../../constants/colors';
 import { fetchCombinedWeek, clearCombinedWeek } from './combinedPlan';
 
@@ -72,21 +71,22 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
   const dayAbbrevs = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const dayOfWeek = dayAbbrevs[index % 7];
 
-  // Derive date matching current week
+  // Prefer the explicit local date assigned by the backend plan snapshot so
+  // navigation can never shift the user's schedule.
   const today = new Date();
   const dayOffset = index - currentDayIndex;
   const dayDate = new Date(today);
   dayDate.setDate(today.getDate() + dayOffset);
-  const dateStr = dayDate.toISOString().split('T')[0];
-  const dayNumber = String(dayDate.getDate()).padStart(2, '0');
+  const derivedDate = dayDate.toISOString().split('T')[0];
+  const dateStr = backendDay.local_date || derivedDate;
+  const parsedDay = new Date(`${dateStr}T00:00:00`);
+  const dayNumber = String(parsedDay.getDate()).padStart(2, '0');
 
   let status: WorkoutDayStatus = 'planned';
   if (isRest) {
     status = 'rest';
   } else if (index === currentDayIndex) {
     status = 'today';
-  } else if (index < currentDayIndex) {
-    status = 'completed';
   }
 
   const mappedExercises: Exercise[] = (workout.exercises || []).map((ex: any, exIdx: number) => ({
@@ -127,7 +127,7 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
   }
 
   return {
-    id: `day_${index + 1}`,
+    id: backendDay.scheduled_workout_id || `day_${index + 1}`,
     date: dateStr,
     dayOfWeek,
     dayNumber,
@@ -166,29 +166,24 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
 
 export class WorkoutApiService implements IWorkoutService {
   async getWeeklyPlan(userId: string = 'user_default', forceRefresh: boolean = false): Promise<WorkoutPlan> {
-    try {
-      const response: any = await fetchCombinedWeek(userId, 1, forceRefresh);
+    const response: any = await fetchCombinedWeek(userId, { force: forceRefresh });
 
-      const rawDays = response.workouts || [];
-      const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
+    const rawDays = response.workouts || [];
+    const currentDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0
 
-      const mappedDays: WorkoutDay[] = rawDays.map((d: any, idx: number) =>
-        mapBackendDayToWorkoutDay(d, idx, currentDayIndex)
-      );
+    const mappedDays: WorkoutDay[] = rawDays.map((d: any, idx: number) =>
+      mapBackendDayToWorkoutDay(d, idx, currentDayIndex)
+    );
 
-      return {
-        id: `plan_week_${response.week_number || 1}`,
-        weekNumber: response.week_number || 1,
-        title: 'Week 1 Foundation',
-        subtitle: "Here's your plan for this week.",
-        badgeText: 'Week 1',
-        description: 'Progressive adaptive fitness week powered by the engine.',
-        days: mappedDays,
-      };
-    } catch (err) {
-      console.warn('[WorkoutApiService] Falling back to mock data due to API error:', err);
-      return mockWorkoutService.getWeeklyPlan(userId);
-    }
+    return {
+      id: `plan_week_${response.week_number || 1}`,
+      weekNumber: response.week_number || 1,
+      title: 'Week 1 Foundation',
+      subtitle: "Here's your plan for this week.",
+      badgeText: 'Week 1',
+      description: 'Progressive adaptive fitness week powered by the engine.',
+      days: mappedDays,
+    };
   }
 
   async getWeeklyWorkoutPlan(userId?: string): Promise<WorkoutPlan> {
@@ -214,24 +209,20 @@ export class WorkoutApiService implements IWorkoutService {
   }
 
   async getWorkoutByDate(dateOrId: string, userId?: string): Promise<WorkoutDay | null> {
-    try {
-      const plan = await this.getWeeklyPlan(userId);
-      const normalized = (dateOrId || '').toLowerCase().trim();
-      const matched = plan.days.find(
-        (d) =>
-          d.date === dateOrId ||
-          d.id.toLowerCase() === normalized ||
-          d.dayOfWeek.toLowerCase() === normalized ||
-          d.activity.toLowerCase() === normalized
-      );
-      if (matched) return matched;
+    const plan = await this.getWeeklyPlan(userId);
+    const normalized = (dateOrId || '').toLowerCase().trim();
+    const matched = plan.days.find(
+      (d) =>
+        d.date === dateOrId ||
+        d.id.toLowerCase() === normalized ||
+        d.dayOfWeek.toLowerCase() === normalized ||
+        d.activity.toLowerCase() === normalized
+    );
+    if (matched) return matched;
 
-      const response: any = await apiClient.get(`/api/v1/workout/${dateOrId}?user_id=${userId || 'user_default'}`);
-      const currentDayIndex = (new Date().getDay() + 6) % 7;
-      return mapBackendDayToWorkoutDay(response, 0, currentDayIndex);
-    } catch {
-      return mockWorkoutService.getWorkoutByDate(dateOrId, userId);
-    }
+    const response: any = await apiClient.get(`/api/v1/workout/${dateOrId}?user_id=${userId || 'user_default'}`);
+    const currentDayIndex = (new Date().getDay() + 6) % 7;
+    return mapBackendDayToWorkoutDay(response, 0, currentDayIndex);
   }
 
   async logWorkoutCompletion(
@@ -240,39 +231,34 @@ export class WorkoutApiService implements IWorkoutService {
     repsCompleted: number = 80,
     userId?: string
   ): Promise<{ success: boolean; completedAt: string }> {
-    try {
-      let body: WorkoutCompletionPayload;
-      if (typeof payloadOrId === 'string') {
-        body = {
-          user_id: userId || 'user_default',
-          activity_id: payloadOrId,
-          progression_key: payloadOrId,
-          completion_pct: 100,
-          exercise_completion_pct: {
-            squat: 100,
-            lunge: 100,
-            pushup: 100,
-            bicep_curl: 100,
-            supported_row: 100,
-          },
-        };
-      } else {
-        body = payloadOrId;
-        if (!body.user_id) {
-          body = { ...body, user_id: userId || 'user_default' };
-        }
-      }
-
-      await apiClient.post('/api/v1/workout/complete', body);
-      clearCombinedWeek(userId || body.user_id);
-      return {
-        success: true,
-        completedAt: new Date().toISOString(),
+    let body: WorkoutCompletionPayload;
+    if (typeof payloadOrId === 'string') {
+      body = {
+        user_id: userId || 'user_default',
+        activity_id: payloadOrId,
+        progression_key: payloadOrId,
+        completion_pct: 100,
+        exercise_completion_pct: {
+          squat: 100,
+          lunge: 100,
+          pushup: 100,
+          bicep_curl: 100,
+          supported_row: 100,
+        },
       };
-    } catch (err) {
-      console.warn('[WorkoutApiService] Logging to mock fallback:', err);
-      return mockWorkoutService.logWorkoutCompletion(payloadOrId, durationMinutes, repsCompleted, userId);
+    } else {
+      body = payloadOrId;
+      if (!body.user_id) {
+        body = { ...body, user_id: userId || 'user_default' };
+      }
     }
+
+    await apiClient.post('/api/v1/workout/complete', body);
+    clearCombinedWeek(userId || body.user_id || '');
+    return {
+      success: true,
+      completedAt: new Date().toISOString(),
+    };
   }
 }
 

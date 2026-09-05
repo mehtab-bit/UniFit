@@ -39,11 +39,11 @@ Required:
 Problem: plan cache ignores profile/content changes; date lookups can use default-user fallbacks; screens regenerate independently.
 
 Required:
-- [ ] Revision-aware plan identity (user, week start, profile/progression revisions, engine/data version)
-- [ ] Persisted plan snapshots with stable IDs; scheduled-workout identity
-- [ ] Single shared frontend plan store; refresh after profile save
-- [ ] Obsolete in-flight responses ignored
-- [ ] Loading/stale/unavailable/failed states surfaced
+- [x] Revision-aware plan identity (user, week start, profile/progression revisions, engine/data version)
+- [x] Persisted plan snapshots with stable IDs; scheduled-workout identity
+- [x] Single shared frontend plan store; refresh after profile save
+- [x] Obsolete in-flight responses ignored
+- [ ] Loading/stale/unavailable/failed states surfaced across screens
 
 ## W04 — Engine personalization completeness
 

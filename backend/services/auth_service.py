@@ -152,7 +152,10 @@ def resolve_user_id(verified: VerifiedUser, supplied: Optional[str]) -> str:
         return (supplied or "").strip() or "user_default"
 
     if supplied:
-        if supplied.strip() == verified.id:
+        stripped = supplied.strip()
+        # user_default is the legacy placeholder clients used before identity
+        # enforcement; it is not a claim about another account.
+        if stripped == verified.id or stripped == "user_default":
             return verified.id
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -65,6 +65,9 @@ from engine.weekly_meal_planner import (
     generate_full_fitness_week,
 )
 
+ENGINE_VERSION = "1.0.0"
+RULE_DATA_VERSION = "workout-rules-2026-09-05"
+
 # Patch data paths in imported engine modules so they work regardless of current working directory
 import engine.weekly_workout_engine as _wwe
 import engine.weekly_meal_planner as _wmp
@@ -92,6 +95,61 @@ _wmp.MEAL_ITEMS_PATH = PROCESSED_DIR / "meal_items.csv"
 
 class FitnessEngineService:
     """Thin wrapper service orchestrating the authoritative vijul-engine."""
+
+    @staticmethod
+    def profile_context_from_row(
+        row: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Builds engine inputs from a committed profile row.
+
+        The committed row is the only source: no default demographics or
+        activity lists are invented here.
+        """
+        required = {
+            "age": row.get("age"),
+            "sex": row.get("sex"),
+            "height_cm": row.get("height_cm"),
+            "weight_kg": row.get("weight_kg"),
+            "fitness_goal": row.get("fitness_goal"),
+            "lifestyle_activity": row.get("lifestyle_activity"),
+            "diet": row.get("diet"),
+        }
+        missing = [key for key, value in required.items() if value in (None, "")]
+        if missing:
+            raise ValueError(
+                "Your assessment is incomplete. Complete all required questions "
+                f"before generating a plan (missing: {', '.join(missing)})."
+            )
+        activities = row.get("preferred_activities") or []
+        if not activities:
+            raise ValueError(
+                "Select at least one preferred activity before generating a plan."
+            )
+
+        needs = list(row.get("accessibility_needs") or [])
+        # W04 decision (user-confirmed): keep multi-select; the engine adapts
+        # around the most restrictive need while the UI honors presentation
+        # needs for every selected need.
+        primary = (
+            next((n for n in ("blind_low_vision", "deaf_hard_of_hearing", "other") if n in needs), None)
+            or ("none" if not needs or needs == ["none"] else needs[0])
+        )
+        resources = row.get("blind_low_vision_resources") or []
+        return {
+            "profile": FitnessEngineService.create_user_profile(
+                age=required["age"],
+                sex=required["sex"],
+                height_cm=required["height_cm"],
+                weight_kg=required["weight_kg"],
+                goal=required["fitness_goal"],
+                lifestyle_activity=required["lifestyle_activity"],
+                diet=required["diet"],
+            ),
+            "activities": [str(a) for a in activities],
+            "accessibility_id": primary,
+            "accessibility_resources": [str(r) for r in resources],
+            "profile_revision": int(row.get("profile_revision") or 1),
+        }
 
     @staticmethod
     def create_user_profile(

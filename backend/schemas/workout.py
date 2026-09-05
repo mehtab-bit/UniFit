@@ -110,6 +110,12 @@ class WorkoutSessionSchema(BaseModel):
 class WorkoutDaySchema(BaseModel):
     day: str
     day_number: int
+    local_date: Optional[str] = Field(
+        default=None, description="YYYY-MM-DD assigned to this scheduled workout"
+    )
+    scheduled_workout_id: Optional[str] = Field(
+        default=None, description="Stable per user+date scheduled-workout identity"
+    )
     is_rest_day: bool
     rest_reason: Optional[str] = None
     workout: Optional[WorkoutSessionSchema] = None

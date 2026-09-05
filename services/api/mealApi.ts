@@ -5,7 +5,6 @@
 
 import { IMealService } from '../types';
 import { MealPlan, Meal, MealType, ScaledIngredient, NutritionTargets } from '../../types/domain';
-import { mockMealService } from '../mock/mealMock';
 import { fetchCombinedWeek, pickDayFromWeek } from './combinedPlan';
 
 function mapMealTimeToType(type: string): string {
@@ -111,30 +110,21 @@ function mapBackendMealDay(dayData: any, dateStr: string): MealPlan {
 
 export class MealApiService implements IMealService {
   async getDailyMealPlan(userId: string = 'user_default', date?: string): Promise<MealPlan> {
-    try {
-      const todayStr = date || new Date().toISOString().split('T')[0];
-      const response: any = await fetchCombinedWeek(userId);
-      const day = pickDayFromWeek(response.meals, date);
-      return mapBackendMealDay(day || {}, todayStr);
-    } catch (err) {
-      console.warn('[MealApiService] Falling back to mock meals:', err);
-      return mockMealService.getDailyMealPlan(userId, date);
-    }
+    const todayStr = date || new Date().toISOString().split('T')[0];
+    const response: any = await fetchCombinedWeek(userId);
+    const day = pickDayFromWeek(response.meals, date);
+    return mapBackendMealDay(day || {}, todayStr);
   }
 
   async getWeeklyMealPlan(userId: string = 'user_default'): Promise<MealPlan[]> {
-    try {
-      const response: any = await fetchCombinedWeek(userId);
+    const response: any = await fetchCombinedWeek(userId);
 
-      const today = new Date();
-      return (response.meals || []).map((day: any, idx: number) => {
-        const d = new Date(today);
-        d.setDate(today.getDate() + idx);
-        return mapBackendMealDay(day, d.toISOString().split('T')[0]);
-      });
-    } catch {
-      return mockMealService.getWeeklyMealPlan(userId);
-    }
+    const today = new Date();
+    return (response.meals || []).map((day: any, idx: number) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + idx);
+      return mapBackendMealDay(day, d.toISOString().split('T')[0]);
+    });
   }
 
   async getMealByDate(date: string, userId?: string): Promise<MealPlan | null> {

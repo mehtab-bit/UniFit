@@ -5,7 +5,6 @@
 
 import { INutritionService } from '../types';
 import { NutritionTargets } from '../../types/domain';
-import { mockNutritionService } from '../mock/nutritionMock';
 import { fetchCombinedWeek, pickDayFromWeek } from './combinedPlan';
 
 function mapBackendNutritionToTargets(nutrition: any): NutritionTargets {
@@ -38,14 +37,9 @@ function mapBackendNutritionToTargets(nutrition: any): NutritionTargets {
 
 export class NutritionApiService implements INutritionService {
   async getDailyTargets(userId: string = 'user_default', date?: string): Promise<NutritionTargets> {
-    try {
-      const response: any = await fetchCombinedWeek(userId);
-      const day = pickDayFromWeek(response.nutrition, date);
-      return mapBackendNutritionToTargets(day?.nutrition || day || {});
-    } catch (err) {
-      console.warn('[NutritionApiService] Falling back to mock nutrition:', err);
-      return mockNutritionService.getDailyTargets(userId, date);
-    }
+    const response: any = await fetchCombinedWeek(userId);
+    const day = pickDayFromWeek(response.nutrition, date);
+    return mapBackendNutritionToTargets(day?.nutrition || day || {});
   }
 
   async getDailyNutritionTargets(userId?: string, date?: string): Promise<NutritionTargets> {
@@ -53,14 +47,10 @@ export class NutritionApiService implements INutritionService {
   }
 
   async getWeeklyNutritionTargets(userId: string = 'user_default'): Promise<NutritionTargets[]> {
-    try {
-      const response: any = await fetchCombinedWeek(userId);
-      return (response.nutrition || []).map((d: any) =>
-        mapBackendNutritionToTargets(d.nutrition || d)
-      );
-    } catch {
-      return mockNutritionService.getWeeklyNutritionTargets(userId);
-    }
+    const response: any = await fetchCombinedWeek(userId);
+    return (response.nutrition || []).map((d: any) =>
+      mapBackendNutritionToTargets(d.nutrition || d)
+    );
   }
 }
 

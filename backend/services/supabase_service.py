@@ -8,8 +8,9 @@ in-memory caching when running in local development mode.
 from __future__ import annotations
 
 import os
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Any, Optional
+from datetime import date
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
@@ -57,6 +58,8 @@ class SupabaseService:
         self.client = None
         self._live_credentials = False
         self._cached_weekly_plans: dict[str, dict[str, Any]] = {}
+        self._plan_snapshots: dict[str, dict[str, Any]] = {}
+        self._scheduled_workouts: dict[str, dict[str, Any]] = {}
         self._cached_profiles: dict[str, dict[str, Any]] = {}
 
         if (
@@ -151,6 +154,128 @@ class SupabaseService:
                 )
             except Exception as e:
                 print(f"[SupabaseService] Failed to invalidate plan in Supabase: {e}")
+
+    @staticmethod
+    def _plan_identity_key(snapshot: dict[str, Any]) -> str:
+        return ":".join(
+            [
+                str(snapshot.get("user_id", "")),
+                str(snapshot.get("week_start_date", "")),
+                str(snapshot.get("profile_revision", 0)),
+                str(snapshot.get("progression_revision", 0)),
+                str(snapshot.get("engine_version", "")),
+                str(snapshot.get("rule_data_version", "")),
+            ]
+        )
+
+    def get_active_plan_snapshot(
+        self, user_id: str, week_start_date: str
+    ) -> Optional[dict[str, Any]]:
+        if not self.is_connected or self.client is None:
+            matches = [
+                row
+                for row in self._plan_snapshots.values()
+                if row.get("user_id") == user_id
+                and str(row.get("week_start_date")) == week_start_date
+                and row.get("status") == "active"
+            ]
+            return max(matches, key=lambda r: r.get("updated_at", "")) if matches else None
+        try:
+            resp = (
+                self.client.table("user_plan_snapshots")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("week_start_date", week_start_date)
+                .eq("status", "active")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            return resp.data[0] if resp.data else None
+        except Exception as exc:
+            print(f"[SupabaseService] Failed to load plan snapshot: {exc}")
+            return None
+
+    def save_plan_snapshot(
+        self, user_id: str, snapshot: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Persists a plan snapshot (and its scheduled workouts)."""
+        self._require_user_id(user_id)
+        identity_key = self._plan_identity_key(snapshot)
+
+        if not self.is_connected or self.client is None:
+            existing = self._plan_snapshots.get(identity_key)
+            if existing:
+                return dict(existing)
+            row = dict(snapshot)
+            row.setdefault("id", str(uuid4()))
+            row.setdefault("status", "active")
+            row.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+            row["updated_at"] = datetime.now(timezone.utc).isoformat()
+            # Supersede previous snapshots for this user/week.
+            for key, old in list(self._plan_snapshots.items()):
+                if (
+                    old.get("user_id") == user_id
+                    and str(old.get("week_start_date"))
+                    == str(snapshot.get("week_start_date"))
+                    and old.get("status") == "active"
+                ):
+                    old["status"] = "superseded"
+            self._plan_snapshots[identity_key] = row
+            for scheduled in snapshot.get("scheduled_workouts", []):
+                self._scheduled_workouts[
+                    str(scheduled.get("id"))
+                ] = {**scheduled, "plan_id": row["id"], "user_id": user_id}
+            return dict(row)
+
+        try:
+            payload = {
+                "user_id": user_id,
+                "week_start_date": snapshot["week_start_date"],
+                "week_number": snapshot["week_number"],
+                "profile_revision": snapshot.get("profile_revision", 0),
+                "progression_revision": snapshot.get("progression_revision", 1),
+                "engine_version": snapshot.get("engine_version", ""),
+                "rule_data_version": snapshot.get("rule_data_version", ""),
+                "plan_data": snapshot.get("plan_data", {}),
+                "status": "active",
+            }
+            self.client.table("user_plan_snapshots").update({"status": "superseded"}).eq(
+                "user_id", user_id
+            ).eq("week_start_date", snapshot["week_start_date"]).eq(
+                "status", "active"
+            ).execute()
+            inserted = (
+                self.client.table("user_plan_snapshots")
+                .upsert(payload, on_conflict="user_id,week_start_date,profile_revision,progression_revision,engine_version,rule_data_version")
+                .select("*")
+                .execute()
+            )
+            row = inserted.data[0] if inserted.data else dict(payload)
+            schedule_rows = []
+            for scheduled in snapshot.get("scheduled_workouts", []):
+                schedule_rows.append(
+                    {
+                        "id": scheduled["id"],
+                        "user_id": user_id,
+                        "plan_id": row["id"],
+                        "local_date": scheduled["local_date"],
+                        "activity_id": scheduled["activity_id"],
+                        "requested_activity_id": scheduled.get("requested_activity_id"),
+                        "progression_key": scheduled.get("progression_key"),
+                        "session_type": scheduled.get("session_type"),
+                        "is_rest_day": scheduled.get("is_rest_day", False),
+                        "prescription": scheduled.get("prescription", {}),
+                    }
+                )
+            if schedule_rows:
+                self.client.table("scheduled_workouts").upsert(
+                    schedule_rows, on_conflict="id"
+                ).execute()
+            return row
+        except Exception as exc:
+            print(f"[SupabaseService] Failed to persist plan snapshot: {exc}")
+            raise ValueError("Unable to save the generated plan. Please try again.") from exc
 
     def save_profile(self, user_id: str, profile_data: dict[str, Any]) -> None:
         self._cached_profiles[user_id] = profile_data

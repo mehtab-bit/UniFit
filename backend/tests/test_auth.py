@@ -134,7 +134,7 @@ def test_expired_token_rejected_in_live_mode(monkeypatch):
     assert response.status_code == 401, response.text
 
 
-def test_legacy_supplied_default_user_rejected_in_live_mode(monkeypatch):
+def test_legacy_supplied_default_user_maps_to_verified_identity(monkeypatch):
     monkeypatch.setenv("UNIFIT_AUTH_MODE", "live")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", TEST_SECRET)
     token = mint_token(USER_A)
@@ -142,4 +142,5 @@ def test_legacy_supplied_default_user_rejected_in_live_mode(monkeypatch):
         "/api/v1/streak?user_id=user_default",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 403, response.text
+    assert response.status_code == 200, response.text
+    assert response.json()["user_id"] == USER_A
