@@ -11,6 +11,8 @@ both MoveNet and native MediaPipe pose engines.
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — how all the pieces connect
+- [docs/cv-module.md](docs/cv-module.md) — simple end-to-end guide to the camera coach
+- [docs/manual-testing.md](docs/manual-testing.md) — tester checklist
 - [docs/engine.md](docs/engine.md) — the Python fitness engine (plans, nutrition, progression)
 - [docs/cv-coach.md](docs/cv-coach.md) — camera pose tracking, calibration, rep counting, form feedback
 - [docs/setup.md](docs/setup.md) — running it on your laptop and phone

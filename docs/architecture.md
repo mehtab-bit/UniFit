@@ -34,7 +34,8 @@ Three subsystems are deliberately separated:
 
 The CV coach is fully on-device and never calls the backend per frame. It
 reports completion through the normal workout-log API exactly once per camera
-session (`cv-session` owns the log call).
+session (`cv-session` owns the log call) and, if offline, stores the attempt
+in a per-user on-device queue for replay.
 
 ## Frontend layer map
 
@@ -53,9 +54,17 @@ session (`cv-session` owns the log call).
 
 ### Why the data flow is what it is
 
-- The engine is **profile-driven**: age/sex/height/weight/goal/lifestyle/diet/preferences decide the week. Quiz answers are saved to `profiles` and re-sent with each plan request.
+- The engine is **profile-driven**: age/sex/height/weight/goal/lifestyle/diet/
+  preferences decide the week. Plans are generated from the committed server
+  profile (`GET/PUT /api/v1/profile/me`), not from client defaults.
 - The engine is **progression-driven**: completing workouts writes `user_workout_sessions`; the backend recomputes rule weeks and variation levels from that history.
-- Plans are **cached** (`user_weekly_plans`) and regenerated when a profile changes (`force_regenerate`) or the cache is invalidated.
+- Weekly completion is judged against the issued plan, not merely averaged
+  over submitted logs.
+- Plans are **snapshotted** (`user_plan_snapshots`, `scheduled_workouts`) with
+  profile/progression revisions and stable per-date IDs. Older snapshots are
+  superseded, not deleted.
+- Meals and guided/manual activities are first-class records
+  (`meal_log_entries`, `user_activity_logs`) with CRUD and idempotent writes.
 
 ## Pose engines
 
@@ -76,11 +85,12 @@ session (`cv-session` owns the log call).
 | File | Role |
 |---|---|
 | `backend/main.py` | FastAPI app, CORS, exception handlers, mounts routers under `/api/v1` |
-| `backend/routes/*.py` | HTTP endpoints (fitness, workout, nutrition, meals, completion, progress, streak, profile, health) |
+| `backend/routes/*.py` | HTTP endpoints (fitness, workout, nutrition, meals, activity, completion, progress, calendar, profile, health) |
 | `backend/schemas/*.py` | Pydantic contracts (mirrored by `types/domain.ts`) |
 | `backend/services/engine_service.py` | Adapts engine functions into service methods |
-| `backend/services/progression_service.py` | Session logs, 80% gates, rule-week progression |
-| `backend/services/supabase_service.py` | Supabase persistence + in-memory caches when offline |
+| `backend/services/progression_service.py` | Plan-denominator summaries, 80% gates, progression state |
+| `backend/services/supabase_service.py` | Supabase persistence + thread-local clients + typed unavailable errors |
+| `lib/pendingQueue.ts` / `pendingSync.ts` | Per-user durable offline queue for activity/camera writes |
 
 **Canonical endpoint:** `POST /api/v1/fitness/weekly-plan` returns workouts +
 nutrition + meals for a whole week in one call. The frontend routes through it.
@@ -120,9 +130,13 @@ Workout screen ──► cv-session (on-device pose tracking) ──► reps + r
 |---|---|
 | `profiles` | Quiz answers / user baseline (one row per auth user) |
 | `user_activity_preferences` | Preferred cardio activities |
-| `user_weekly_plans` | Generated combined plan cache per user/week |
+| `user_weekly_plans` | Legacy combined plan cache |
+| `user_plan_snapshots` | Revision-aware plan snapshots per user/week |
+| `scheduled_workouts` | Stable scheduled-workout identities/dates |
 | `user_workout_sessions` | Completion log (feeds streaks + progression) |
 | `user_progress_state` | Progression snapshot (rule weeks, variation levels) |
+| `meal_log_entries` | Logged planned/database/custom food entries |
+| `user_activity_logs` | Guided/manual walking/running/cycling/swimming entries |
 | Engine CSVs (`data/`) | Workout templates, exercise variations, schedule/progression/accessibility rules |
 
 ## Git / environment notes
