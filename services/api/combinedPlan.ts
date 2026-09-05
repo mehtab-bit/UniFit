@@ -23,6 +23,8 @@ interface PlanStoreEntry {
 }
 
 const store = new Map<string, PlanStoreEntry>();
+const planEpochs = new Map<string, number>();
+const changeListeners = new Map<string, Set<() => void>>();
 
 function localMonday(date?: Date): string {
   const d = date || new Date();
@@ -90,11 +92,32 @@ export function fetchCombinedWeek(
 
 /** Clears every cached plan for one user after a profile/session change. */
 export function clearCombinedWeek(userId: string) {
+  planEpochs.set(userId, (planEpochs.get(userId) || 0) + 1);
   for (const key of Array.from(store.keys())) {
     if (key.startsWith(`${userId}:`)) {
       store.delete(key);
     }
   }
+  changeListeners.get(userId)?.forEach((listener) => listener());
+}
+
+/** Observes plan invalidation for a user (profile edits, account changes). */
+export function subscribeToPlanChanges(
+  userId: string | undefined,
+  listener: () => void
+): () => void {
+  if (!userId) return () => undefined;
+  const set = changeListeners.get(userId) || new Set<() => void>();
+  set.add(listener);
+  changeListeners.set(userId, set);
+  return () => {
+    const current = changeListeners.get(userId);
+    current?.delete(listener);
+  };
+}
+
+export function planEpoch(userId: string): number {
+  return planEpochs.get(userId) || 0;
 }
 
 /**

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
+import { subscribeToPlanChanges } from '../../services/api/combinedPlan';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -130,6 +131,12 @@ export default function HomeScreen() {
       void loadHomeData();
     }, [loadHomeData])
   );
+
+  useEffect(() => {
+    return subscribeToPlanChanges(user?.id, () => {
+      void loadHomeData();
+    });
+  }, [loadHomeData, user?.id]);
 
   const handleOpenStreakPlan = () => {
     router.push('/(app)/streak-plan');
