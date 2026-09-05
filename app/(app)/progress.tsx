@@ -241,7 +241,13 @@ const styles = StyleSheet.create({
   heroTextCol: { flex: 1, flexShrink: 1, minWidth: 0, paddingRight: 8 },
   heroBadge: { fontSize: 11, fontWeight: '800', color: '#D4AF37', letterSpacing: 1.5, marginBottom: 8 },
   heroNumberRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap' },
-  heroNumber: { fontSize: 42, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1 },
+  heroNumber: {
+    fontSize: 42,
+    lineHeight: 50,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
   heroPhaseText: {
     fontSize: 11,
     fontWeight: '700',
