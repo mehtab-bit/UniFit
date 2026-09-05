@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { supabase, isLiveSupabaseConfigured, SafeStorage } from '../lib/supabase';
 import { ProfileService } from '../lib/profile';
+import { ApiError } from '../services/api/apiClient';
 import { AuthUser, AuthSession, AuthState } from '../types/auth';
 import { UserProfile, QuizFormData } from '../types/quiz';
 import { DEMO_ACCOUNT, isDemoModeEnabled } from '../constants/demo';
@@ -126,6 +127,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return initialProfile;
       }
     } catch (err) {
+      if (
+        err instanceof ApiError &&
+        (err.status === 401 || err.status === 403)
+      ) {
+        // The session itself is invalid/revoked. Never route a real user into
+        // onboarding because profile loading failed for an auth reason.
+        clearAuthState();
+        return null;
+      }
       console.warn('Failed to load user profile:', err);
       if (generation === profileLoadGenerationRef.current) {
         setProfile(null);

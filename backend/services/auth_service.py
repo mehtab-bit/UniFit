@@ -87,11 +87,15 @@ def verify_supabase_token(token: str) -> VerifiedUser:
                 options={"require": ["exp", "sub"], "verify_aud": False},
             )
         except pyjwt.ExpiredSignatureError as exc:
+            if _remote_auth_enabled():
+                return _verify_remote(token)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Session has expired. Please sign in again.",
             ) from exc
         except pyjwt.InvalidTokenError as exc:
+            if _remote_auth_enabled():
+                return _verify_remote(token)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or malformed session token.",
@@ -112,24 +116,8 @@ def verify_supabase_token(token: str) -> VerifiedUser:
             )
         return VerifiedUser(id=subject)
 
-    if _remote_auth_enabled() and supabase_service.client is not None:
-        try:
-            response = supabase_service.client.auth.get_user(token)
-            user = getattr(response, "user", None)
-            subject = str(getattr(user, "id", "") or "")
-            if not _valid_uuid(subject):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Supabase did not return a valid user for this token.",
-                )
-            return VerifiedUser(id=subject)
-        except HTTPException:
-            raise
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Unable to verify session token. Please sign in again.",
-            ) from exc
+    if _remote_auth_enabled():
+        return _verify_remote(token)
 
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -138,6 +126,32 @@ def verify_supabase_token(token: str) -> VerifiedUser:
             "or enable SUPABASE_AUTH_REMOTE_FALLBACK."
         ),
     )
+
+
+def _verify_remote(token: str) -> VerifiedUser:
+    """Delegates token validation to Supabase Auth."""
+    if supabase_service.client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Backend authentication is not configured.",
+        )
+    try:
+        response = supabase_service.client.auth.get_user(token)
+        user = getattr(response, "user", None)
+        subject = str(getattr(user, "id", "") or "")
+        if not _valid_uuid(subject):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Supabase did not return a valid user for this token.",
+            )
+        return VerifiedUser(id=subject)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unable to verify session token. Please sign in again.",
+        ) from exc
 
 
 def resolve_user_id(verified: VerifiedUser, supplied: Optional[str]) -> str:
