@@ -30,6 +30,16 @@ from fastapi import HTTPException, status
 
 from backend.services.supabase_service import SUPABASE_URL, supabase_service
 
+# Supabase Auth accepts the project's publishable/anon key (the same key the
+# mobile client uses). The Python SDK uses whatever key created the client,
+# which may be a service-role key that newer projects reject on /auth/v1/user.
+SUPABASE_AUTH_API_KEY = (
+    os.getenv("EXPO_PUBLIC_SUPABASE_ANON_KEY")
+    or os.getenv("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+    or os.getenv("SUPABASE_KEY")
+    or ""
+)
+
 DEV_MODES = {"dev", "demo", "test", "offline"}
 LIVE_MODES = {"live", "secure", "prod", "production"}
 logger = logging.getLogger("unifit.auth")
@@ -132,15 +142,35 @@ def verify_supabase_token(token: str) -> VerifiedUser:
 
 def _verify_remote(token: str) -> VerifiedUser:
     """Delegates token validation to Supabase Auth."""
-    if supabase_service.client is None:
+    if not SUPABASE_AUTH_API_KEY or not SUPABASE_URL:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Backend authentication is not configured.",
         )
     try:
-        response = supabase_service.client.auth.get_user(token)
-        user = getattr(response, "user", None)
-        subject = str(getattr(user, "id", "") or "")
+        import httpx
+
+        response = httpx.get(
+            f"{SUPABASE_URL.rstrip('/')}/auth/v1/user",
+            headers={
+                "apikey": SUPABASE_AUTH_API_KEY,
+                "Authorization": f"Bearer {token}",
+            },
+            timeout=12,
+        )
+        if response.status_code >= 400:
+            safe_body = response.text[:300].replace("\n", " ")
+            logger.warning(
+                "Supabase remote token check rejected request (%s): %s",
+                response.status_code,
+                safe_body,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Unable to verify session token. Please sign in again.",
+            )
+        payload = response.json()
+        subject = str(payload.get("id") or "")
         if not _valid_uuid(subject):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
