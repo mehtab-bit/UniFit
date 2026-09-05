@@ -62,13 +62,15 @@ export const DEMO_ENGINE_ACTIVITIES: string[] = ['running', 'cycling'];
 
 /**
  * Environment check to determine if Demo Mode is permitted.
- * Only enabled in development or when explicitly configured via environment flag.
+ * Demo entry is explicit and isolated: it is available only when the
+ * EXPO_PUBLIC_DEMO_MODE environment flag is literally 'true'. Development
+ * builds never auto-enable it.
  */
 export const isDemoModeEnabled = (): boolean => {
   if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_DEMO_MODE === 'true') {
     return true;
   }
-  return typeof __DEV__ !== 'undefined' && __DEV__;
+  return false;
 };
 
 /**

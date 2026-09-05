@@ -1,11 +1,13 @@
 """Progress and Streak API endpoints."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from typing import Any, Optional
 from datetime import date, datetime, timedelta
 from backend.schemas.progress import StreakResponse, ProgressSummaryResponse
 from backend.services.progression_service import progression_service
 from backend.services.supabase_service import supabase_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(tags=["Progress & Streak"])
 session_router = APIRouter(tags=["Sessions"])
@@ -50,7 +52,11 @@ def _compute_streaks(logs: list[dict]) -> tuple[int, int]:
 
 
 @router.get("/streak", response_model=StreakResponse)
-def get_streak(user_id: str = Query("user_default")):
+def get_streak(
+    user_id: str = Query("user_default"),
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, user_id)
     state = progression_service.get_progress_state(user_id)
     logs = progression_service.get_session_logs(user_id)
     current_streak, best_streak = _compute_streaks(logs)
@@ -80,7 +86,11 @@ def get_streak(user_id: str = Query("user_default")):
 
 
 @router.get("/progress", response_model=ProgressSummaryResponse)
-def get_progress(user_id: str = Query("user_default")):
+def get_progress(
+    user_id: str = Query("user_default"),
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, user_id)
     state = progression_service.get_progress_state(user_id)
 
     logged = state["logged_sessions_count"]
@@ -114,8 +124,12 @@ def get_progress(user_id: str = Query("user_default")):
 
 
 @session_router.get("/sessions")
-def get_sessions(user_id: str = Query("user_default")):
+def get_sessions(
+    user_id: str = Query("user_default"),
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
     """Returns the user's actual logged workout sessions, newest first."""
+    user_id = resolve_user_id(verified, user_id)
     sessions = supabase_service.load_workout_sessions(user_id)
     sessions.sort(key=lambda s: str(s.get("created_at") or ""), reverse=True)
     return {"sessions": sessions}

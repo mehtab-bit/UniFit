@@ -1,15 +1,21 @@
 """Profile preview and onboarding validation endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from backend.schemas.profile import UserProfileRequest, ProfilePreviewResponse
 from backend.services.engine_service import engine_service
 from backend.services.supabase_service import supabase_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
 
 @router.post("/preview", response_model=ProfilePreviewResponse)
-def preview_profile(request: UserProfileRequest):
+def preview_profile(
+    request: UserProfileRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, request.user_id)
     try:
         engine_profile = engine_service.create_user_profile(
             age=request.age,
@@ -24,8 +30,8 @@ def preview_profile(request: UserProfileRequest):
         baseline = engine_service.calculate_baseline(engine_profile)
 
         # Cache profile if user_id is provided
-        if request.user_id:
-            supabase_service.save_profile(request.user_id, request.model_dump())
+        if user_id:
+            supabase_service.save_profile(user_id, request.model_dump())
 
         # Determine target active days
         active_days_map = {

@@ -1,18 +1,24 @@
 """Workout API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from datetime import datetime
 from backend.schemas.progress import WeeklyPlanRequest
 from backend.schemas.workout import WeeklyWorkoutPlanResponse, WorkoutDaySchema
 from backend.services.engine_service import engine_service
 from backend.services.supabase_service import supabase_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/workout", tags=["Workout"])
 
 
 @router.post("/weekly", response_model=WeeklyWorkoutPlanResponse)
-def get_weekly_workout_plan(request: WeeklyPlanRequest):
+def get_weekly_workout_plan(
+    request: WeeklyPlanRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, request.user_id)
     try:
         engine_profile = engine_service.create_user_profile(
             age=request.profile.age,
@@ -44,7 +50,9 @@ def get_workout_by_date(
     date: str,
     user_id: str = Query("user_default"),
     week_number: int = Query(1),
+    verified: VerifiedUser = Depends(require_user_dependency),
 ):
+    user_id = resolve_user_id(verified, user_id)
     try:
         # Determine day of week from date string (YYYY-MM-DD)
         parsed_date = datetime.strptime(date, "%Y-%m-%d")

@@ -1,18 +1,22 @@
 """Combined weekly fitness plan endpoint (Workout + Nutrition + Meals)."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from backend.schemas.progress import WeeklyPlanRequest, CombinedWeeklyPlanResponse
 from backend.services.engine_service import engine_service
 from backend.services.supabase_service import supabase_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/fitness", tags=["Fitness Plan"])
 
 
 @router.post("/weekly-plan", response_model=CombinedWeeklyPlanResponse)
-def generate_combined_weekly_plan(request: WeeklyPlanRequest):
+def generate_combined_weekly_plan(
+    request: WeeklyPlanRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, request.user_id)
     try:
-        user_id = request.user_id or "user_default"
-
         # User just updated their profile and asked for a fresh plan: drop any
         # cached copy (memory + Supabase) before regenerating.
         if request.force_regenerate:

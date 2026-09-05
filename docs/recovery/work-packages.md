@@ -11,13 +11,13 @@ Status: 🚧 (inventory above, artifacts created; sub-item verification ongoing)
 Problem: every user-specific backend operation trusts caller-supplied `user_id`; frontend can load indefinitely; recovery flow incomplete.
 
 Required:
-- [ ] Backend bearer-token verification dependency (`Authorization: Bearer <Supabase JWT>`)
-- [ ] Ownership enforcement on profile/plan/session/progress/meal/streak routes
-- [ ] Profile load outside `onAuthStateChange`
-- [ ] Stale-session/old-user guard, session-expiry normalization
-- [ ] Password-recovery deep-link flow (update password, expired/reused link errors)
-- [ ] Explicit isolated demo path
-- [ ] Tests: missing/expired token; cross-user; refresh; restart; logout during load; recovery links; demo switching
+- [x] Backend bearer-token verification dependency (`Authorization: Bearer <Supabase JWT>`)
+- [x] Ownership enforcement on profile/plan/session/progress/meal/streak routes
+- [x] Profile load outside `onAuthStateChange`
+- [x] Stale-session/old-user guard, session-expiry normalization
+- [x] Password-recovery deep-link flow (update password, expired/reused link errors)
+- [x] Explicit isolated demo path
+- [x] Tests: missing/expired token; cross-user; refresh; restart; logout during load; recovery links; demo switching
 
 Done when: no user can access another user's data; auth transitions cannot leave the app loading indefinitely.
 

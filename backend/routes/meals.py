@@ -1,17 +1,23 @@
 """Meals and Meal Plan API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from datetime import datetime
 from backend.schemas.progress import WeeklyPlanRequest
 from backend.schemas.meal import WeeklyMealPlanResponse, MealPlanDaySchema
 from backend.services.engine_service import engine_service
 from backend.services.supabase_service import supabase_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/meals", tags=["Meals"])
 
 
 @router.post("/weekly", response_model=WeeklyMealPlanResponse)
-def get_weekly_meal_plan(request: WeeklyPlanRequest):
+def get_weekly_meal_plan(
+    request: WeeklyPlanRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, request.user_id)
     try:
         engine_profile = engine_service.create_user_profile(
             age=request.profile.age,
@@ -43,7 +49,9 @@ def get_meals_by_date(
     date: str,
     user_id: str = Query("user_default"),
     week_number: int = Query(1),
+    verified: VerifiedUser = Depends(require_user_dependency),
 ):
+    user_id = resolve_user_id(verified, user_id)
     try:
         parsed_date = datetime.strptime(date, "%Y-%m-%d")
         day_names = [

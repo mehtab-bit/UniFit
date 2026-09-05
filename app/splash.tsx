@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, StyleSheet, ActivityIndicator, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../context/AuthContext';
 import { Colors } from '../constants/colors';
@@ -9,7 +10,7 @@ import { Layout } from '../constants/layout';
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { isLoading, user, isOnboardingCompleted, isIntroSeen } = useAuth();
+  const { isLoading, user, isOnboardingCompleted, isIntroSeen, isRecoveryMode } = useAuth();
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.94)).current;
@@ -35,7 +36,9 @@ export default function SplashScreen() {
     if (!isLoading) {
       const timer = setTimeout(() => {
         if (user) {
-          if (isOnboardingCompleted) {
+          if (isRecoveryMode) {
+            router.replace('/(auth)/update-password' as Href);
+          } else if (isOnboardingCompleted) {
             router.replace('/(app)');
           } else {
             router.replace('/quiz');
@@ -51,7 +54,7 @@ export default function SplashScreen() {
 
       return () => clearTimeout(timer);
     }
-  }, [isLoading, user, isOnboardingCompleted, isIntroSeen, router]);
+  }, [isLoading, user, isOnboardingCompleted, isIntroSeen, isRecoveryMode, router]);
 
   return (
     <View style={styles.container}>

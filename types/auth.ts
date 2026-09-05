@@ -20,6 +20,7 @@ export interface AuthState {
   isLoading: boolean;
   isOnboardingCompleted: boolean;
   isConfiguredWithLiveSupabase: boolean;
+  isRecoveryMode: boolean;
 }
 
 export interface LoginFormData {

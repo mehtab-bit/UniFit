@@ -24,8 +24,8 @@ SUPABASE_KEY = (
 
 class SupabaseService:
     def __init__(self):
-        self.is_connected = False
         self.client = None
+        self._live_credentials = False
         self._cached_weekly_plans: dict[str, dict[str, Any]] = {}
         self._cached_profiles: dict[str, dict[str, Any]] = {}
 
@@ -39,10 +39,23 @@ class SupabaseService:
                 from supabase import create_client
 
                 self.client = create_client(SUPABASE_URL, SUPABASE_KEY)
-                self.is_connected = True
+                self._live_credentials = True
             except Exception as e:
                 print(f"[SupabaseService] Client init failed, using in-memory mode: {e}")
-                self.is_connected = False
+                self._live_credentials = False
+
+    @property
+    def is_connected(self) -> bool:
+        """True when live Supabase is configured AND persistence is enabled.
+
+        UNIFIT_PERSISTENCE=offline (or =memory) forces the service back to
+        in-memory mode so deterministic engine tests never touch a live
+        database, regardless of what .env contains.
+        """
+        mode = (os.getenv("UNIFIT_PERSISTENCE") or "").strip().lower()
+        if mode in {"offline", "memory", "isolated", "test"}:
+            return False
+        return self._live_credentials
 
     def _require_user_id(self, user_id: Optional[str]) -> None:
         """Live Supabase rows key on auth.users UUIDs.

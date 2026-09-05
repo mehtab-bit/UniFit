@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  ReactNode,
+} from 'react';
 import { supabase, isLiveSupabaseConfigured, SafeStorage } from '../lib/supabase';
 import { ProfileService } from '../lib/profile';
 import { AuthUser, AuthSession, AuthState } from '../types/auth';
@@ -20,6 +28,7 @@ interface AuthContextType extends AuthState {
   signInWithDemo: () => Promise<{ success: boolean; error?: string }>;
   signUp: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string; confirmationSent?: boolean; requiresQuiz?: boolean }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   completeIntro: () => Promise<void>;
   resetOnboarding: () => Promise<void>;
@@ -34,18 +43,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(false);
   const [profileRevision, setProfileRevision] = useState(0);
   const [isIntroSeen, setIsIntroSeen] = useState<boolean>(false);
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(false);
   const [isConfiguredWithLiveSupabase, setIsConfiguredWithLiveSupabase] = useState<boolean>(false);
+  // Guards stale asynchronous profile loads from overwriting a newer session
+  // (e.g. logout during loading or an account switch while a fetch is in flight).
+  const activeUserIdRef = useRef<string | null>(null);
+  const profileLoadGenerationRef = useRef(0);
 
-  const loadUserProfile = async (userId: string, defaultName: string) => {
+  const toAuthUser = (
+    supabaseUser: { id: string; email?: string | null; created_at?: string; user_metadata?: Record<string, any> },
+    fallbackName: string
+  ): AuthUser => ({
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    fullName:
+      supabaseUser.user_metadata?.full_name ||
+      supabaseUser.email?.split('@')[0] ||
+      fallbackName ||
+      'UniFit Athlete',
+    createdAt: supabaseUser.created_at || new Date().toISOString(),
+  });
+
+  // Supabase exposes expires_at in whole seconds; UniFit stores milliseconds so
+  // all consumers (local demo sessions included) share one unit.
+  const buildSession = (
+    authUser: AuthUser,
+    accessToken: string,
+    expiresAtSeconds?: number | null
+  ): AuthSession => ({
+    user: authUser,
+    accessToken,
+    expiresAt: expiresAtSeconds
+      ? expiresAtSeconds * 1000
+      : Date.now() + 3600 * 1000,
+  });
+
+  const loadUserProfile = async (
+    userId: string,
+    defaultName: string
+  ): Promise<UserProfile | null> => {
+    const generation = ++profileLoadGenerationRef.current;
+    activeUserIdRef.current = userId;
     try {
       const userProfile = await ProfileService.getProfile(userId);
+      // Another sign-in/out happened while this request was in flight: discard.
+      if (
+        generation !== profileLoadGenerationRef.current ||
+        activeUserIdRef.current !== userId
+      ) {
+        return null;
+      }
       if (userProfile) {
         setProfile(userProfile);
         const completed = Boolean(userProfile.onboarding_completed);
         setIsOnboardingCompleted(completed);
+        return userProfile;
       } else {
         const initialProfile: UserProfile = {
           user_id: userId,
@@ -66,11 +121,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
         setProfile(initialProfile);
         setIsOnboardingCompleted(false);
+        return initialProfile;
       }
     } catch (err) {
       console.warn('Failed to load user profile:', err);
+      if (generation === profileLoadGenerationRef.current) {
+        setProfile(null);
+        setIsOnboardingCompleted(false);
+      }
+      return null;
     }
   };
+
+  const applySupabaseSession = useCallback(
+    (supaSession: { user?: any; access_token?: string; expires_at?: number | null } | null) => {
+      if (!supaSession?.user) {
+        activeUserIdRef.current = null;
+        profileLoadGenerationRef.current += 1;
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        setIsOnboardingCompleted(false);
+        return;
+      }
+      const authUser = toAuthUser(supaSession.user, 'UniFit Athlete');
+      activeUserIdRef.current = authUser.id;
+      setUser(authUser);
+      setSession(
+        buildSession(authUser, supaSession.access_token || '', supaSession.expires_at)
+      );
+      // Deliberately not awaited: Supabase auth callbacks must not host
+      // asynchronous Supabase/profile work (documented deadlock risk).
+      void loadUserProfile(authUser.id, authUser.fullName);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const clearAuthState = useCallback(() => {
+    activeUserIdRef.current = null;
+    profileLoadGenerationRef.current += 1;
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    setIsOnboardingCompleted(false);
+    setProfileRevision(0);
+  }, []);
 
   // Initialize Auth & Storage State on app boot
   useEffect(() => {
@@ -84,35 +180,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsIntroSeen(introSeen === 'true');
 
         if (liveConfigured) {
-          // Check Supabase session
+          // Check Supabase session (persisted securely by supabase-js).
           const { data: { session: supaSession } } = await supabase.auth.getSession();
-          if (supaSession?.user) {
-            const authUser: AuthUser = {
-              id: supaSession.user.id,
-              email: supaSession.user.email || '',
-              fullName: supaSession.user.user_metadata?.full_name || supaSession.user.email?.split('@')[0] || 'UniFit Athlete',
-              createdAt: supaSession.user.created_at,
-            };
-            setUser(authUser);
-            setSession({
-              user: authUser,
-              accessToken: supaSession.access_token,
-              expiresAt: supaSession.expires_at || Date.now() + 3600 * 1000,
-            });
-            await loadUserProfile(authUser.id, authUser.fullName);
-          }
+          applySupabaseSession(supaSession);
         } else {
           // Check persistent local session
           const storedSession = await SafeStorage.getItem(STORAGE_KEYS.AUTH_SESSION);
           if (storedSession) {
             const parsedSession: AuthSession = JSON.parse(storedSession);
+            if (parsedSession.expiresAt && parsedSession.expiresAt < Date.now()) {
+              await SafeStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
+              return;
+            }
             setSession(parsedSession);
             setUser(parsedSession.user);
-            await loadUserProfile(parsedSession.user.id, parsedSession.user.fullName);
+            activeUserIdRef.current = parsedSession.user.id;
+            void loadUserProfile(parsedSession.user.id, parsedSession.user.fullName);
           }
         }
       } catch (err) {
         console.warn('Error during auth initialization:', err);
+        clearAuthState();
       } finally {
         setIsLoading(false);
       }
@@ -123,27 +211,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Listen to Supabase auth state changes if live configured
     if (isLiveSupabaseConfigured()) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (_event, supaSession) => {
-          if (supaSession?.user) {
-            const authUser: AuthUser = {
-              id: supaSession.user.id,
-              email: supaSession.user.email || '',
-              fullName: supaSession.user.user_metadata?.full_name || supaSession.user.email?.split('@')[0] || 'UniFit Athlete',
-              createdAt: supaSession.user.created_at,
-            };
-            setUser(authUser);
-            setSession({
-              user: authUser,
-              accessToken: supaSession.access_token,
-              expiresAt: supaSession.expires_at || Date.now() + 3600 * 1000,
-            });
-            await loadUserProfile(authUser.id, authUser.fullName);
-          } else {
-            setUser(null);
-            setProfile(null);
-            setSession(null);
-            setIsOnboardingCompleted(false);
-          }
+        (event, supaSession) => {
+          // Handle recovery links without blocking the auth callback.
+          setIsRecoveryMode(event === 'PASSWORD_RECOVERY' && Boolean(supaSession?.user));
+          applySupabaseSession(supaSession);
         }
       );
 
@@ -151,7 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         subscription.unsubscribe();
       };
     }
-  }, []);
+  }, [applySupabaseSession, clearAuthState]);
 
   const refreshProfile = async () => {
     if (user) {
@@ -233,16 +304,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         if (data.user) {
-          const authUser: AuthUser = {
-            id: data.user.id,
-            email: data.user.email || sanitizedEmail,
-            fullName: data.user.user_metadata?.full_name || 'UniFit Athlete',
-            createdAt: data.user.created_at,
-          };
+          const authUser = toAuthUser(data.user, sanitizedEmail.split('@')[0]);
+          activeUserIdRef.current = authUser.id;
           setUser(authUser);
-          await loadUserProfile(authUser.id, authUser.fullName);
-
-          const fetchedProfile = await ProfileService.getProfile(authUser.id);
+          setSession(
+            buildSession(
+              authUser,
+              data.session?.access_token || '',
+              data.session?.expires_at
+            )
+          );
+          const fetchedProfile = await loadUserProfile(
+            authUser.id,
+            authUser.fullName
+          );
           const completed = Boolean(fetchedProfile?.onboarding_completed);
 
           return { success: true, requiresQuiz: !completed };
@@ -309,19 +384,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
         }
 
-        const authUser: AuthUser = {
-          id: data.user.id,
-          email: data.user.email || DEMO_ACCOUNT.email,
-          fullName: data.user.user_metadata?.full_name || DEMO_ACCOUNT.fullName,
-          createdAt: data.user.created_at,
-        };
-
+        const authUser = toAuthUser(data.user, DEMO_ACCOUNT.fullName);
+        activeUserIdRef.current = authUser.id;
         setUser(authUser);
-        setSession({
-          user: authUser,
-          accessToken: data.session.access_token,
-          expiresAt: data.session.expires_at || Date.now() + 3600 * 1000,
-        });
+        setSession(
+          buildSession(
+            authUser,
+            data.session.access_token,
+            data.session.expires_at
+          )
+        );
 
         const demoProfile = await ProfileService.saveDemoProfile(
           authUser.id,
@@ -392,14 +464,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         if (data.session) {
-          const authUser: AuthUser = {
-            id: data.user!.id,
-            email: data.user!.email || sanitizedEmail,
-            fullName: sanitizedName,
-            createdAt: data.user!.created_at,
-          };
+          const authUser = toAuthUser(data.user!, sanitizedName);
+          activeUserIdRef.current = authUser.id;
           setUser(authUser);
-          await loadUserProfile(authUser.id, authUser.fullName);
+          setSession(
+            buildSession(
+              authUser,
+              data.session.access_token,
+              data.session.expires_at
+            )
+          );
+          void loadUserProfile(authUser.id, authUser.fullName);
           return { success: true, requiresQuiz: true };
         } else if (data.user && !data.session) {
           return { success: true, confirmationSent: true };
@@ -479,6 +554,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updatePassword = async (
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!isConfiguredWithLiveSupabase) {
+        return {
+          success: false,
+          error: 'Password recovery requires a real Supabase account.',
+        };
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        if (
+          error.message.toLowerCase().includes('expired') ||
+          error.message.toLowerCase().includes('invalid') ||
+          error.message.toLowerCase().includes('no user found')
+        ) {
+          setIsRecoveryMode(false);
+          return {
+            success: false,
+            error: 'This recovery link is invalid or has expired. Please request a new one.',
+          };
+        }
+        return { success: false, error: error.message };
+      }
+      setIsRecoveryMode(false);
+      return { success: true };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: 'Unable to connect to service. Please check your network connection.',
+      };
+    }
+  };
+
   const signOut = async () => {
     try {
       if (isConfiguredWithLiveSupabase) {
@@ -486,12 +596,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         await SafeStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
       }
-      setUser(null);
-      setProfile(null);
-      setSession(null);
-      setIsOnboardingCompleted(false);
+      clearAuthState();
     } catch (err) {
       console.warn('Sign out error:', err);
+      clearAuthState();
     }
   };
 
@@ -506,10 +614,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isIntroSeen,
         isOnboardingCompleted,
         isConfiguredWithLiveSupabase,
+        isRecoveryMode,
         signIn,
         signInWithDemo,
         signUp,
         resetPassword,
+        updatePassword,
         signOut,
         completeIntro,
         resetOnboarding,

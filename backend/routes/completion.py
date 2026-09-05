@@ -1,20 +1,24 @@
 """Workout completion and progression logging endpoint."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from backend.schemas.completion import (
     WorkoutCompletionRequest,
     WorkoutCompletionResponse,
 )
 from backend.services.progression_service import progression_service
+from backend.routes.deps import require_user_dependency
+from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/workout", tags=["Workout Completion"])
 
 
 @router.post("/complete", response_model=WorkoutCompletionResponse)
-def complete_workout(payload: WorkoutCompletionRequest):
+def complete_workout(
+    payload: WorkoutCompletionRequest,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, payload.user_id)
     try:
-        user_id = payload.user_id or "user_default"
-
         result = progression_service.record_completion(
             user_id=user_id,
             activity_id=payload.activity_id,
