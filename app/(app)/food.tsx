@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Modal,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -407,20 +406,11 @@ export default function FoodScreen() {
         </AsyncStateView>
       </ScrollView>
 
-      <Modal
-        visible={showLogModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLogModal(false)}
-      >
+      {showLogModal ? (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setShowLogModal(false)}
-          />
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Log food</Text>
             <TextInput
@@ -496,7 +486,7 @@ export default function FoodScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -603,14 +593,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FEF2F2',
   },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-  },
   modalOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    zIndex: 50,
   },
   modalCard: {
     backgroundColor: '#FFFFFF',

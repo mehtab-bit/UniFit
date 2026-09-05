@@ -44,6 +44,11 @@ def get_calendar(
         last.isoformat(),
     )
     sessions = supabase_service.load_workout_sessions(user_id)
+    profile_row = supabase_service.get_profile(user_id)
+    program_start = _local_date_key(
+        (profile_row or {}).get("created_at")
+        or (profile_row or {}).get("updated_at")
+    )
     completed_dates = {
         d
         for d in (
@@ -71,20 +76,25 @@ def get_calendar(
                 )
         for day in workouts:
             local = day.get("local_date")
-            if not local or not (first <= datetime.strptime(str(local)[:10], "%Y-%m-%d").date() <= last):
+            local_date = _local_date_key(local)
+            if (
+                not local_date
+                or not (first <= local_date <= last)
+                or (program_start and local_date < program_start)
+            ):
                 continue
             workout = day.get("workout") or {}
             is_rest = bool(day.get("is_rest_day"))
             date_key = str(local)[:10]
             plan_by_date[date_key] = {
                 "date": date_key,
-                "dayNumber": datetime.strptime(date_key, "%Y-%m-%d").day,
+                "dayNumber": local_date.day,
                 "status": "today"
                 if date_key == today.isoformat()
                 else "rest"
                 if is_rest
                 else "completed"
-                if datetime.strptime(date_key, "%Y-%m-%d").date() in completed_dates
+                if local_date in completed_dates
                 else "planned",
                 "workoutTitle": "Rest Day"
                 if is_rest
@@ -109,6 +119,7 @@ def get_calendar(
                     "date": date_key,
                     "dayNumber": day_number,
                     "status": "rest",
+                    "workoutTitle": "No session scheduled yet",
                     "isCurrentMonth": True,
                 }
             )

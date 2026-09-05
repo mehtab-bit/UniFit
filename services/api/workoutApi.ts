@@ -17,6 +17,13 @@ import { Colors } from '../../constants/colors';
 import { fetchCombinedWeek, clearCombinedWeek } from './combinedPlan';
 import { operationIdFromParts } from '../../utils/operationId';
 
+function localDateString(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function mapIconForActivity(activity: string): {
   iconName: string;
   iconFamily: 'feather' | 'mci';
@@ -72,21 +79,18 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
   const dayAbbrevs = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const dayOfWeek = dayAbbrevs[index % 7];
 
-  // Prefer the explicit local date assigned by the backend plan snapshot so
-  // navigation can never shift the user's schedule.
-  const today = new Date();
-  const dayOffset = index - currentDayIndex;
-  const dayDate = new Date(today);
-  dayDate.setDate(today.getDate() + dayOffset);
-  const derivedDate = dayDate.toISOString().split('T')[0];
-  const dateStr = backendDay.local_date || derivedDate;
+  // Use the explicit local date assigned by the backend plan snapshot. The
+  // "today" status comes from comparing that date with the device's local
+  // date, never from the day's position in the list.
+  const dateStr = backendDay.local_date || localDateString();
   const parsedDay = new Date(`${dateStr}T00:00:00`);
   const dayNumber = String(parsedDay.getDate()).padStart(2, '0');
+  const todayIso = localDateString();
 
   let status: WorkoutDayStatus = 'planned';
   if (isRest) {
     status = 'rest';
-  } else if (index === currentDayIndex) {
+  } else if (dateStr === todayIso) {
     status = 'today';
   }
 
@@ -156,7 +160,7 @@ function mapBackendDayToWorkoutDay(backendDay: any, index: number, currentDayInd
     formCues: workout.form_cues || [],
     cooldown: workout.cooldown ? [workout.cooldown] : [],
     accessibilityGuidance: workout.safety_note || workout.cooldown_audio,
-    isToday: index === currentDayIndex,
+    isToday: dateStr === todayIso,
     iconName: icons.iconName,
     iconFamily: icons.iconFamily,
     iconColor: icons.iconColor,
