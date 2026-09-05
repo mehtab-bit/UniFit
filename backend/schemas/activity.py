@@ -39,3 +39,15 @@ class ActivityLogResponse(BaseModel):
     completed: bool = False
     notes: Optional[str] = None
     created_at: Optional[str] = None
+
+
+class ActivityLogUpdate(BaseModel):
+    source: Optional[Literal["guided", "manual"]] = None
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    active_duration_seconds: Optional[int] = Field(default=None, ge=0)
+    duration_minutes: Optional[float] = Field(default=None, ge=0)
+    distance_km: Optional[float] = Field(default=None, ge=0)
+    distance_entered: Optional[bool] = None
+    completed: Optional[bool] = None
+    notes: Optional[str] = None

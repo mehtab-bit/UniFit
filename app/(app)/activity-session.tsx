@@ -16,7 +16,7 @@ import { activityLogService } from '../../services';
 import { useAuth } from '../../context/AuthContext';
 import { getAppToday, formatDateISO } from '../../utils/date';
 import { operationIdFromParts } from '../../utils/operationId';
-import { ActivityType } from '../../types/domain';
+import { ActivityLog, ActivityType } from '../../types/domain';
 
 const INSTRUCTIONS: Record<string, string> = {
   walking:
@@ -40,6 +40,7 @@ export default function ActivitySessionScreen() {
   const params = useLocalSearchParams<{
     type?: string;
     mode?: string;
+    logId?: string;
   }>();
   const { user } = useAuth();
   const initialType: ActivityType =
@@ -51,6 +52,7 @@ export default function ActivitySessionScreen() {
       : 'walking';
   const [activityType, setActivityType] = useState<ActivityType>(initialType);
   const manual = params.mode !== 'guided';
+  const editingLogId = params.logId;
 
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -62,6 +64,7 @@ export default function ActivitySessionScreen() {
   const accumulatedRef = useRef(0);
   const startedAtRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [editingLog, setEditingLog] = useState<ActivityLog | null>(null);
 
   const stopTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -76,6 +79,28 @@ export default function ActivitySessionScreen() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!editingLogId) return;
+    let active = true;
+    activityLogService
+      .get(editingLogId)
+      .then((log) => {
+        if (!active) return;
+        setEditingLog(log);
+        setActivityType(log.activity_type);
+        setMinutesInput(
+          log.duration_minutes != null ? String(log.duration_minutes) : ''
+        );
+        setDistance(log.distance_km != null ? String(log.distance_km) : '');
+        setNotes(log.notes || '');
+        setElapsed(log.active_duration_seconds ?? 0);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [editingLogId]);
 
   const startTimer = () => {
     const start = new Date().toISOString();
@@ -97,7 +122,9 @@ export default function ActivitySessionScreen() {
 
   const save = async (completed: boolean) => {
     const durationSeconds = manual
-      ? Math.round(Number(minutesInput || 0) * 60)
+      ? minutesInput.trim()
+        ? Math.round(Number(minutesInput) * 60)
+        : editingLog?.active_duration_seconds ?? 0
       : accumulatedRef.current + (running && startedAtRef.current
           ? Math.floor((Date.now() - new Date(startedAtRef.current).getTime()) / 1000)
           : 0);
@@ -108,24 +135,31 @@ export default function ActivitySessionScreen() {
     }
     setSaving(true);
     try {
-      await activityLogService.create({
-        activity_type: activityType,
-        local_date: formatDateISO(getAppToday()),
-        source: manual ? 'manual' : 'guided',
-        operation_id: operationIdFromParts(
-          user?.id,
-          activityType,
-          manual ? 'manual' : startedAtRef.current || 'guided'
-        ),
-        started_at: startedAtRef.current || undefined,
-        ended_at: new Date().toISOString(),
-        active_duration_seconds: durationSeconds,
+      const payload = {
         duration_minutes: durationSeconds / 60,
+        active_duration_seconds: durationSeconds,
         distance_km: distanceKm && distanceKm > 0 ? distanceKm : undefined,
         distance_entered: Boolean(distance.trim()),
         completed,
         notes: notes.trim() || undefined,
-      });
+      };
+      if (editingLog) {
+        await activityLogService.update(editingLog.id, payload);
+      } else {
+        await activityLogService.create({
+          activity_type: activityType,
+          local_date: formatDateISO(getAppToday()),
+          source: manual ? 'manual' : 'guided',
+          operation_id: operationIdFromParts(
+            user?.id,
+            activityType,
+            manual ? 'manual' : startedAtRef.current || 'guided'
+          ),
+          started_at: startedAtRef.current || undefined,
+          ended_at: new Date().toISOString(),
+          ...payload,
+        });
+      }
       router.back();
     } catch {
       Alert.alert(

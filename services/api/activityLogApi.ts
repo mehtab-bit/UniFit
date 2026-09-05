@@ -70,6 +70,28 @@ export class ActivityLogApiService {
     });
     return mapRow(row);
   }
+
+  async get(logId: string): Promise<ActivityLog> {
+    const row = await apiClient.get<Record<string, any>>(
+      `/api/v1/activity/logs/${logId}`
+    );
+    return mapRow(row);
+  }
+
+  async update(
+    logId: string,
+    input: Partial<Omit<ActivityLogInput, 'activity_type' | 'local_date'>>
+  ): Promise<ActivityLog> {
+    const row = await apiClient.put<Record<string, any>>(
+      `/api/v1/activity/logs/${logId}`,
+      input
+    );
+    return mapRow(row);
+  }
+
+  async remove(logId: string): Promise<void> {
+    await apiClient.delete(`/api/v1/activity/logs/${logId}`);
+  }
 }
 
 export const activityLogApiService = new ActivityLogApiService();

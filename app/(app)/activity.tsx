@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -291,7 +292,53 @@ export default function ActivityScreen() {
                       {log.completed ? ' · Completed' : ' · Partial'}
                     </Text>
                   </View>
-                  <Feather name="check-circle" size={18} color="#10B981" />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit ${log.activity_type} log`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(app)/activity-session',
+                        params: {
+                          type: log.activity_type,
+                          mode: 'manual',
+                          logId: log.id,
+                        },
+                      })
+                    }
+                    style={styles.activityLogAction}
+                  >
+                    <Feather name="edit-2" size={16} color="#0EA5E9" />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete ${log.activity_type} log`}
+                    onPress={() =>
+                      Alert.alert(
+                        'Delete activity?',
+                        'This log will be removed from your history.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: () =>
+                              activityLogService
+                                .remove(log.id)
+                                .then(() => loadActivityData())
+                                .catch(() =>
+                                  Alert.alert(
+                                    'Could not delete',
+                                    'Please try again.'
+                                  )
+                                ),
+                          },
+                        ]
+                      )
+                    }
+                    style={styles.activityLogAction}
+                  >
+                    <Feather name="trash-2" size={16} color="#EF4444" />
+                  </Pressable>
                 </View>
               ))}
             </View>
@@ -376,6 +423,14 @@ const styles = StyleSheet.create({
   activityLogMain: { flex: 1 },
   activityLogTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
   activityLogMeta: { fontSize: 12, color: '#64748B', marginTop: 3 },
+  activityLogAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+  },
   activityCard: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, marginBottom: 12,
     borderLeftWidth: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,

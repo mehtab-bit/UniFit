@@ -7,7 +7,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.routes.deps import require_user_dependency
-from backend.schemas.activity import ActivityLogCreate, ActivityLogResponse
+from backend.schemas.activity import (
+    ActivityLogCreate,
+    ActivityLogResponse,
+    ActivityLogUpdate,
+)
 from backend.services.auth_service import VerifiedUser, resolve_user_id
 from backend.services.supabase_service import supabase_service
 
@@ -68,3 +72,39 @@ def create_activity_log(
         }
     )
     return ActivityLogResponse.model_validate(_response(row))
+
+
+@router.get("/logs/{log_id}", response_model=ActivityLogResponse)
+def get_activity_log(
+    log_id: str,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, None)
+    row = supabase_service.get_activity_log(user_id, log_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity log not found.")
+    return ActivityLogResponse.model_validate(_response(row))
+
+
+@router.put("/logs/{log_id}", response_model=ActivityLogResponse)
+def update_activity_log(
+    log_id: str,
+    request: ActivityLogUpdate,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, None)
+    updates = request.model_dump(exclude_unset=True)
+    row = supabase_service.update_activity_log(user_id, log_id, updates)
+    if not row:
+        raise HTTPException(status_code=404, detail="Activity log not found.")
+    return ActivityLogResponse.model_validate(_response(row))
+
+
+@router.delete("/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_activity_log(
+    log_id: str,
+    verified: VerifiedUser = Depends(require_user_dependency),
+):
+    user_id = resolve_user_id(verified, None)
+    if not supabase_service.delete_activity_log(user_id, log_id):
+        raise HTTPException(status_code=404, detail="Activity log not found.")

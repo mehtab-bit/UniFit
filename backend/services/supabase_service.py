@@ -671,6 +671,76 @@ class SupabaseService:
         rows.append(row)
         return row
 
+    def get_activity_log(
+        self, user_id: str, log_id: str
+    ) -> Optional[dict[str, Any]]:
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("user_activity_logs")
+                    .select("*")
+                    .eq("id", log_id)
+                    .eq("user_id", user_id)
+                    .limit(1)
+                    .execute()
+                )
+                return resp.data[0] if resp.data else None
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to load activity log: {exc}")
+                return None
+        for row in self._activity_logs.get(user_id, []):
+            if row.get("id") == log_id:
+                return row
+        return None
+
+    def update_activity_log(
+        self, user_id: str, log_id: str, updates: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("user_activity_logs")
+                    .update(
+                        {
+                            **updates,
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                    .eq("id", log_id)
+                    .eq("user_id", user_id)
+                    .select("*")
+                    .execute()
+                )
+                return resp.data[0] if resp.data else None
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to update activity log: {exc}")
+                raise ValueError("Unable to update this activity. Please try again.") from exc
+        for row in self._activity_logs.get(user_id, []):
+            if row.get("id") == log_id:
+                row.update(updates)
+                row["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return row
+        return None
+
+    def delete_activity_log(self, user_id: str, log_id: str) -> bool:
+        if self.is_connected and self.client:
+            try:
+                self.client.table("user_activity_logs").delete().eq(
+                    "id", log_id
+                ).eq("user_id", user_id).execute()
+                return True
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to delete activity log: {exc}")
+                return False
+        rows = self._activity_logs.get(user_id, [])
+        before = len(rows)
+        self._activity_logs[user_id] = [
+            row
+            for row in rows
+            if row.get("id") != log_id or str(row.get("user_id")) != str(user_id)
+        ]
+        return len(self._activity_logs[user_id]) != before
+
     def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
         """Persists the user's engine progression state to Supabase."""
         if self.is_connected and self.client:
