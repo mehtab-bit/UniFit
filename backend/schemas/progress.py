@@ -76,4 +76,6 @@ class ProgressSummaryResponse(BaseModel):
     strength_variation_levels: dict[str, int]
     logged_sessions_count: int
     recent_activity_completions: dict[str, float]
+    workouts_completed: int = 0
+    total_active_minutes: float = 0.0
     milestones: list[dict[str, Any]] = Field(default_factory=list)

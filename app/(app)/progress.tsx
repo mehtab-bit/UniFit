@@ -150,11 +150,12 @@ export default function ProgressScreen() {
           <CardSpringEntry index={2}>
             <View style={styles.timelineCard}>
               {JOURNEY_PHASES.map((phase, index) => {
-                // Find a matching milestone conceptually or visually represent the static phase
-                const isCompleted = index === 0;
-                const isActive = index === 1;
-                const isUpcoming = index > 1;
-                
+                // Journey phases are driven by actual persisted achievements:
+                // each completed milestone advances one phase, the next phase
+                // becomes active, and the rest stay locked until earned.
+                const achieved = summary?.milestones?.length ?? 0;
+                const isCompleted = index < achieved;
+                const isActive = index === achieved;
                 const milestone = summary?.milestones?.[index];
 
                 return (

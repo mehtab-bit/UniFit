@@ -117,6 +117,10 @@ class ProgressionService:
             "reps_completed": row.get("reps_completed"),
             "range_score": row.get("range_score"),
             "issue_codes": row.get("issue_codes"),
+            "active_duration_seconds": row.get("active_duration_seconds"),
+            "duration_minutes": row.get("duration_minutes"),
+            "started_at": row.get("started_at"),
+            "ended_at": row.get("ended_at"),
             "operation_id": row.get("operation_id"),
             "scheduled_workout_id": row.get("scheduled_workout_id"),
             "local_date": row.get("local_date"),
@@ -254,6 +258,11 @@ class ProgressionService:
             "started_at": started_at,
             "ended_at": ended_at,
             "active_duration_seconds": active_duration_seconds,
+            "duration_minutes": (
+                round(active_duration_seconds / 60, 1)
+                if active_duration_seconds is not None
+                else None
+            ),
             "notes": notes,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

@@ -17,13 +17,10 @@ def _compute_streaks(logs: list[dict]) -> tuple[int, int]:
     """Computes current and best consecutive-day streaks from session dates."""
     days: set[date] = set()
     for log in logs:
-        created = log.get("created_at")
-        if not created:
+        day = _session_day(log)
+        if day is None:
             continue
-        try:
-            days.add(datetime.fromisoformat(str(created).replace("Z", "+00:00")).date())
-        except (ValueError, TypeError):
-            continue
+        days.add(day)
 
     if not days:
         return 0, 0
@@ -217,6 +214,48 @@ def get_progress(
         else 0.0
     )
 
+    def duration_minutes_of(row: dict) -> Optional[float]:
+        seconds = row.get("active_duration_seconds")
+        if seconds is not None:
+            return float(seconds) / 60
+        minutes = row.get("duration_minutes")
+        if minutes is not None:
+            return float(minutes)
+        return None
+
+    activity_logs_all = supabase_service.list_activity_logs(user_id)
+    month_active_minutes = 0.0
+    for row in session_logs:
+        row_day = _session_day(row)
+        if row_day and row_day.year == today.year and row_day.month == today.month:
+            value = duration_minutes_of(row)
+            if value is not None:
+                month_active_minutes += value
+    for row in activity_logs_all:
+        row_day = _session_day(row)
+        if row_day and row_day.year == today.year and row_day.month == today.month:
+            value = duration_minutes_of(row)
+            if value is not None:
+                month_active_minutes += value
+
+    # A workout counts once per scheduled obligation/day; per-exercise logs on
+    # the same scheduled workout must not inflate the total.
+    workout_keys = {
+        (
+            str(row.get("scheduled_workout_id"))
+            if row.get("scheduled_workout_id")
+            else (
+                str(_session_day(row))
+                if _session_day(row) is not None
+                else None
+            )
+        )
+        for row in session_logs
+        if row.get("completion_pct") is not None
+        and float(row.get("completion_pct") or 0) >= 80
+    }
+    workout_keys.discard(None)
+
     return ProgressSummaryResponse(
         user_id=user_id,
         current_week=state["calendar_week"],
@@ -226,6 +265,8 @@ def get_progress(
         strength_variation_levels=state["strength_variation_levels"],
         logged_sessions_count=logged,
         recent_activity_completions=state["activity_completion_pct"],
+        workouts_completed=len(workout_keys),
+        total_active_minutes=round(month_active_minutes, 1),
         milestones=milestones,
     )
 

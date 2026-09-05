@@ -13,12 +13,12 @@ export class ProgressApiService implements IProgressService {
       apiClient.get(`/api/v1/streak?user_id=${userId}`)
     ]);
     return {
-      workoutsCompleted: response.logged_sessions_count || 0,
+      workoutsCompleted: response.workouts_completed || 0,
       weeklyConsistency: streakResponse.weekly_adherence_pct || 0,
       monthlyConsistency: response.monthly_consistency_pct || 0,
       currentStreak: streakResponse.current_streak || 0,
       bestStreak: streakResponse.best_streak || 0,
-      totalActiveMinutes: 0,
+      totalActiveMinutes: response.total_active_minutes || 0,
       adherenceScore: response.monthly_consistency_pct || 0,
       phaseTitle: `Week ${response.current_week || 1} • Phase ${response.current_week || 1}`,
       milestones: response.milestones || [],
