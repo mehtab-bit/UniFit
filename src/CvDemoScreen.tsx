@@ -18,6 +18,7 @@ import {
   setPoseSourceOverride
 } from './cv/native/runtime';
 import { keypointToViewPx } from './cv/overlayGeometry';
+import { toMeasurementKeypoints } from './cv/measurementSpace';
 import { trackEffectBurst, trackRenderBurst } from './cv/debugRenderCount';
 import { useAccessibility } from '../context/AccessibilityContext';
 
@@ -184,15 +185,23 @@ function CvDemoScreenReady({
     `${sessionKey ?? 'default'}-${retryKey}`,
     poseMode
   );
+  // CV-05: measurement math consumes aspect-correct coordinates while the
+  // overlay continues to render normalized display landmarks.
+  const measurementKeypoints = useMemo(
+    () => toMeasurementKeypoints(pose.keypoints, pose.sourceSize),
+    [pose.keypoints, pose.sourceSize]
+  );
   const tracker = useExerciseTracker(
     exerciseId,
-    pose.keypoints,
+    measurementKeypoints,
     sideOverride,
     restRemaining > 0 || !isForegroundActive
   );
   const trackerRef = useRef(tracker);
   trackerRef.current = tracker;
   const previousRepsRef = useRef(0);
+  const repScoresRef = useRef<number[]>([]);
+  const repIssueCountsRef = useRef<Record<string, number>>({});
   const lastRepAtRef = useRef(0);
   const sessionEndedRef = useRef(false);
   const accessibilityRef = useRef(provideFeedback);
@@ -230,16 +239,16 @@ function CvDemoScreenReady({
   const geometricIssues = useMemo(
     () =>
       tracker.calibration
-        ? assessGeometryIssues(exerciseId, pose.keypoints, tracker.side)
+        ? assessGeometryIssues(exerciseId, measurementKeypoints, tracker.side)
         : [],
-    [exerciseId, pose.keypoints, tracker.calibration, tracker.side]
+    [exerciseId, measurementKeypoints, tracker.calibration, tracker.side]
   );
 
   const quality = useMemo(
     () =>
       assessQuality(
         exerciseId,
-        pose.keypoints,
+        measurementKeypoints,
         tracker.side,
         tracker.smoothedAngle,
         tracker.calibration,
@@ -248,7 +257,7 @@ function CvDemoScreenReady({
     [
       exerciseId,
       geometricIssues,
-      pose.keypoints,
+      measurementKeypoints,
       tracker.side,
       tracker.smoothedAngle,
       tracker.calibration
@@ -308,6 +317,8 @@ function CvDemoScreenReady({
     setRestRemaining(0);
     setRestAnnouncePending(false);
     previousRepsRef.current = 0;
+    repScoresRef.current = [];
+    repIssueCountsRef.current = {};
     lastRepAtRef.current = 0;
     sessionEndedRef.current = false;
     applyingSavedCalibrationRef.current = false;
@@ -332,6 +343,11 @@ function CvDemoScreenReady({
       const elapsed = hadPrevious ? now - lastRepAtRef.current : now;
       lastRepAtRef.current = now;
       previousRepsRef.current = tracker.reps;
+      repScoresRef.current.push(quality.score);
+      for (const issue of quality.issues) {
+        repIssueCountsRef.current[issue.code] =
+          (repIssueCountsRef.current[issue.code] || 0) + 1;
+      }
 
       const correction = isRepTooFast(elapsed)
         ? 'Slow down and control each repetition.'
@@ -368,11 +384,27 @@ function CvDemoScreenReady({
         !sessionEndedRef.current
       ) {
         sessionEndedRef.current = true;
+        const scores = repScoresRef.current;
+        const averageScore =
+          scores.length > 0
+            ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+            : quality.score;
+        const recurringIssues = Object.entries(repIssueCountsRef.current)
+          .filter(([, count]) => count > 1)
+          .map(([code]) => code);
+        const recurringCorrection = quality.issues.find((issue) =>
+          recurringIssues.includes(issue.code)
+        )?.correction;
         onCompleteRef.current?.({
           reps: tracker.reps,
-          score: quality.score,
-          correction: quality.correction,
-          issues: quality.issues.map((issue) => issue.code)
+          score: averageScore,
+          correction: recurringCorrection || quality.correction,
+          issues: Array.from(
+            new Set([
+              ...recurringIssues,
+              ...quality.issues.map((issue) => issue.code)
+            ])
+          )
         });
       }
     }
