@@ -962,6 +962,90 @@ def determine_strength_variation_level(
     )
 
 
+def strength_experience_initial_level(
+    strength_experience: Optional[str],
+) -> dict[str, int]:
+    """Maps the quiz experience answer to starting variation levels."""
+    base = {
+        "new": 1,
+        "some_experience": 2,
+        "regularly_train": 3,
+    }.get(strength_experience or "", 1)
+    return {family: base for family in STRENGTH_FAMILIES}
+
+
+def constrain_variation_level_to_equipment(
+    database: WorkoutDatabase,
+    family: str,
+    requested_level: int,
+    strength_equipment: Optional[list[str]],
+) -> int:
+    """Lowers a variation level until it matches the user's declared
+    equipment. Furniture/support variations (chair, wall, stable surface) are
+    treated as environmental, not equipment purchases; resistance variations
+    require dumbbells, household weights, bands, or an explicit other choice.
+    """
+    declared = {
+        str(item).strip().lower()
+        for item in (strength_equipment or [])
+    }
+    for level in range(max(1, requested_level), 0, -1):
+        candidates = [
+            row
+            for row in database.variations
+            if row["exercise_family"] == family
+            and int(row["difficulty_level"]) == level
+        ]
+        for variation in candidates:
+            required = (variation.get("equipment") or "").lower()
+            if "none" in required or required in {"", "bodyweight"}:
+                return level
+            if any(
+                token in required
+                for token in (
+                    "chair",
+                    "wall",
+                    "stable support",
+                    "bench",
+                    "table",
+                )
+            ):
+                return level
+            if any(
+                token in required
+                for token in (
+                    "dumbbell",
+                    "water bottle",
+                    "backpack",
+                    "household",
+                    "resistance",
+                    "band",
+                )
+            ):
+                if declared and declared != {"no_equipment"}:
+                    return level
+    # No eligible variation exists for the declared equipment. Keep level 1
+    # only when it is genuinely bodyweight/environmental; otherwise fail with
+    # an explicit unsupported result instead of silently claiming adaptation.
+    level_one = [
+        row
+        for row in database.variations
+        if row["exercise_family"] == family
+        and int(row["difficulty_level"]) == 1
+    ]
+    for variation in level_one:
+        required = (variation.get("equipment") or "").lower()
+        if "none" in required or any(
+            token in required
+            for token in ("chair", "wall", "stable support", "bench", "table")
+        ):
+            return 1
+    raise ValueError(
+        f"No exercise variation for {family} is eligible with the declared "
+        "equipment. Add dumbbells or household weights to your profile."
+    )
+
+
 # ============================================================
 # STANDARD CARDIO VARIANT SELECTION
 # ============================================================
@@ -1394,6 +1478,7 @@ def build_strength_session(
     previous_state: ProgressState,
     initial_strength_levels: dict[str, int],
     accessibility_id: str,
+    strength_equipment: Optional[list[str]] = None,
 ) -> tuple[dict, dict[str, int], dict[str, int]]:
     session_rule = database.get_progression_rule(
         lifestyle,
@@ -1457,6 +1542,13 @@ def build_strength_session(
             previous_state=previous_state,
             initial_strength_levels=initial_strength_levels,
         )
+        if strength_equipment is not None:
+            level = constrain_variation_level_to_equipment(
+                database=database,
+                family=family,
+                requested_level=level,
+                strength_equipment=strength_equipment,
+            )
 
         current_variation_levels[family] = level
 
@@ -1580,6 +1672,8 @@ def generate_weekly_workout_plan(
     accessibility_resources: Optional[
         list[str]
     ] = None,
+    strength_equipment: Optional[list[str]] = None,
+    strength_experience: Optional[str] = None,
 ) -> dict:
     if accessibility_resources is None:
         accessibility_resources = []
@@ -1604,7 +1698,9 @@ def generate_weekly_workout_plan(
         previous_progress = ProgressState()
 
     if initial_strength_levels is None:
-        initial_strength_levels = {}
+        initial_strength_levels = strength_experience_initial_level(
+            strength_experience
+        )
 
     database = WorkoutDatabase()
 
@@ -1709,6 +1805,7 @@ def generate_weekly_workout_plan(
         previous_state=previous_progress,
         initial_strength_levels=initial_strength_levels,
         accessibility_id=accessibility_id,
+        strength_equipment=strength_equipment,
     )
 
     week = []

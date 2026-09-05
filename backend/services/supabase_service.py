@@ -62,6 +62,7 @@ class SupabaseService:
         self._scheduled_workouts: dict[str, dict[str, Any]] = {}
         self._cached_profiles: dict[str, dict[str, Any]] = {}
         self._workout_sessions: dict[str, list[dict[str, Any]]] = {}
+        self._meal_log_entries: dict[str, list[dict[str, Any]]] = {}
 
         if (
             SUPABASE_URL
@@ -460,6 +461,98 @@ class SupabaseService:
             if row.get("operation_id") == operation_id:
                 return row
         return None
+
+    def list_meal_log_entries(
+        self, user_id: str, local_date: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        if self.is_connected and self.client:
+            try:
+                query = (
+                    self.client.table("meal_log_entries")
+                    .select("*")
+                    .eq("user_id", user_id)
+                )
+                if local_date:
+                    query = query.eq("local_date", local_date)
+                resp = query.order("created_at", desc=True).execute()
+                return list(resp.data or [])
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to list meal logs: {exc}")
+                return []
+        rows = self._meal_log_entries.get(user_id, [])
+        if local_date:
+            rows = [row for row in rows if str(row.get("local_date")) == local_date]
+        return sorted(rows, key=lambda r: str(r.get("created_at") or ""), reverse=True)
+
+    def create_meal_log_entry(self, entry: dict[str, Any]) -> dict[str, Any]:
+        user_id = entry.get("user_id")
+        self._require_user_id(user_id)
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("meal_log_entries")
+                    .insert(entry)
+                    .select("*")
+                    .execute()
+                )
+                return resp.data[0] if resp.data else dict(entry)
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to create meal log: {exc}")
+                raise ValueError("Unable to save this meal entry. Please try again.") from exc
+        from uuid import uuid4 as _uuid4
+        row = dict(entry)
+        row.setdefault("id", str(_uuid4()))
+        row.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+        row["updated_at"] = datetime.now(timezone.utc).isoformat()
+        self._meal_log_entries.setdefault(user_id, []).append(row)
+        return row
+
+    def update_meal_log_entry(
+        self, user_id: str, entry_id: str, updates: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("meal_log_entries")
+                    .update({**updates, "updated_at": datetime.now(timezone.utc).isoformat()})
+                    .eq("id", entry_id)
+                    .eq("user_id", user_id)
+                    .select("*")
+                    .execute()
+                )
+                return resp.data[0] if resp.data else None
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to update meal log: {exc}")
+                raise ValueError("Unable to update this meal entry. Please try again.") from exc
+        rows = self._meal_log_entries.get(user_id, [])
+        for row in rows:
+            if (
+                row.get("id") == entry_id
+                and str(row.get("user_id")) == str(user_id)
+            ):
+                row.update(updates)
+                row["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return row
+        return None
+
+    def delete_meal_log_entry(self, user_id: str, entry_id: str) -> bool:
+        if self.is_connected and self.client:
+            try:
+                self.client.table("meal_log_entries").delete().eq(
+                    "id", entry_id
+                ).eq("user_id", user_id).execute()
+                return True
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to delete meal log: {exc}")
+                return False
+        rows = self._meal_log_entries.get(user_id, [])
+        before = len(rows)
+        self._meal_log_entries[user_id] = [
+            row
+            for row in rows
+            if row.get("id") != entry_id or str(row.get("user_id")) != str(user_id)
+        ]
+        return len(self._meal_log_entries[user_id]) != before
 
     def save_progress_state(self, user_id: str, state: dict[str, Any]) -> bool:
         """Persists the user's engine progression state to Supabase."""

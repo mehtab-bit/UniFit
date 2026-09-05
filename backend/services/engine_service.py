@@ -148,6 +148,8 @@ class FitnessEngineService:
             "activities": [str(a) for a in activities],
             "accessibility_id": primary,
             "accessibility_resources": [str(r) for r in resources],
+            "strength_equipment": [str(e) for e in (row.get("strength_equipment") or [])],
+            "strength_experience": row.get("strength_experience"),
             "profile_revision": int(row.get("profile_revision") or 1),
         }
 
@@ -182,6 +184,8 @@ class FitnessEngineService:
         initial_strength_levels: Optional[dict[str, int]] = None,
         accessibility_id: str = "none",
         accessibility_resources: Optional[list[str]] = None,
+        strength_equipment: Optional[list[str]] = None,
+        strength_experience: Optional[str] = None,
     ) -> dict[str, Any]:
         """Calls the engine's full pipeline: workout plan + daily nutrition + meal plan."""
         return generate_full_fitness_week(
@@ -192,6 +196,8 @@ class FitnessEngineService:
             initial_strength_levels=initial_strength_levels,
             accessibility_id=accessibility_id,
             accessibility_resources=accessibility_resources or [],
+            strength_equipment=strength_equipment,
+            strength_experience=strength_experience,
         )
 
     @staticmethod
@@ -203,6 +209,8 @@ class FitnessEngineService:
         initial_strength_levels: Optional[dict[str, int]] = None,
         accessibility_id: str = "none",
         accessibility_resources: Optional[list[str]] = None,
+        strength_equipment: Optional[list[str]] = None,
+        strength_experience: Optional[str] = None,
     ) -> dict[str, Any]:
         """Generates the 7-day adaptive workout plan."""
         return generate_weekly_workout_plan(
@@ -213,6 +221,8 @@ class FitnessEngineService:
             initial_strength_levels=initial_strength_levels,
             accessibility_id=accessibility_id,
             accessibility_resources=accessibility_resources or [],
+            strength_equipment=strength_equipment,
+            strength_experience=strength_experience,
         )
 
     @staticmethod

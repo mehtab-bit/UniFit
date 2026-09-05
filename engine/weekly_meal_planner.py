@@ -874,6 +874,8 @@ def generate_full_fitness_week(
     initial_strength_levels: Optional[dict[str, int]] = None,
     accessibility_id: str = "none",
     accessibility_resources: Optional[list[str]] = None,
+    strength_equipment: Optional[list[str]] = None,
+    strength_experience: Optional[str] = None,
 ) -> dict:
     combined = generate_combined_week(
         profile=profile,
@@ -883,6 +885,8 @@ def generate_full_fitness_week(
         initial_strength_levels=initial_strength_levels,
         accessibility_id=accessibility_id,
         accessibility_resources=accessibility_resources,
+        strength_equipment=strength_equipment,
+        strength_experience=strength_experience,
     )
 
     meal_plan = generate_weekly_meal_plan(combined)

@@ -83,6 +83,8 @@ def generate_combined_weekly_plan(
         activities = context["activities"]
         accessibility_id = context["accessibility_id"]
         accessibility_resources = context["accessibility_resources"]
+        strength_equipment = context["strength_equipment"]
+        strength_experience = context["strength_experience"]
         profile_revision = context["profile_revision"]
         if (
             request.expected_profile_revision is not None
@@ -110,6 +112,8 @@ def generate_combined_weekly_plan(
         activities = request.activity_preferences
         accessibility_id = request.profile.accessibility_id
         accessibility_resources = request.accessibility_resources
+        strength_equipment = None
+        strength_experience = None
         profile_revision = 0
 
     progression = progression_service.get_progress_state(user_id)
@@ -145,6 +149,8 @@ def generate_combined_weekly_plan(
                 initial_strength_levels=request.initial_strength_levels,
                 accessibility_id=accessibility_id,
                 accessibility_resources=accessibility_resources,
+                strength_equipment=strength_equipment,
+                strength_experience=strength_experience,
             )
             response_data = _build_response_data(
                 user_id, full_week, week_number, monday_iso
@@ -173,14 +179,21 @@ def generate_combined_weekly_plan(
         return CombinedWeeklyPlanResponse(**response_data)
 
     try:
+        # In server mode, experience (not a client-supplied map) sets the
+        # starting variation level.
+        server_initial_levels = (
+            None if use_server_profile else request.initial_strength_levels
+        )
         full_week = engine_service.generate_full_week(
             profile=engine_profile,
             preferences=activities,
             week_number=week_number,
             previous_progress=request.previous_progress,
-            initial_strength_levels=request.initial_strength_levels,
+            initial_strength_levels=server_initial_levels,
             accessibility_id=accessibility_id,
             accessibility_resources=accessibility_resources,
+            strength_equipment=strength_equipment,
+            strength_experience=strength_experience,
         )
         response_data = _build_response_data(
             user_id, full_week, week_number, monday_iso

@@ -154,6 +154,8 @@ def generate_combined_week(
     accessibility_resources: Optional[
         list[str]
     ] = None,
+    strength_equipment: Optional[list[str]] = None,
+    strength_experience: Optional[str] = None,
 ) -> dict:
     """Generate workout plan first, then calculate all 7 nutrition targets."""
 
@@ -165,6 +167,8 @@ def generate_combined_week(
         initial_strength_levels=initial_strength_levels,
         accessibility_id=accessibility_id,
         accessibility_resources=accessibility_resources,
+        strength_equipment=strength_equipment,
+        strength_experience=strength_experience,
     )
 
     nutrition_plan = calculate_weekly_nutrition_targets(

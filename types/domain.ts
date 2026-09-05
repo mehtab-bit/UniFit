@@ -259,6 +259,33 @@ export interface Meal {
   icon: string;
 }
 
+export interface MealLogNutrition {
+  calories_kcal?: number | null;
+  protein_g?: number | null;
+  carbohydrates_g?: number | null;
+  fat_g?: number | null;
+  fibre_g?: number | null;
+  carbohydrate_complete: boolean;
+  fiber_complete: boolean;
+}
+
+export interface MealLogEntry {
+  id: string;
+  user_id: string;
+  local_date: string;
+  meal_type?: MealType | null;
+  source: 'planned_meal' | 'food' | 'custom';
+  plan_meal_id?: string | null;
+  food_code?: string | null;
+  custom_name?: string | null;
+  quantity: number;
+  quantity_unit: 'serving' | 'gram' | 'piece';
+  nutrition: MealLogNutrition;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface MealPlan {
   id: string;
   date: string;

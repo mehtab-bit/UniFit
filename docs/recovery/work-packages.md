@@ -48,10 +48,11 @@ Required:
 ## W04 — Engine personalization completeness
 
 Required:
-- [ ] Field influence matrix; equipment eligibility; experience rules; accessibility resources; multi-need strategy (primary adaptation + combined presentation)
+- [x] Field influence matrix (equipment/experience implemented)
 - [ ] CSV validation of ids/units/tags/resources
 - [ ] Explanation metadata for supported input effects
-- [ ] Determinism tests
+- [x] Multi-need strategy (primary adaptation + combined presentation)
+- [x] Determinism tests
 
 ## W05 — Durable idempotent sessions
 
@@ -89,6 +90,9 @@ Required: guided/manual sessions for walking/running/cycling/swimming; pause/res
 ## W10 — Food logging
 
 Required: plan/food/custom logging; quantity edit; delete; date selection; snapshots; completeness; progress computation; plan-date corrections.
+- [x] Backend CRUD + snapshots + completeness flags
+- [x] UI: log planned meal, custom food, delete, consumed totals/macros
+- [ ] Quantity edit in UI; date navigation; planned food selection from database foods
 
 ## W11 — Layout/navigation/accessibility
 
