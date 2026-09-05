@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 from uuid import NAMESPACE_URL, uuid5
 from typing import Any, Optional
@@ -23,6 +24,7 @@ from backend.routes.deps import require_user_dependency
 from backend.services.auth_service import VerifiedUser, resolve_user_id
 
 router = APIRouter(prefix="/fitness", tags=["Fitness Plan"])
+logger = logging.getLogger("unifit.fitness")
 
 DAY_NAMES = [
     "monday",
@@ -160,6 +162,7 @@ def generate_combined_weekly_plan(
         except HTTPException:
             raise
         except Exception as exc:
+            logger.exception("Legacy weekly-plan generation failed")
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Revision-aware server path: reuse an identical active snapshot, otherwise
@@ -233,6 +236,7 @@ def generate_combined_weekly_plan(
     except HTTPException:
         raise
     except Exception as exc:
+        logger.exception("Server-profile weekly-plan generation failed")
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
