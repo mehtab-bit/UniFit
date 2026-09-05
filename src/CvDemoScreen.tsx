@@ -283,6 +283,7 @@ function CvDemoScreenReady({
 
   const goodSinceRef = useRef(0);
   const weakSinceRef = useRef(0);
+  const goodLatchedRef = useRef(false);
   const [isGoodForm, setIsGoodForm] = useState(false);
   useEffect(() => {
     trackEffectBurst('cv.goodLatency');
@@ -298,11 +299,17 @@ function CvDemoScreenReady({
       const current = Date.now();
       if (rawGood && goodSinceRef.current > 0) {
         if (current - goodSinceRef.current >= 450) {
-          setIsGoodForm(true);
+          if (!goodLatchedRef.current) {
+            goodLatchedRef.current = true;
+            setIsGoodForm(true);
+          }
         }
       } else if (!rawGood && weakSinceRef.current > 0) {
         if (current - weakSinceRef.current >= 180) {
-          setIsGoodForm(false);
+          if (goodLatchedRef.current) {
+            goodLatchedRef.current = false;
+            setIsGoodForm(false);
+          }
         }
       }
     }, 100);
