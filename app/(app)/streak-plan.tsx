@@ -31,7 +31,7 @@ import { UpcomingPlan } from '../../components/streak/UpcomingPlan';
 import { streakService, workoutService } from '../../services';
 import { StreakData, CalendarDay, WorkoutDay, PlanWorkoutItem } from '../../types/domain';
 import { getAppToday, formatMonthYear } from '../../utils/date';
-import { calculateMonthStats } from '../../utils/calendar';
+import { calculateMonthStats, formatDateKey } from '../../utils/calendar';
 
 export default function StreakPlanScreen() {
   const router = useRouter();
@@ -82,7 +82,16 @@ export default function StreakPlanScreen() {
       setTomorrowWorkout(tomorrowRes);
       setUpcomingWorkouts(upcomingRes);
 
-      const activeToday = daysRes.find((d) => d.status === 'today');
+      const reference = getAppToday();
+      const todayKey = formatDateKey(
+        reference.getFullYear(),
+        reference.getMonth(),
+        reference.getDate()
+      );
+      const activeToday =
+        daysRes.find((d) => d.status === 'today') ||
+        daysRes.find((d) => d.date === todayKey) ||
+        daysRes.find((d) => d.isCurrentMonth !== false);
       setSelectedDay(activeToday || daysRes[0] || null);
     } catch (err) {
       setError('Unable to load streak and fitness calendar. Please try again.');

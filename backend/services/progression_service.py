@@ -89,7 +89,7 @@ class ProgressionService:
                     continue
                 record = self.get_or_create_record(user_id)
                 record.session_logs.append(self._normalize_log(session))
-            for record in self._user_records.values():
+            for record in list(self._user_records.values()):
                 summary = self._summarize(record.user_id, record.session_logs)
                 record.state.overall_completion_pct = summary.overall_completion_pct
                 record.state.activity_completion_pct = summary.activity_completion_pct

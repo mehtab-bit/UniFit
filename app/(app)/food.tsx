@@ -410,13 +410,17 @@ export default function FoodScreen() {
       <Modal
         visible={showLogModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowLogModal(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
         >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowLogModal(false)}
+          />
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Log food</Text>
             <TextInput
@@ -600,16 +604,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   modalBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
   modalCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 24,
     padding: 20,
-    paddingBottom: 32,
   },
   modalTitle: {
     fontSize: 18,

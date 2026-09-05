@@ -232,7 +232,7 @@ class SupabaseService:
                     .eq("status", "active")
                     .gte("week_start_date", start_date)
                     .lte("week_start_date", end_date)
-                    .order("week_start_date", asc=True)
+                    .order("week_start_date")
                     .execute()
                 )
                 return list(resp.data or [])
