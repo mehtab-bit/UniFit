@@ -21,6 +21,7 @@ from backend.routes.nutrition import router as nutrition_router
 from backend.routes.meals import router as meals_router
 from backend.routes.completion import router as completion_router
 from backend.routes.progress import router as progress_router, session_router
+from backend.routes.calendar import router as calendar_router
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -103,6 +104,7 @@ app.include_router(meals_router, prefix=API_PREFIX)
 app.include_router(completion_router, prefix=API_PREFIX)
 app.include_router(progress_router, prefix=API_PREFIX)
 app.include_router(session_router, prefix=API_PREFIX)
+app.include_router(calendar_router, prefix=API_PREFIX)
 
 
 @app.get("/")

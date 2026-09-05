@@ -111,8 +111,13 @@ export default function WorkoutScreen() {
       } else {
         setActiveExercise(null);
       }
-    } catch {
-      setError('Unable to load workout program. Please try again.');
+    } catch (err: any) {
+      const detail =
+        err?.message && typeof err.message === 'string'
+          ? err.message
+          : 'Unable to load workout program. Please try again.';
+      console.warn('Workout load failed:', err);
+      setError(detail);
     } finally {
       setLoading(false);
     }

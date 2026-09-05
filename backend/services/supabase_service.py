@@ -219,6 +219,34 @@ class SupabaseService:
             print(f"[SupabaseService] Failed to load plan snapshot: {exc}")
             return None
 
+    def list_active_plan_snapshots_between(
+        self, user_id: str, start_date: str, end_date: str
+    ) -> list[dict[str, Any]]:
+        """Returns active plan snapshots whose week overlaps a date range."""
+        if self.is_connected and self.client:
+            try:
+                resp = (
+                    self.client.table("user_plan_snapshots")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .eq("status", "active")
+                    .gte("week_start_date", start_date)
+                    .lte("week_start_date", end_date)
+                    .order("week_start_date", asc=True)
+                    .execute()
+                )
+                return list(resp.data or [])
+            except Exception as exc:
+                print(f"[SupabaseService] Failed to list plan snapshots: {exc}")
+                return []
+        return [
+            row
+            for row in self._plan_snapshots.values()
+            if row.get("user_id") == user_id
+            and row.get("status") == "active"
+            and start_date <= str(row.get("week_start_date")) <= end_date
+        ]
+
     def save_plan_snapshot(
         self, user_id: str, snapshot: dict[str, Any]
     ) -> dict[str, Any]:

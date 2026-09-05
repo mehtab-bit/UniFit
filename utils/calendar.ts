@@ -247,6 +247,38 @@ export function generateMonthlyCalendarGrid(
 }
 
 /**
+ * Overlays real issued-plan/session data onto the calendar grid.
+ *
+ * Days the backend did not issue a plan for are shown as unscheduled rather
+ * than reusing the old fixed demo template (which could claim cycling or
+ * running the user never selected).
+ */
+export function overlayCalendarDays(
+  grid: CalendarDay[],
+  realDays: Array<Partial<CalendarDay>>
+): CalendarDay[] {
+  const realByDate = new Map(realDays.map((day) => [day.date, day]));
+  return grid.map((gridDay) => {
+    if (!gridDay.isCurrentMonth) {
+      return gridDay;
+    }
+    const real = realByDate.get(gridDay.date);
+    if (!real) {
+      return {
+        ...gridDay,
+        status: 'rest',
+        workoutTitle: undefined,
+        workoutMeta: undefined,
+        activity: undefined,
+        durationMinutes: undefined,
+        nutritionSummary: undefined,
+      };
+    }
+    return { ...gridDay, ...real };
+  });
+}
+
+/**
  * Computes live metrics for any generated calendar grid
  */
 export function calculateMonthStats(days: CalendarDay[]) {

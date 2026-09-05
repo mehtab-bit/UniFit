@@ -5,7 +5,11 @@
 import { IStreakService } from '../types';
 import { StreakData, CalendarDay } from '../../types/domain';
 import { apiClient } from './apiClient';
-import { mockStreakService } from '../mock/streakMock';
+import { getAppToday } from '../../utils/date';
+import {
+  generateMonthlyCalendarGrid,
+  overlayCalendarDays,
+} from '../../utils/calendar';
 
 export class StreakApiService implements IStreakService {
   async getStreakData(userId: string = 'user_default'): Promise<StreakData> {
@@ -26,7 +30,13 @@ export class StreakApiService implements IStreakService {
     monthIndex: number,
     userId?: string
   ): Promise<CalendarDay[]> {
-    return mockStreakService.getMonthlyCalendar(year, monthIndex, userId);
+    const response: any = await apiClient.get(
+      `/api/v1/calendar?year=${year}&month=${monthIndex + 1}&user_id=${
+        userId || 'user_default'
+      }`
+    );
+    const grid = generateMonthlyCalendarGrid(year, monthIndex, getAppToday());
+    return overlayCalendarDays(grid, response?.days || []);
   }
 }
 

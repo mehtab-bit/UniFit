@@ -59,7 +59,17 @@ class ProgressionService:
 
     def __init__(self):
         self._user_records: dict[str, UserProgressionRecord] = {}
-        self._load_all_records()
+        self._records_loaded = False
+
+    def _ensure_records_loaded(self) -> None:
+        """Lazily restores history on first access instead of at import/startup."""
+        if self._records_loaded:
+            return
+        self._records_loaded = True
+        try:
+            self._load_all_records()
+        except Exception as exc:
+            print(f"[ProgressionService] Failed to restore session history: {exc}")
 
     def _load_all_records(self) -> None:
         """Rebuilds in-memory progression state from Supabase session history."""
@@ -88,6 +98,7 @@ class ProgressionService:
             print(f"[ProgressionService] Failed to load session history: {exc}")
 
     def get_or_create_record(self, user_id: str) -> UserProgressionRecord:
+        self._ensure_records_loaded()
         if user_id not in self._user_records:
             self._user_records[user_id] = UserProgressionRecord(user_id=user_id)
         return self._user_records[user_id]

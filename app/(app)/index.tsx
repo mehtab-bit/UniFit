@@ -99,8 +99,13 @@ export default function HomeScreen() {
       const targetDate = todayResult?.date || formatDateISO();
       const existingNote = await workoutNoteService.getNote(targetDate, user?.id);
       setUserNote(existingNote);
-    } catch {
-      setError('Unable to load fitness dashboard. Please try again.');
+    } catch (err: any) {
+      const detail =
+        err?.message && typeof err.message === 'string'
+          ? err.message
+          : 'Unable to load fitness dashboard. Please try again.';
+      console.warn('Home load failed:', err);
+      setError(detail);
     } finally {
       setLoading(false);
     }
