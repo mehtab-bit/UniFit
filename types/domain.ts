@@ -312,6 +312,7 @@ export type ActivityType = 'walking' | 'running' | 'cycling' | 'swimming' | 'str
 
 export interface ActivitySession {
   id: string;
+  date?: string;
   title: string;
   type: ActivityType;
   activity_id?: string;

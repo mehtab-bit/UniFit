@@ -5,6 +5,21 @@
 import { IActivityService } from '../types';
 import { ActivitySession, ActivitySummary } from '../../types/domain';
 import { apiClient } from './apiClient';
+import { activityLogApiService } from './activityLogApi';
+
+function localDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function mondayKey(): string {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  return localDateKey(monday);
+}
 
 export class ActivityApiService implements IActivityService {
   private mapSession(raw: any): ActivitySession | null {
@@ -12,8 +27,12 @@ export class ActivityApiService implements IActivityService {
     const isStrength = (raw.activity_id || raw.progression_key || '') === 'strength';
     const hasDuration = raw.duration_minutes != null;
     const hasDistance = raw.distance_km != null;
+    const rawDate =
+      raw.local_date ||
+      (created ? localDateKey(created) : undefined);
     return {
       id: raw.id || `session-${created?.getTime?.() ?? Date.now()}`,
+      date: rawDate,
       title: isStrength ? 'Full Body Strength Session' : 'Workout Session',
       type: (isStrength ? 'strength' : raw.activity_id || 'strength') as any,
       activity_id: raw.activity_id,
@@ -51,21 +70,43 @@ export class ActivityApiService implements IActivityService {
   }
 
   async getWeeklySummary(userId: string = 'user_default'): Promise<ActivitySummary> {
-    const sessions = await this.getRecentSessions(userId);
-    const minutes = sessions
-      .map((s) => s.durationMinutes)
+    const [sessions, activityLogs] = await Promise.all([
+      this.getRecentSessions(userId),
+      activityLogApiService.list(),
+    ]);
+    const weekStart = mondayKey();
+    const weekEnd = new Date(`${weekStart}T00:00:00`);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const endKey = localDateKey(weekEnd);
+    const thisWeekSessions = sessions.filter((session) =>
+      session.date ? session.date >= weekStart && session.date < endKey : false
+    );
+    const thisWeekLogs = activityLogs.filter(
+      (log) => log.local_date >= weekStart && log.local_date < endKey
+    );
+    const allWeekly = [...thisWeekSessions, ...thisWeekLogs];
+    const minutes = [
+      ...thisWeekSessions.map((session) => session.durationMinutes),
+      ...thisWeekLogs.map((log) => log.duration_minutes),
+    ]
       .filter((value): value is number => value != null);
+    const distanceValues = [
+      ...thisWeekSessions
+        .map((s) => s.distanceKm)
+        .filter((value): value is number => value != null),
+      ...thisWeekLogs
+        .map((log) => log.distance_km)
+        .filter((value): value is number => value != null),
+    ];
     const totalMinutes = minutes.reduce((acc, value) => acc + value, 0);
-    const totalDistance = sessions
-      .map((s) => s.distanceKm)
-      .filter((value): value is number => value != null)
+    const totalDistance = distanceValues
       .reduce((acc, value) => acc + value, 0);
     return {
-      sessionsCount: sessions.length,
+      sessionsCount: allWeekly.length,
       activeMinutes: minutes.length > 0 ? totalMinutes : null,
       activeCalories: null,
       totalDistanceKm:
-        sessions.some((s) => s.distanceKm != null)
+        distanceValues.length > 0
           ? Math.round(totalDistance * 10) / 10
           : null,
     };

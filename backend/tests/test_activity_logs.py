@@ -50,5 +50,16 @@ def test_activity_log_round_trip_preserves_unknown_calories():
         assert listed.status_code == 200
         assert len(listed.json()) == 1
         assert listed.json()[0]["operation_id"] == "op-activity-1"
+
+        updated = client.put(
+            f"/api/v1/activity/logs/{body['id']}",
+            json={"distance_km": 2.0, "notes": "updated"},
+        )
+        assert updated.status_code == 200, updated.text
+        assert updated.json()["distance_km"] == 2.0
+
+        deleted = client.delete(f"/api/v1/activity/logs/{body['id']}")
+        assert deleted.status_code == 204, deleted.text
+        assert len(client.get("/api/v1/activity/logs?local_date=2026-09-05").json()) == 0
     finally:
         app.dependency_overrides.pop(require_user_dependency, None)

@@ -26,6 +26,7 @@ import { MealLogEntry, MealPlan, Meal } from '../../types/domain';
 import { Surface } from '../../context/SurfaceContext';
 import { getAppToday, formatDateISO } from '../../utils/date';
 import { MealLogSheet } from '../../components/nutrition/MealLogSheet';
+import { FoodDatePicker } from '../../components/nutrition/FoodDatePicker';
 
 export default function FoodScreen() {
   const { user } = useAuth();
@@ -35,6 +36,7 @@ export default function FoodScreen() {
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
   const [logEntries, setLogEntries] = useState<MealLogEntry[]>([]);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingEntry, setEditingEntry] = useState<MealLogEntry | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => formatDateISO());
   const [logCustomName, setLogCustomName] = useState('');
@@ -222,6 +224,14 @@ export default function FoodScreen() {
             <Feather name="chevron-left" size={18} color="#0F172A" />
           </Pressable>
           <Text style={styles.dateNavText}>{selectedDate}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open date calendar"
+            onPress={() => setShowDatePicker(true)}
+            style={styles.dateNavButton}
+          >
+            <Feather name="calendar" size={16} color="#0EA5E9" />
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Next day"
@@ -457,6 +467,14 @@ export default function FoodScreen() {
           setEditingEntry(null);
         }}
         onSaved={loadMealData}
+      />
+      <FoodDatePicker
+        visible={showDatePicker}
+        selectedDate={selectedDate}
+        onSelect={(date) => {
+          setSelectedDate(date);
+        }}
+        onClose={() => setShowDatePicker(false)}
       />
     </SafeAreaView>
   );
