@@ -4,8 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   Alert,
@@ -39,13 +37,6 @@ export default function FoodScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingEntry, setEditingEntry] = useState<MealLogEntry | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => formatDateISO());
-  const [logCustomName, setLogCustomName] = useState('');
-  const [logCalories, setLogCalories] = useState('');
-  const [logProtein, setLogProtein] = useState('');
-  const [logCarbs, setLogCarbs] = useState('');
-  const [logFat, setLogFat] = useState('');
-  const [logFibre, setLogFibre] = useState('');
-  const [logSaving, setLogSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -139,47 +130,6 @@ export default function FoodScreen() {
       AccessibilityInfo.announceForAccessibility(`${meal.title} logged.`);
     } catch {
       Alert.alert('Could not log meal', 'Please check your connection and try again.');
-    }
-  };
-
-  const saveCustomLog = async () => {
-    const calories = Number(logCalories);
-    if (!logCustomName.trim()) {
-      Alert.alert('Food name required', 'Enter what you ate to continue.');
-      return;
-    }
-    setLogSaving(true);
-    try {
-      await mealLogService.create({
-        local_date: selectedDate,
-        source: 'custom',
-        custom_name: logCustomName.trim(),
-        quantity: 1,
-        quantity_unit: 'serving',
-        nutrition: {
-          calories_kcal: Number.isFinite(calories) ? calories : null,
-          protein_g: logProtein ? Number(logProtein) : null,
-          carbohydrates_g: logCarbs ? Number(logCarbs) : null,
-          fat_g: logFat ? Number(logFat) : null,
-          fibre_g: logFibre ? Number(logFibre) : null,
-          carbohydrate_complete: Boolean(logCarbs),
-          fiber_complete: Boolean(logFibre),
-        },
-        notes: '',
-      });
-      setLogCustomName('');
-      setLogCalories('');
-      setLogProtein('');
-      setLogCarbs('');
-      setLogFat('');
-      setLogFibre('');
-      setShowLogModal(false);
-      setLogEntries(await mealLogService.list(selectedDate));
-      AccessibilityInfo.announceForAccessibility('Custom food logged.');
-    } catch {
-      Alert.alert('Could not log food', 'Please check your connection and try again.');
-    } finally {
-      setLogSaving(false);
     }
   };
 
@@ -606,53 +556,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F0F9FF',
   },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    zIndex: 50,
-  },
-  modalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 14,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#0F172A',
-    marginBottom: 10,
-    minHeight: 44,
-  },
-  modalNumberRow: { flexDirection: 'row', gap: 10 },
-  modalNumberInput: { flex: 1 },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  modalCancel: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-  },
-  modalCancelText: { color: '#334155', fontWeight: '700' },
-  modalSave: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#0EA5E9',
-  },
-  modalSaveText: { color: '#FFFFFF', fontWeight: '800' },
 });
