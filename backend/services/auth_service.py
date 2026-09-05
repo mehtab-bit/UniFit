@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import time
+import logging
 from dataclasses import dataclass
 from uuid import UUID
 from typing import Optional
@@ -31,6 +32,7 @@ from backend.services.supabase_service import SUPABASE_URL, supabase_service
 
 DEV_MODES = {"dev", "demo", "test", "offline"}
 LIVE_MODES = {"live", "secure", "prod", "production"}
+logger = logging.getLogger("unifit.auth")
 
 
 @dataclass(frozen=True)
@@ -148,6 +150,11 @@ def _verify_remote(token: str) -> VerifiedUser:
     except HTTPException:
         raise
     except Exception as exc:
+        logger.warning(
+            "Remote Supabase token verification failed: %s: %s",
+            type(exc).__name__,
+            getattr(exc, "message", str(exc))[:300],
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Unable to verify session token. Please sign in again.",
