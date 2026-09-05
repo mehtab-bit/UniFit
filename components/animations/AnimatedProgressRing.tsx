@@ -113,8 +113,26 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
 
       {showPercentText && (
         <View style={styles.centerContent} accessible={false} importantForAccessibility="no">
-          <Text style={[styles.percentText, { color: effectiveTextColor }]}>{Math.round(progress)}%</Text>
-          {label ? <Text style={[styles.labelText, { color: effectiveLabelColor }]}>{label}</Text> : null}
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.65}
+            maxFontSizeMultiplier={1.25}
+            style={[styles.percentText, { color: effectiveTextColor }]}
+          >
+            {Math.round(progress)}%
+          </Text>
+          {label ? (
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+              maxFontSizeMultiplier={1.25}
+              style={[styles.labelText, { color: effectiveLabelColor }]}
+            >
+              {label}
+            </Text>
+          ) : null}
         </View>
       )}
     </View>
@@ -131,8 +149,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   centerContent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 2,
   },
   percentText: {
     ...Typography.h3,

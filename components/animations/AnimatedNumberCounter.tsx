@@ -81,6 +81,10 @@ export const AnimatedNumberCounter: React.FC<AnimatedNumberCounterProps> = ({
   return (
     <Text
       style={[styles.defaultText, { color: colors.number }, style]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.6}
+      maxFontSizeMultiplier={1.3}
       accessible={true}
       accessibilityRole="text"
       accessibilityLabel={fullLabel}
