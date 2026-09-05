@@ -102,12 +102,16 @@ export default function ActivityScreen() {
                   <Text style={styles.heroBadge}>WEEKLY MOVEMENT</Text>
                   <View style={styles.gpsSyncPill}>
                     <View style={styles.gpsDot} />
-                    <Text style={styles.gpsText}>GPS & SENSORS</Text>
+                    <Text style={styles.gpsText}>MANUAL & GUIDED LOGS</Text>
                   </View>
                 </View>
 
                 <View style={styles.heroMetricRow}>
-                  <AnimatedNumberCounter value={summary?.activeMinutes ?? 0} surface="dark" style={styles.heroMinutesNumber} />
+                  {summary?.activeMinutes == null ? (
+                    <Text style={[styles.heroMinutesNumber, { fontSize: 36 }]}>—</Text>
+                  ) : (
+                    <AnimatedNumberCounter value={summary.activeMinutes} surface="dark" style={styles.heroMinutesNumber} />
+                  )}
                   <View style={styles.heroMinutesLabelCol}>
                     <Text style={styles.heroMinutesLabel}>ACTIVE</Text>
                     <Text style={styles.heroMinutesLabelBold}>MINUTES</Text>
@@ -122,15 +126,22 @@ export default function ActivityScreen() {
                   </View>
                   <View style={styles.subMetricDivider} />
                   <View style={styles.subMetricItem}>
-                    <Text style={styles.subMetricVal}>{summary?.activeCalories ?? 0}</Text>
-                    <Text style={styles.subMetricLab}>ACTIVE KCAL</Text>
+                    <Text style={styles.subMetricVal}>
+                      {summary?.activeCalories == null ? '—' : summary.activeCalories}
+                    </Text>
+                    <Text style={styles.subMetricLab}>CALORIES*</Text>
                   </View>
                   <View style={styles.subMetricDivider} />
                   <View style={styles.subMetricItem}>
-                    <Text style={[styles.subMetricVal, { color: '#00C8FF' }]}>100%</Text>
-                    <Text style={styles.subMetricLab}>ADHERENCE</Text>
+                    <Text style={[styles.subMetricVal, { color: '#00C8FF' }]}>
+                      {summary?.totalDistanceKm == null ? '—' : summary.totalDistanceKm}
+                    </Text>
+                    <Text style={styles.subMetricLab}>DISTANCE KM</Text>
                   </View>
                 </View>
+                <Text style={styles.calorieNote}>
+                  *Calories shown only when measured with a documented method.
+                </Text>
               </View>
             </Surface>
           </CardSpringEntry>
@@ -254,6 +265,7 @@ const styles = StyleSheet.create({
   subMetricVal: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
   subMetricLab: { fontSize: 10, fontWeight: '700', color: '#CBD5E1', letterSpacing: 1, marginTop: 4 },
   subMetricDivider: { width: 1, height: 24, backgroundColor: '#1E293B' },
+  calorieNote: { fontSize: 10, color: '#94A3B8', marginTop: 10 },
   filterTabsRow: { flexDirection: 'row', gap: 8, marginBottom: 24, paddingVertical: 4 },
   filterTabPill: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0' },
   filterTabPillActive: { backgroundColor: '#0F172A', borderColor: '#0F172A' },

@@ -307,11 +307,11 @@ export interface ActivitySession {
   progression_key?: string;
   session_type?: string;
   duration: string;
-  durationMinutes: number;
+  durationMinutes: number | null;
   distance?: string;
-  distanceKm?: number;
+  distanceKm?: number | null;
   calories: string;
-  caloriesNum: number;
+  caloriesNum: number | null;
   intensity?: WorkoutIntensity;
   icon: string;
   color: string;
@@ -320,9 +320,9 @@ export interface ActivitySession {
 
 export interface ActivitySummary {
   sessionsCount: number;
-  activeMinutes: number;
-  activeCalories: number;
-  totalDistanceKm?: number;
+  activeMinutes: number | null;
+  activeCalories: number | null;
+  totalDistanceKm?: number | null;
 }
 
 // -------------------------------------------------------------

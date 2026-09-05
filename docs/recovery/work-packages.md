@@ -86,6 +86,8 @@ Required: variation coverage check; calibration identity; low-confidence behavio
 ## W09 — Activity tracking
 
 Required: guided/manual sessions for walking/running/cycling/swimming; pause/resume; honest unknown values; persisted filters/summaries.
+- [x] Honest unknown duration/calories/distance; GPS claim removed
+- [ ] Guided timer flow and manual entry screens
 
 ## W10 — Food logging
 

@@ -96,8 +96,14 @@ export class MockActivityService implements IActivityService {
   }
 
   async getWeeklySummary(_userId?: string): Promise<ActivitySummary> {
-    const totalMinutes = ENGINE_ACTIVITY_SESSIONS.reduce((acc, s) => acc + s.durationMinutes, 0);
-    const totalCalories = ENGINE_ACTIVITY_SESSIONS.reduce((acc, s) => acc + s.caloriesNum, 0);
+    const totalMinutes = ENGINE_ACTIVITY_SESSIONS.reduce(
+      (acc, s) => acc + (s.durationMinutes ?? 0),
+      0
+    );
+    const totalCalories = ENGINE_ACTIVITY_SESSIONS.reduce(
+      (acc, s) => acc + (s.caloriesNum ?? 0),
+      0
+    );
     const totalDistance = ENGINE_ACTIVITY_SESSIONS.reduce(
       (acc, s) => acc + (s.distanceKm || 0),
       0

@@ -14,7 +14,7 @@ Living index of evidence produced by each package.
 | W06 | pytest plan-denominator 5/5; full backend 37/37 | planned obligations vs attempts | pending | Snapshots feed streak denominators; milestones/calendar remain |
 | W07 | typecheck; vitest 45/45 | lifecycle code fixes only | user device test required | Foreground gating + cancellation boundaries added; device cycles still needed |
 | W08 | pending | pending | user device test required | — |
-| W09 | pending | pending | pending | — |
+| W09 | typecheck; vitest | unknown values stay unknown | pending | Guided timers/manual entry UI still to add |
 | W10 | pytest meal-log CRUD 2/2 | full nutrient snapshot; cross-user 404 | pending | Migration `20260905000005`; UI edit/date navigation partial |
 | W11 | pending | pending | pending | — |
 | W12 | pending | pending | pending | — |
