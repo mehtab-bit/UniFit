@@ -73,6 +73,8 @@ export function usePoseDetection(
   const isActiveRef = useRef(true);
   const isDetectingRef = useRef(false);
   const lastDetectionAtRef = useRef(0);
+  const detectorGenerationRef = useRef(0);
+  const ownedDetectorGenerationRef = useRef(0);
 
   const mirrorX =
     mode === 'mediapipe'
@@ -85,7 +87,9 @@ export function usePoseDetection(
   // frozen dots.
   useEffect(() => {
     trackEffectBurst('pose.reset');
+    const generation = ++detectorGenerationRef.current;
     isActiveRef.current = true;
+    ownedDetectorGenerationRef.current = 0;
     lastKeypointsRef.current = [];
     smoothedKeypointsRef.current = [];
     lastVisibleRef.current = [];
@@ -118,14 +122,15 @@ export function usePoseDetection(
           modelUrl: modelIO
         });
 
-        if (!isActiveRef.current) {
+        if (!isActiveRef.current || generation !== detectorGenerationRef.current) {
           // Session ended while the model was loading: dispose the freshly
           // loaded model instead of leaking it outside the cleanup path.
           detector.dispose();
           return;
         }
-        if (isActiveRef.current) {
+        if (isActiveRef.current && generation === detectorGenerationRef.current) {
           detectorRef.current = detector;
+          ownedDetectorGenerationRef.current = generation;
           lastKeypointsRef.current = [];
           smoothedKeypointsRef.current = [];
           setKeypoints([]);
@@ -145,9 +150,18 @@ export function usePoseDetection(
 
     return () => {
       isActiveRef.current = false;
+      detectorGenerationRef.current += 1;
       if (modeRef.current === 'movenet') {
-        detectorRef.current?.dispose();
+        if (
+          ownedDetectorGenerationRef.current === generation &&
+          detectorRef.current
+        ) {
+          // Only dispose a detector this generation actually created; a newer
+          // reset may have already replaced it.
+          detectorRef.current.dispose();
+        }
         detectorRef.current = null;
+        ownedDetectorGenerationRef.current = 0;
       }
     };
   }, [resetKey]);
@@ -229,7 +243,11 @@ export function usePoseDetection(
   const handleCameraStream = useCallback(
     (images: FrameImages, _updateCameraPreview: () => void, _gl: ExpoWebGLRenderingContext) => {
       async function processFrame() {
-        if (!isActiveRef.current) {
+        const streamGeneration = detectorGenerationRef.current;
+        if (
+          !isActiveRef.current ||
+          streamGeneration !== detectorGenerationRef.current
+        ) {
           return;
         }
 
@@ -249,7 +267,10 @@ export function usePoseDetection(
               const poses = await detectorRef.current?.estimatePoses(imageTensor);
               const pose = poses?.[0];
 
-              if (isActiveRef.current) {
+              if (
+                isActiveRef.current &&
+                streamGeneration === detectorGenerationRef.current
+              ) {
                 if (pose && pose.keypoints.length > 0) {
                   const detectedKeypoints = normalizeKeypoints(pose.keypoints);
                   const smoothed = smoothKeypoints(

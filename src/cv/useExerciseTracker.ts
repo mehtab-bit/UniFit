@@ -48,6 +48,8 @@ export function useExerciseTracker(
   const [smoothedAngle, setSmoothedAngle] = useState<number | null>(null);
   const [calibrationPhase, setCalibrationPhase] = useState<CalibrationPhase>('idle');
   const [calibration, setCalibration] = useState<AngleCalibration | null>(null);
+  const calibrationRef = useRef<AngleCalibration | null>(null);
+  calibrationRef.current = calibration;
   const [repState, dispatchRep] = useReducer(repCounterReducer, undefined, createRepCounterState);
   const repStateRef = useRef(repState);
   repStateRef.current = repState;
@@ -157,18 +159,27 @@ export function useExerciseTracker(
     const phase = calibrationPhaseRef.current;
 
     if (phase === 'start') {
-      setCalibration((currentCalibration) =>
-        normalizeCalibration(capturedAngle, currentCalibration?.endAngle ?? capturedAngle)
-      );
+      const previousEnd = calibrationRef.current?.endAngle ?? capturedAngle;
+      setCalibration(normalizeCalibration(capturedAngle, previousEnd));
       setCalibrationPhase('idle');
       return true;
     }
 
     if (phase === 'end') {
-      setCalibration((currentCalibration) => {
-        const previousStart = currentCalibration?.startAngle;
-        return normalizeCalibration(previousStart ?? capturedAngle, capturedAngle);
-      });
+      // Displacement gate (CV-07): the end pose must be measurably different
+      // from the start hold. A no-movement capture must fail instead of
+      // producing a bogus "complete" calibration.
+      const previousStartAngle = calibrationRef.current?.startAngle ?? null;
+      if (
+        previousStartAngle === null ||
+        Math.abs(previousStartAngle - capturedAngle) < 5
+      ) {
+        setCalibrationPhase('idle');
+        return false;
+      }
+      setCalibration(
+        normalizeCalibration(previousStartAngle, capturedAngle)
+      );
       setCalibrationPhase('complete');
       return true;
     }

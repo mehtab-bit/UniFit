@@ -272,28 +272,33 @@ function CvDemoScreenReady({
     (tracker.phase === 'start' || tracker.phase === 'end');
   const rawGood = quality.score >= 75 && midMovement;
 
-  const colorVotesRef = useRef(0);
+  const goodSinceRef = useRef(0);
+  const weakSinceRef = useRef(0);
   const [isGoodForm, setIsGoodForm] = useState(false);
   useEffect(() => {
-    trackEffectBurst('cv.colorVotes');
+    trackEffectBurst('cv.goodLatency');
+    const now = Date.now();
     if (rawGood) {
-      // Require several consecutive good frames before showing green, so
-      // keypoint jitter can't make the skeleton flicker.
-      colorVotesRef.current = Math.min(8, colorVotesRef.current + 1);
-    } else if (isGoodForm) {
-      // Once green, a single weak frame keeps it green (hysteresis); it
-      // snaps amber only after a sustained form break.
-      colorVotesRef.current = Math.max(0, colorVotesRef.current - 1);
+      weakSinceRef.current = 0;
+      if (goodSinceRef.current === 0) goodSinceRef.current = now;
     } else {
-      colorVotesRef.current = 0;
+      goodSinceRef.current = 0;
+      if (weakSinceRef.current === 0) weakSinceRef.current = now;
     }
-
-    if (rawGood && colorVotesRef.current >= 3) {
-      setIsGoodForm(true);
-    } else if (!rawGood && colorVotesRef.current === 0) {
-      setIsGoodForm(false);
-    }
-  }, [rawGood, isGoodForm]);
+    const interval = setInterval(() => {
+      const current = Date.now();
+      if (rawGood && goodSinceRef.current > 0) {
+        if (current - goodSinceRef.current >= 450) {
+          setIsGoodForm(true);
+        }
+      } else if (!rawGood && weakSinceRef.current > 0) {
+        if (current - weakSinceRef.current >= 180) {
+          setIsGoodForm(false);
+        }
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [rawGood]);
 
   useEffect(() => {
     trackEffectBurst('cv.resetStage');

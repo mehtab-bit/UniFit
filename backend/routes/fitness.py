@@ -131,6 +131,11 @@ def generate_combined_weekly_plan(
         week_number = 1
 
     monday_iso = monday_for_week(request.week_start_date)
+    # APP-04: normal generation must use the user's durable progression, not a
+    # client-supplied previous_progress snapshot.
+    previous_progress = (
+        progression if use_server_profile else request.previous_progress
+    )
 
     # Legacy path (older clients supply an inline profile). Keep user/week cache
     # semantics and no plan-snapshot identity.
@@ -147,7 +152,7 @@ def generate_combined_weekly_plan(
                 profile=engine_profile,
                 preferences=activities,
                 week_number=week_number,
-                previous_progress=request.previous_progress,
+                previous_progress=previous_progress,
                 initial_strength_levels=request.initial_strength_levels,
                 accessibility_id=accessibility_id,
                 accessibility_resources=accessibility_resources,
@@ -191,7 +196,7 @@ def generate_combined_weekly_plan(
             profile=engine_profile,
             preferences=activities,
             week_number=week_number,
-            previous_progress=request.previous_progress,
+            previous_progress=previous_progress,
             initial_strength_levels=server_initial_levels,
             accessibility_id=accessibility_id,
             accessibility_resources=accessibility_resources,
