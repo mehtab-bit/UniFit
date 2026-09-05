@@ -90,7 +90,9 @@ export default function HomeScreen() {
       setNutritionTargets(nutritionResult);
 
       if (planResult?.days && !selectedDayId) {
-        const today = planResult.days.find((d) => d.status === 'today');
+        const today =
+          planResult.days.find((d) => d.date === todayResult?.date) ||
+          planResult.days.find((d) => d.status === 'today');
         if (today) setSelectedDayId(today.id);
         else setSelectedDayId(planResult.days[0].id);
       }

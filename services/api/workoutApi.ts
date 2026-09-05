@@ -197,15 +197,27 @@ export class WorkoutApiService implements IWorkoutService {
 
   async getTodayWorkout(userId?: string): Promise<WorkoutDay> {
     const plan = await this.getWeeklyPlan(userId);
-    const today = plan.days.find((d) => d.status === 'today') || plan.days[0];
+    const todayKey = localDateString();
+    const today =
+      plan.days.find((d) => d.date === todayKey) ||
+      plan.days.find((d) => d.status === 'today') ||
+      plan.days[0];
     return today;
   }
 
   async getTomorrowWorkout(userId?: string): Promise<WorkoutDay> {
     const plan = await this.getWeeklyPlan(userId);
-    const todayIdx = plan.days.findIndex((d) => d.status === 'today');
-    const tomorrowIdx = (todayIdx + 1) % plan.days.length;
-    return plan.days[tomorrowIdx];
+    const todayKey = localDateString();
+    const todayIdx = plan.days.findIndex((d) => d.date === todayKey);
+    if (todayIdx >= 0) {
+      const tomorrow = new Date(`${todayKey}T00:00:00`);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowKey = localDateString(tomorrow);
+      const byDate = plan.days.find((d) => d.date === tomorrowKey);
+      if (byDate) return byDate;
+    }
+    const fallbackIdx = todayIdx >= 0 ? (todayIdx + 1) % plan.days.length : 0;
+    return plan.days[fallbackIdx];
   }
 
   async getUpcomingWorkouts(userId?: string): Promise<WorkoutDay[]> {
