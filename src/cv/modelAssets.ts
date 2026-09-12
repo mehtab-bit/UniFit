@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system';
 
@@ -29,37 +30,95 @@ export async function createBundledModelIO(
   let byteCount = 0;
   const weightAssets = weightAssetIds.map((id) => Asset.fromModule(id));
 
-  for (const asset of weightAssets) {
-    let bytes: Uint8Array;
-    if (asset.uri.startsWith('http')) {
-      const response = await fetch(asset.uri);
-      bytes = new Uint8Array(await response.arrayBuffer());
-    } else {
-      const localUri = asset.localUri || asset.uri;
-      const base64 = await FileSystem.readAsStringAsync(localUri, {
-        encoding: FileSystem.EncodingType.Base64
-      });
-      bytes = base64ToBytes(base64);
+
+  
+ 
+ for (const asset of weightAssets) {
+
+  let bytes: Uint8Array;
+
+  if (Platform.OS === 'web') {
+
+    const response = await fetch(asset.uri);
+
+    if (!response.ok) {
+
+      throw new Error(
+
+        `Failed to load MoveNet model weight: ${response.status} ${response.statusText}`
+
+      );
+
     }
-    weightBytes.push(bytes);
-    byteCount += bytes.byteLength;
+
+    bytes = new Uint8Array(await response.arrayBuffer());
+
+  } else if (asset.uri.startsWith('http')) {
+
+    const response = await fetch(asset.uri);
+
+    if (!response.ok) {
+
+      throw new Error(
+
+        `Failed to load MoveNet model weight: ${response.status} ${response.statusText}`
+
+      );
+
+    }
+
+    bytes = new Uint8Array(await response.arrayBuffer());
+
+  } else {
+
+    const localUri = asset.localUri || asset.uri;
+
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+
+      encoding: FileSystem.EncodingType.Base64
+
+    });
+
+    bytes = base64ToBytes(base64);
+
   }
 
-  const weightData = new Uint8Array(byteCount);
-  let offset = 0;
-  for (const bytes of weightBytes) {
-    weightData.set(bytes, offset);
-    offset += bytes.byteLength;
-  }
+  weightBytes.push(bytes);
 
-  return {
-    load: async () => ({
-      modelTopology: modelJson.modelTopology,
-      weightSpecs,
-      weightData,
-      format: modelJson.format,
-      generatedBy: modelJson.generatedBy,
-      convertedAt: modelJson.convertedAt
-    })
-  };
+  byteCount += bytes.byteLength;
+
+}
+
+const weightData = new Uint8Array(byteCount);
+
+let offset = 0;
+
+for (const bytes of weightBytes) {
+
+  weightData.set(bytes, offset);
+
+  offset += bytes.byteLength;
+
+}
+
+return {
+
+  load: async () => ({
+
+    modelTopology: modelJson.modelTopology,
+
+    weightSpecs,
+
+    weightData,
+
+    format: modelJson.format,
+
+    generatedBy: modelJson.generatedBy,
+
+    convertedAt: modelJson.convertedAt
+
+  })
+
+};
+
 }

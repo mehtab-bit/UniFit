@@ -50,7 +50,7 @@ export function updateRepCounter(
   const minimumRepIntervalMs = 600;
   if (
     state.phase === 'start' &&
-    progress >= 0.95 &&
+    progress >= 0.85 &&
     now - state.lastRepAt >= minimumRepIntervalMs
   ) {
     return {
@@ -61,7 +61,7 @@ export function updateRepCounter(
     };
   }
 
-  if (state.phase === 'end' && progress <= 0.05) {
+  if (state.phase === 'end' && progress <= 0.15) {
     return {
       phase: 'start',
       reps: state.reps,

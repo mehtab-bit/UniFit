@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { unstable_batchedUpdates } from 'react-native';
+import { Platform, unstable_batchedUpdates } from 'react-native';
 import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-react-native/dist/platform_react_native';
 import { CameraType, useCameraPermissions } from 'expo-camera';
 import { ExpoWebGLRenderingContext } from 'expo-gl';
 import { load as loadMoveNet } from '@tensorflow-models/pose-detection/dist/movenet/detector';
@@ -60,7 +59,6 @@ export function usePoseDetection(
   const [framesProcessed, setFramesProcessed] = useState(0);
   const [lastDetectionAt, setLastDetectionAt] = useState<number | null>(null);
   const [sourceSize, setSourceSize] = useState<SourceSize | null>(null);
-
   const detectorRef = useRef<PoseDetector | null>(null);
   const lastKeypointsRef = useRef<CvKeypoint[]>([]);
   const smoothedKeypointsRef = useRef<CvKeypoint[]>([]);
@@ -75,12 +73,19 @@ export function usePoseDetection(
   const lastDetectionAtRef = useRef(0);
   const detectorGenerationRef = useRef(0);
   const ownedDetectorGenerationRef = useRef(0);
+  const webVideoRef = useRef<HTMLVideoElement | null>(null);
+  const webAnimationRef = useRef<number | null>(null);
+const mirrorX =
 
-  const mirrorX =
-    mode === 'mediapipe'
+  mode === 'mediapipe'
+
+    ? facing === 'front'
+
+    : Platform.OS === 'web'
+
       ? facing === 'front'
-      : shouldMirrorPreview(facing === 'front');
 
+      : shouldMirrorPreview(facing === 'front');
   // Reset the whole pipeline whenever `facing` or an explicit session nonce
   // changes. Without a full teardown, re-entering a session after exiting
   // mid-rep keeps the previous WebGL/camera frame alive and the overlay shows
@@ -111,17 +116,66 @@ export function usePoseDetection(
           }
           return;
         }
-        await tf.ready();
-        await tf.setBackend('rn-webgl');
-        const modelIO = await createBundledModelIO(movenetModelJson, [
-          movenetWeights1,
-          movenetWeights2
-        ]);
-        const detector = await loadMoveNet({
-          modelType: SINGLEPOSE_LIGHTNING,
-          modelUrl: modelIO
-        });
+if (Platform.OS === 'web') {
 
+  await tf.setBackend('webgl');
+
+  await tf.ready();
+
+} else {
+
+  await import('@tensorflow/tfjs-react-native/dist/platform_react_native');
+
+  await tf.setBackend('rn-webgl');
+
+  await tf.ready();
+
+}
+let detector: PoseDetector;
+
+if (Platform.OS === 'web') {
+
+  detector = await loadMoveNet({
+
+    modelType: SINGLEPOSE_LIGHTNING,
+
+    modelUrl: '/movenet/model.json',
+
+    enableSmoothing: true,
+
+    minPoseScore: 0.10
+
+  });
+
+} else {
+
+  const modelIO = await createBundledModelIO(
+
+    movenetModelJson,
+
+    [
+
+      movenetWeights1,
+
+      movenetWeights2
+
+    ]
+
+  );
+
+  detector = await loadMoveNet({
+
+    modelType: SINGLEPOSE_LIGHTNING,
+
+    modelUrl: modelIO,
+
+    enableSmoothing: true,
+
+    minPoseScore: 0.25
+
+  });
+
+}
         if (!isActiveRef.current || generation !== detectorGenerationRef.current) {
           // Session ended while the model was loading: dispose the freshly
           // loaded model instead of leaking it outside the cleanup path.
@@ -342,6 +396,264 @@ export function usePoseDetection(
     []
   );
 
+const handleWebVideo = useCallback(
+
+  (video: HTMLVideoElement | null) => {
+console.warn(
+
+  '[WEB CV CALLBACK]',
+
+  Boolean(video),
+
+  video?.videoWidth,
+
+  video?.videoHeight
+
+);
+    webVideoRef.current = video;
+
+    if (webAnimationRef.current !== null) {
+
+      cancelAnimationFrame(webAnimationRef.current);
+
+      webAnimationRef.current = null;
+
+    }
+
+    if (!video) {
+
+      return;
+
+    }
+
+    const activeVideo: HTMLVideoElement = video;
+
+    const streamGeneration = detectorGenerationRef.current;
+
+    async function processWebFrame() {
+
+      if (
+
+        !isActiveRef.current ||
+
+        streamGeneration !== detectorGenerationRef.current ||
+
+        webVideoRef.current !== activeVideo
+
+      ) {
+
+        return;
+
+      }
+
+      const now = Date.now();
+
+      const shouldDetect =
+
+        detectorRef.current !== null &&
+
+        activeVideo.readyState >= 2 &&
+
+        activeVideo.videoWidth > 0 &&
+
+        activeVideo.videoHeight > 0 &&
+
+        now - lastDetectionAtRef.current >= DETECTION_INTERVAL_MS &&
+
+        !isDetectingRef.current;
+if (shouldDetect) {
+
+  isDetectingRef.current = true;
+
+  lastDetectionAtRef.current = now;
+
+
+  try {
+
+const frameWidth = activeVideo.videoWidth;
+
+const frameHeight = activeVideo.videoHeight;
+
+const poses = await detectorRef.current?.estimatePoses(
+
+  activeVideo
+
+);
+    const detectedPose = poses?.[0];
+console.warn('[WEB CV INFERENCE]', {
+  backend: tf.getBackend(),
+
+  video: `${activeVideo.videoWidth}x${activeVideo.videoHeight}`,
+
+  poses: poses?.length ?? 0,
+
+  keypoints: detectedPose?.keypoints?.length ?? 0,
+
+  scores: detectedPose?.keypoints?.map((keypoint) => ({
+
+    name: keypoint.name,
+
+    score: keypoint.score
+
+  }))
+
+});
+          if (
+
+            isActiveRef.current &&
+
+            streamGeneration === detectorGenerationRef.current
+
+          ) {
+
+            if (detectedPose && detectedPose.keypoints.length > 0) {
+
+
+const detectedKeypoints = normalizeKeypoints(
+
+  detectedPose.keypoints,
+
+  frameWidth,
+
+  frameHeight
+
+);
+              const smoothed = smoothKeypoints(
+
+                smoothedKeypointsRef.current,
+
+                detectedKeypoints,
+
+                0.55
+
+              );
+
+              smoothedKeypointsRef.current = smoothed;
+
+              const visible = detectedKeypoints
+
+                .filter(
+
+                  (keypoint) =>
+
+                    typeof keypoint.score !== 'number' ||
+
+                    keypoint.score >= KEYPOINT_MIN_SCORE
+
+                )
+
+                .map((keypoint) => keypoint.name);
+
+              if (
+
+                keypointsChanged(
+
+                  lastKeypointsRef.current,
+
+                  smoothed,
+
+                  0.015
+
+                )
+
+              ) {
+
+                lastKeypointsRef.current = smoothed;
+
+                setKeypoints(smoothed);
+
+              }
+
+              if (lastVisibleRef.current.join() !== visible.join()) {
+
+                lastVisibleRef.current = visible;
+
+                setVisibleKeypointNames(visible);
+
+              }
+
+            } else {
+
+              lastKeypointsRef.current = [];
+
+              lastVisibleRef.current = [];
+
+              setKeypoints([]);
+
+              setVisibleKeypointNames([]);
+
+            }
+
+const nextSource = {
+
+  width: frameWidth,
+
+  height: frameHeight
+
+};
+            lastSourceRef.current = nextSource;
+
+            setSourceSize(nextSource);
+
+            setFramesProcessed((count) => count + 1);
+
+            setLastDetectionAt(Date.now());
+
+            setError(null);
+
+          }
+
+        } catch (detectError) {
+
+          if (isActiveRef.current) {
+
+            setError(
+
+              detectError instanceof Error
+
+                ? detectError.message
+
+                : 'Web pose detection failed.'
+
+            );
+
+          }
+
+} finally {
+
+
+  isDetectingRef.current = false;
+
+}
+      }
+
+      if (
+
+        isActiveRef.current &&
+
+        webVideoRef.current === activeVideo
+
+      ) {
+
+        webAnimationRef.current = requestAnimationFrame(
+
+          processWebFrame
+
+        );
+
+      }
+
+    }
+
+    processWebFrame();
+
+  },
+
+  []
+
+);
+
+
   const handleCameraError = useCallback((cameraError: Error) => {
     setError(cameraError.message);
   }, []);
@@ -362,6 +674,7 @@ export function usePoseDetection(
     handleCameraStream,
     handleCameraError,
     handleNativeFrame,
+    handleWebVideo,
     native: mode === 'mediapipe',
     mode
   };

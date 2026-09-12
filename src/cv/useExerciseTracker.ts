@@ -92,19 +92,63 @@ export function useExerciseTracker(
     }
   }, [activeSide, definition, keypoints]);
 
-  useEffect(() => {
-    trackEffectBurst('tracker.calSamples');
-    if (calibrationPhase === 'start' || calibrationPhase === 'end') {
-      if (smoothedAngle !== null) {
-        calibrationSamplesRef.current = [...calibrationSamplesRef.current, smoothedAngle].slice(-25);
-      }
+useEffect(() => {
 
-      return;
-    }
+  trackEffectBurst('tracker.calSamples');
+
+  if (
+
+    calibrationPhase !== 'start' &&
+
+    calibrationPhase !== 'end'
+
+  ) {
 
     calibrationSamplesRef.current = [];
-  }, [calibrationPhase, smoothedAngle]);
 
+    return;
+
+  }
+
+  calibrationSamplesRef.current = [];
+
+  const collectSample = () => {
+
+    const angle = lastSmoothedRef.current;
+
+    if (angle === null) {
+
+      return;
+
+    }
+
+    calibrationSamplesRef.current = [
+
+      ...calibrationSamplesRef.current,
+
+      angle
+
+    ].slice(-25);
+
+  };
+
+  collectSample();
+
+  const timer = setInterval(
+
+    collectSample,
+
+    100
+
+  );
+
+  return () => {
+
+    clearInterval(timer);
+
+  };
+
+}, [calibrationPhase]);
   // Update the rep counter on every angle change but ONLY dispatch when the
   // counter genuinely transitions. The reducer is idempotent for identical
   // state, but the dispatch call itself is avoided unless reps/phase change.
@@ -118,8 +162,52 @@ export function useExerciseTracker(
     ) {
       return;
     }
-    const current = repStateRef.current;
-    const next = updateRepCounter(current, smoothedAngle, calibration);
+ const current = repStateRef.current;
+const range = calibration.endAngle - calibration.startAngle;
+
+const progress =
+
+  Math.abs(range) < 1
+
+    ? 0
+
+    : Math.max(
+
+        0,
+
+        Math.min(
+
+          1,
+
+          (smoothedAngle - calibration.startAngle) / range
+
+        )
+
+      );
+
+console.warn('[REP DEBUG]', {
+
+  angle: smoothedAngle,
+
+  start: calibration.startAngle,
+
+  end: calibration.endAngle,
+
+  progress: Number(progress.toFixed(2)),
+
+  phase: current.phase,
+
+  reps: current.reps,
+
+  primed: current.primed,
+
+  paused,
+
+  calibrationPhase
+
+});
+
+ const next = updateRepCounter(current, smoothedAngle, calibration);
     if (next !== current) {
       repStateRef.current = next;
       dispatchRep({ type: 'tick', angle: smoothedAngle, calibration });
@@ -172,7 +260,7 @@ export function useExerciseTracker(
       const previousStartAngle = calibrationRef.current?.startAngle ?? null;
       if (
         previousStartAngle === null ||
-        Math.abs(previousStartAngle - capturedAngle) < 5
+        Math.abs(previousStartAngle - capturedAngle) < 8
       ) {
         setCalibrationPhase('idle');
         return false;
