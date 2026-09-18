@@ -28,7 +28,15 @@ type PoseDetectionKeypoint = {
   score?: number;
 };
 
-export function normalizeKeypoints(keypoints: PoseDetectionKeypoint[]): CvKeypoint[] {
+export function normalizeKeypoints(
+
+  keypoints: PoseDetectionKeypoint[],
+
+  sourceWidth = 192,
+
+  sourceHeight = 192
+
+): CvKeypoint[] {
   const normalizedKeypoints: CvKeypoint[] = [];
 
   // MoveNet returns pixel coordinates in the 192×192 inference space. Convert
@@ -42,8 +50,8 @@ export function normalizeKeypoints(keypoints: PoseDetectionKeypoint[]): CvKeypoi
     if (moveNetKeypointNames.includes(name as KeypointName)) {
       normalizedKeypoints.push({
         name: name as KeypointName,
-        x: keypoint.x / 192,
-        y: keypoint.y / 192,
+        x: keypoint.x / sourceWidth,
+        y: keypoint.y /sourceHeight,
         score: keypoint.score
       });
     }

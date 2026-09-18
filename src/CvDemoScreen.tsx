@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CameraType } from 'expo-camera';
 import { TensorCamera } from './cv/TensorCamera';
+import { WebCameraFeed } from './cv/WebCameraFeed';
 import { usePoseDetection } from './cv/usePoseDetection';
 import { useExerciseTracker } from './cv/useExerciseTracker';
 import { ExerciseId, Side } from './cv/types';
@@ -244,26 +245,49 @@ function CvDemoScreenReady({
     [exerciseId, measurementKeypoints, tracker.calibration, tracker.side]
   );
 
-  const quality = useMemo(
-    () =>
-      assessQuality(
-        exerciseId,
-        measurementKeypoints,
-        tracker.side,
-        tracker.smoothedAngle,
-        tracker.calibration,
-        geometricIssues
-      ),
-    [
-      exerciseId,
-      geometricIssues,
-      measurementKeypoints,
-      tracker.side,
-      tracker.smoothedAngle,
-      tracker.calibration
-    ]
-  );
+const quality = useMemo(
 
+  () =>
+
+    assessQuality(
+
+      exerciseId,
+
+      measurementKeypoints,
+
+      tracker.side,
+
+      tracker.smoothedAngle,
+
+      calibrationStage === 'complete'
+
+        ? tracker.calibration
+
+        : null,
+
+      geometricIssues
+
+    ),
+
+  [
+
+    exerciseId,
+
+    geometricIssues,
+
+    measurementKeypoints,
+
+    tracker.side,
+
+    tracker.smoothedAngle,
+
+    tracker.calibration,
+
+    calibrationStage
+
+  ]
+
+);
   // The skeleton is the form indicator: green only while the tracked joint is
   // inside the calibrated movement range AND the geometric form checks pass.
   // The debounce below prevents the green/amber flicker caused by per-frame
@@ -511,63 +535,159 @@ function CvDemoScreenReady({
   //               switch to end_hold automatically.
   //   end_hold:   once stable again for ~2.5s, capture the END angle.
   // The user moves at their own pace; we never demand they beat a timer.
-  useEffect(() => {
-    trackEffectBurst('cv.calWatch');
-    if (
-      calibrationStage !== 'start_hold' &&
-      calibrationStage !== 'end_move' &&
-      calibrationStage !== 'end_hold'
-    ) {
+useEffect(() => {
+
+  trackEffectBurst('cv.calWatch');
+
+  if (
+
+    calibrationStage !== 'start_hold' &&
+
+    calibrationStage !== 'end_move' &&
+
+    calibrationStage !== 'end_hold'
+
+  ) {
+
+    return;
+
+  }
+
+  const WATCH_WINDOW_MS = 200;
+
+  const TOLERANCE_DEG = 4;
+
+  const STABLE_FOR_CAPTURE_MS = 2500;
+
+  let stableSince: number | null = null;
+
+  let lastAngle: number | null = null;
+
+  const watch = setInterval(() => {
+
+    const angle = trackerRef.current.smoothedAngle;
+
+    if (angle === null) {
+
+      stableSince = null;
+
+      lastAngle = null;
+
+      setCountdown(0);
+
       return;
+
     }
 
-    const WATCH_WINDOW_MS = 200;
-    const TOLERANCE_DEG = 4;
-    const STABLE_FOR_CAPTURE_MS = calibrationStage === 'end_move' ? 1200 : 2500;
-    let stableSince: number | null = null;
-    let lastAngle: number | null = null;
+    if (calibrationStage === 'end_move') {
 
-    const watch = setInterval(() => {
-      const angle = trackerRef.current.smoothedAngle;
-      if (angle === null) {
-        stableSince = null;
-        lastAngle = null;
-        setCountdown(0);
+      const startAngle =
+
+        trackerRef.current.calibration?.startAngle ?? null;
+
+      if (
+
+        startAngle !== null &&
+
+        Math.abs(angle - startAngle) >= 10
+
+      ) {
+
+        trackerRef.current.beginEndCalibration();
+
+        clearInterval(watch);
+
+        setCountdown(2);
+
+        setCalibrationStage('end_hold');
+
+      }
+
+      return;
+
+    }
+
+    if (
+
+      lastAngle === null ||
+
+      Math.abs(angle - lastAngle) <= TOLERANCE_DEG
+
+    ) {
+
+      stableSince = stableSince ?? Date.now();
+
+      if (
+
+        Date.now() - stableSince >= STABLE_FOR_CAPTURE_MS
+
+      ) {
+
+        const didSave =
+
+          trackerRef.current.captureCalibrationPhase();
+
+        clearInterval(watch);
+
+        setCalibrationStage(
+
+          didSave
+
+            ? calibrationStage === 'start_hold'
+
+              ? 'end_move'
+
+              : 'complete'
+
+            : 'failed'
+
+        );
+
         return;
+
       }
 
-      if (lastAngle === null || Math.abs(angle - lastAngle) <= TOLERANCE_DEG) {
-        stableSince = stableSince ?? Date.now();
-        if (Date.now() - stableSince >= STABLE_FOR_CAPTURE_MS) {
-          if (calibrationStage === 'end_move') {
-            // User has settled in the end pose — begin the end hold capture.
-            trackerRef.current.beginEndCalibration();
-            clearInterval(watch);
-            setCalibrationStage('end_hold');
-            return;
-          }
-          const didSave = trackerRef.current.captureCalibrationPhase();
-          clearInterval(watch);
-          setCalibrationStage(
-            didSave ? (calibrationStage === 'start_hold' ? 'end_move' : 'complete') : 'failed'
-          );
-          return;
-        }
-      } else {
-        // User is still moving — the end position has not been reached yet.
-        stableSince = null;
-      }
-      lastAngle = angle;
-      const remaining = Math.max(
-        0,
-        Math.ceil((STABLE_FOR_CAPTURE_MS - (stableSince ? Date.now() - stableSince : 0)) / 1000)
-      );
-      setCountdown(remaining);
-    }, WATCH_WINDOW_MS);
+    } else {
 
-    return () => clearInterval(watch);
-  }, [calibrationStage]);
+      stableSince = null;
 
+    }
+
+    lastAngle = angle;
+
+    const remaining = Math.max(
+
+      0,
+
+      Math.ceil(
+
+        (
+
+          STABLE_FOR_CAPTURE_MS -
+
+          (
+
+            stableSince
+
+              ? Date.now() - stableSince
+
+              : 0
+
+          )
+
+        ) / 1000
+
+      )
+
+    );
+
+    setCountdown(remaining);
+
+  }, WATCH_WINDOW_MS);
+
+  return () => clearInterval(watch);
+
+}, [calibrationStage]);
   function beginCalibration() {
     tracker.resetTracker();
     tracker.beginStartCalibration();
@@ -593,44 +713,93 @@ function CvDemoScreenReady({
   );
   const canCalibrate =
     pose.modelStatus === 'ready' && missingRequired.length === 0;
+function renderCameraFeed() {
 
-  function renderCameraFeed() {
-    if (!isForegroundActive) {
-      return null;
-    }
-    if (pose.native) {
-      // Lazy-required so Expo Go/MoveNet bundles never evaluate the native
-      // Vision Camera + MediaPipe modules.
-      const NativeFeed: any = require('./cv/native/NativeCameraFeed')
-        .NativeCameraFeed;
-      return (
-        <NativeFeed
-          key={`native-cam-${sessionKey ?? 'default'}-${cameraFacing}`}
-          facing={pose.facing}
-          onDetected={pose.handleNativeFrame}
-          onError={pose.handleCameraError}
-        />
-      );
-    }
-    return (
-      <TensorCamera
-        key={`cam-${sessionKey ?? 'default'}-${cameraFacing}`}
-        style={StyleSheet.absoluteFill}
-        facing={pose.facing}
-        ratio={Platform.OS === 'android' ? '4:3' : undefined}
-        autorender={true}
-        useCustomShadersToResize={false}
-        cameraTextureWidth={0}
-        cameraTextureHeight={0}
-        resizeWidth={192}
-        resizeHeight={192}
-        resizeDepth={3}
-        onReady={pose.handleCameraStream}
-        onError={pose.handleCameraError}
-      />
-    );
+  if (!isForegroundActive) {
+
+    return null;
+
   }
 
+  if (Platform.OS === 'web') {
+
+    return (
+
+      <WebCameraFeed
+
+        key={`web-cam-${sessionKey ?? 'default'}-${cameraFacing}`}
+
+        facing={pose.facing}
+
+        onReady={pose.handleWebVideo}
+
+        onError={pose.handleCameraError}
+
+      />
+
+    );
+
+  }
+
+  if (pose.native) {
+
+    const NativeFeed: any = require('./cv/native/NativeCameraFeed')
+
+      .NativeCameraFeed;
+
+    return (
+
+      <NativeFeed
+
+        key={`native-cam-${sessionKey ?? 'default'}-${cameraFacing}`}
+
+        facing={pose.facing}
+
+        onDetected={pose.handleNativeFrame}
+
+        onError={pose.handleCameraError}
+
+      />
+
+    );
+
+  }
+
+  return (
+
+    <TensorCamera
+
+      key={`cam-${sessionKey ?? 'default'}-${cameraFacing}`}
+
+      style={StyleSheet.absoluteFill}
+
+      facing={pose.facing}
+
+      ratio={Platform.OS === 'android' ? '4:3' : undefined}
+
+      autorender={true}
+
+      useCustomShadersToResize={false}
+
+      cameraTextureWidth={0}
+
+      cameraTextureHeight={0}
+
+      resizeWidth={192}
+
+      resizeHeight={192}
+
+      resizeDepth={3}
+
+      onReady={pose.handleCameraStream}
+
+      onError={pose.handleCameraError}
+
+    />
+
+  );
+
+}
   const sourceWidth = pose.sourceSize?.width ?? 192;
   const sourceHeight = pose.sourceSize?.height ?? 192;
 
@@ -672,6 +841,13 @@ function CvDemoScreenReady({
 
   const stage = stageDetails[calibrationStage];
   const isTracking = calibrationStage === 'complete';
+  const isCalibrating =
+
+  calibrationStage === 'start_hold' ||
+
+  calibrationStage === 'end_move' ||
+
+  calibrationStage === 'end_hold';
   const feedback = tracker.feedback;
 
   return (
@@ -844,21 +1020,35 @@ function CvDemoScreenReady({
             <View style={styles.actionRow}>
               <Pressable
                 accessibilityRole="button"
-                disabled={!canCalibrate}
+                disabled={!canCalibrate || isCalibrating}
                 style={({ pressed }) => [
                   styles.calibrateButton,
-                  !canCalibrate && styles.calibrateButtonDisabled,
+                  (!canCalibrate || isCalibrating) && styles.calibrateButtonDisabled,
                   pressed && styles.pressed
                 ]}
                 onPress={beginCalibration}
               >
                 <Text style={styles.calibrateButtonText}>
-                  {!canCalibrate
-                    ? 'Show your joints to the camera'
-                    : isTracking
-                      ? 'Recalibrate'
-                      : 'Calibrate'}
-                </Text>
+
+  {!canCalibrate
+
+    ? 'Show your joints to the camera'
+
+    : isCalibrating
+
+      ? 'Calibrating…'
+
+      : isTracking
+
+        ? 'Recalibrate'
+
+        : calibrationStage === 'failed'
+
+          ? 'Recalibrate'
+
+          : 'Calibrate'}
+
+</Text>
               </Pressable>
 
               {IS_DEV ? (

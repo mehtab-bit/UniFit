@@ -1,6 +1,13 @@
+import { Platform } from 'react-native';
+
 /**
- * Minimum MoveNet keypoint score a joint needs before it is shown or used in
- * angle math. Scores hover near 0.5-0.7 even for well-tracked joints on a
- * phone; anything lower flickers in and out and drags the angle with it.
+ * Browser webcams are often lower-resolution and lower-confidence than
+ * phone cameras. Keep the stricter native threshold while allowing MoveNet
+ * web detections to survive normal laptop-camera confidence levels.
  */
-export const KEYPOINT_MIN_SCORE = 0.45;
+
+export const KEYPOINT_MIN_SCORE = Platform.OS === 'web'
+
+  ? 0.25
+
+  : 0.45;

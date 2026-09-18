@@ -1,8 +1,7 @@
 import { SafeStorage } from '../../lib/supabase';
 import { AngleCalibration } from './types';
 
-const CALIBRATION_PREFIX = '@unifit_calibration_v1';
-
+const CALIBRATION_PREFIX = '@unifit_calibration_v2';
 export function calibrationStorageKey(exerciseId: string, side: string, mode: string) {
   // Each pose pipeline normalizes landmarks differently (192x192 MoveNet vs
   // native camera dimensions), so a calibration captured under one mode is
@@ -37,7 +36,7 @@ export async function loadSavedCalibration(
       startAngle > 180 ||
       endAngle < 0 ||
       endAngle > 180 ||
-      Math.abs(startAngle - endAngle) < 1
+      Math.abs(startAngle - endAngle) < 8
     ) {
       return null;
     }
